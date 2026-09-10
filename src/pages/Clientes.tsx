@@ -1,0 +1,627 @@
+import React, { useState, useEffect, useMemo } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
+import {
+  Plus,
+  Search,
+  Eye,
+  Edit2,
+  Trash2,
+  Building,
+  Phone,
+  Mail,
+  MapPin,
+  X,
+  AlertCircle,
+  FileSpreadsheet,
+} from 'lucide-react'
+import { clienteService } from '@/services/crmService'
+import type { Cliente, ClienteStatus } from '@/types/crm'
+import { validateCNPJ, maskCNPJ, maskPhone } from '@/lib/formatters'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { toast } from 'sonner'
+import { useAuth } from '@/contexts/AuthContext'
+
+export default function Clientes() {
+  const { role } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  const [clientes, setClientes] = useState<Cliente[]>([])
+  const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState('')
+
+  // Modal create/edit
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editingClient, setEditingClient] = useState<Cliente | null>(null)
+
+  // Form fields
+  const [formNome, setFormNome] = useState('')
+  const [formEmpresa, setFormEmpresa] = useState('')
+  const [formCNPJ, setFormCNPJ] = useState('')
+  const [formEmail, setFormEmail] = useState('')
+  const [formTelefone, setFormTelefone] = useState('')
+  const [formCidade, setFormCidade] = useState('')
+  const [formEstado, setFormEstado] = useState('')
+  const [formStatus, setFormStatus] = useState<ClienteStatus>('ativo')
+  const [formObservacoes, setFormObservacoes] = useState('')
+
+  // Validation errors
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [submitting, setSubmitting] = useState(false)
+
+  // Delete dialog
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [clientToDelete, setClientToDelete] = useState<Cliente | null>(null)
+
+  const canEdit = role === 'admin' || role === 'vendedor'
+
+  const loadClientes = async () => {
+    try {
+      const list = await clienteService.getAll()
+      setClientes(list)
+    } catch {
+      toast.error('Erro ao carregar clientes.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadClientes()
+  }, [])
+
+  // Open modal if URL parameter ?novo=true
+  useEffect(() => {
+    if (searchParams.get('novo') === 'true') {
+      handleOpenCreate()
+      searchParams.delete('novo')
+      setSearchParams(searchParams, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
+
+  const filteredClientes = useMemo(() => {
+    if (!searchTerm.trim()) return clientes
+    const q = searchTerm.toLowerCase().trim()
+    return clientes.filter((c) => {
+      return (
+        (c.nome && c.nome.toLowerCase().includes(q)) ||
+        (c.empresa && c.empresa.toLowerCase().includes(q)) ||
+        (c.cnpj && c.cnpj.toLowerCase().includes(q)) ||
+        (c.cidade && c.cidade.toLowerCase().includes(q))
+      )
+    })
+  }, [clientes, searchTerm])
+
+  const handleOpenCreate = () => {
+    setEditingClient(null)
+    setFormNome('')
+    setFormEmpresa('')
+    setFormCNPJ('')
+    setFormEmail('')
+    setFormTelefone('')
+    setFormCidade('')
+    setFormEstado('')
+    setFormStatus('ativo')
+    setFormObservacoes('')
+    setErrors({})
+    setModalOpen(true)
+  }
+
+  const handleOpenEdit = (c: Cliente) => {
+    setEditingClient(c)
+    setFormNome(c.nome || '')
+    setFormEmpresa(c.empresa || '')
+    setFormCNPJ(c.cnpj || '')
+    setFormEmail(c.email || '')
+    setFormTelefone(c.telefone || '')
+    setFormCidade(c.cidade || '')
+    setFormEstado(c.estado || '')
+    setFormStatus(c.status || 'ativo')
+    setFormObservacoes(c.observacoes || '')
+    setErrors({})
+    setModalOpen(true)
+  }
+
+  const handleValidateForm = () => {
+    const errs: Record<string, string> = {}
+    if (!formNome.trim()) {
+      errs.nome = 'Nome do contato é obrigatório.'
+    }
+    if (formCNPJ.trim() && !validateCNPJ(formCNPJ)) {
+      errs.cnpj = 'CNPJ inválido (utilize o formato XX.XXX.XXX/XXXX-XX).'
+    }
+    if (formEmail.trim() && !/\S+@\S+\.\S+/.test(formEmail)) {
+      errs.email = 'E-mail em formato inválido.'
+    }
+    setErrors(errs)
+    return Object.keys(errs).length === 0
+  }
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!handleValidateForm()) return
+
+    setSubmitting(true)
+    try {
+      const payload: Partial<Cliente> = {
+        nome: formNome.trim(),
+        empresa: formEmpresa.trim(),
+        cnpj: formCNPJ.trim(),
+        email: formEmail.trim(),
+        telefone: formTelefone.trim(),
+        cidade: formCidade.trim(),
+        estado: formEstado.trim().toUpperCase(),
+        status: formStatus,
+        observacoes: formObservacoes.trim(),
+      }
+
+      if (editingClient) {
+        const updated = await clienteService.update(editingClient.id, payload)
+        setClientes((prev) => prev.map((c) => (c.id === updated.id ? updated : c)))
+        toast.success('Cliente atualizado com sucesso!')
+      } else {
+        const created = await clienteService.create(payload)
+        setClientes((prev) => [created, ...prev])
+        toast.success('Cliente cadastrado com sucesso!')
+      }
+
+      setModalOpen(false)
+    } catch {
+      toast.error('Erro ao salvar informações do cliente.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const confirmDelete = async () => {
+    if (!clientToDelete) return
+    try {
+      await clienteService.delete(clientToDelete.id)
+      setClientes((prev) => prev.filter((c) => c.id !== clientToDelete.id))
+      toast.success('Cliente excluído com sucesso.')
+    } catch {
+      toast.error('Erro ao excluir cliente. Verifique registros vinculados.')
+    } finally {
+      setDeleteDialogOpen(false)
+      setClientToDelete(null)
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-[#1B4332] tracking-tight">Clientes Cadastrados</h1>
+          <p className="text-xs text-gray-500">
+            Gerencie construtoras, usinas de concreto e frotistas em todo o Brasil
+          </p>
+        </div>
+
+        {canEdit && (
+          <Button
+            onClick={handleOpenCreate}
+            className="bg-[#DC2626] hover:bg-[#b91c1c] text-white font-semibold rounded-xl gap-2 shadow-sm transition-transform hover:scale-[1.02] self-start sm:self-auto"
+          >
+            <Plus className="w-4 h-4" />
+            Novo Cliente
+          </Button>
+        )}
+      </div>
+
+      {/* Search Bar */}
+      <div className="bg-white p-4 rounded-[16px] border border-[#E5E7EB] shadow-xs flex items-center gap-3">
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Input
+            placeholder="Pesquisar por nome, empresa, CNPJ ou cidade..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9 h-10 rounded-xl border-gray-200 text-xs"
+          />
+        </div>
+        {searchTerm && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSearchTerm('')}
+            className="text-xs text-gray-500 hover:text-red-600 gap-1"
+          >
+            <X className="w-3.5 h-3.5" />
+            Limpar
+          </Button>
+        )}
+      </div>
+
+      {/* Desktop Table View */}
+      <div className="hidden md:block bg-white rounded-[16px] border border-[#E5E7EB] shadow-xs overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-[#F8FAF9] border-b border-[#E5E7EB] text-gray-500 uppercase tracking-wider font-semibold">
+              <tr>
+                <th className="py-3 px-4">Nome / Contato</th>
+                <th className="py-3 px-4">Empresa / CNPJ</th>
+                <th className="py-3 px-4">Cidade / UF</th>
+                <th className="py-3 px-4">Telefone</th>
+                <th className="py-3 px-4">Status</th>
+                <th className="py-3 px-4 text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#E5E7EB]">
+              {filteredClientes.map((c) => (
+                <tr key={c.id} className="hover:bg-gray-50/70 transition-colors">
+                  <td className="py-3.5 px-4 font-semibold text-gray-900">
+                    <Link
+                      to={`/clientes/${c.id}`}
+                      className="hover:text-[#1B4332] underline-offset-2 hover:underline"
+                    >
+                      {c.nome}
+                    </Link>
+                  </td>
+                  <td className="py-3.5 px-4">
+                    <p className="font-semibold text-gray-800">{c.empresa || '-'}</p>
+                    <p className="text-[11px] text-gray-500 font-mono">{c.cnpj || '-'}</p>
+                  </td>
+                  <td className="py-3.5 px-4 text-gray-600">
+                    {c.cidade ? `${c.cidade} - ${c.estado || ''}` : '-'}
+                  </td>
+                  <td className="py-3.5 px-4 text-gray-600">{c.telefone || '-'}</td>
+                  <td className="py-3.5 px-4">
+                    <Badge
+                      variant="secondary"
+                      className={
+                        c.status === 'ativo'
+                          ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                          : 'bg-gray-100 text-gray-600 border-gray-200'
+                      }
+                    >
+                      {c.status === 'ativo' ? 'Ativo' : 'Inativo'}
+                    </Badge>
+                  </td>
+                  <td className="py-3.5 px-4 text-right">
+                    <div className="flex items-center justify-end gap-1.5">
+                      <Link to={`/clientes/${c.id}`}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-gray-500 hover:text-[#1B4332] hover:bg-emerald-50 rounded-lg"
+                          title="Visualizar Detalhes"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </Button>
+                      </Link>
+
+                      {canEdit && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleOpenEdit(c)}
+                            className="h-8 w-8 p-0 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
+                            title="Editar Cliente"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setClientToDelete(c)
+                              setDeleteDialogOpen(true)
+                            }}
+                            className="h-8 w-8 p-0 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                            title="Excluir Cliente"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+
+              {filteredClientes.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-gray-400">
+                    Nenhum cliente encontrado com os filtros atuais.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Mobile Card List View */}
+      <div className="md:hidden space-y-3">
+        {filteredClientes.map((c) => (
+          <div
+            key={c.id}
+            className="bg-white rounded-xl p-4 border border-[#E5E7EB] shadow-xs space-y-3"
+          >
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="font-bold text-sm text-gray-900">{c.empresa || c.nome}</h3>
+                <p className="text-xs text-gray-500">{c.nome}</p>
+              </div>
+              <Badge
+                variant="secondary"
+                className={
+                  c.status === 'ativo'
+                    ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                    : 'bg-gray-100 text-gray-600 border-gray-200'
+                }
+              >
+                {c.status === 'ativo' ? 'Ativo' : 'Inativo'}
+              </Badge>
+            </div>
+
+            <div className="text-xs text-gray-600 space-y-1">
+              {c.cnpj && <p className="font-mono text-[11px]">CNPJ: {c.cnpj}</p>}
+              {c.cidade && (
+                <p className="flex items-center gap-1">
+                  <MapPin className="w-3 h-3 text-gray-400" />
+                  {c.cidade} - {c.estado}
+                </p>
+              )}
+              {c.telefone && (
+                <p className="flex items-center gap-1">
+                  <Phone className="w-3 h-3 text-gray-400" />
+                  {c.telefone}
+                </p>
+              )}
+            </div>
+
+            <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
+              <Link
+                to={`/clientes/${c.id}`}
+                className="text-xs font-semibold text-[#1B4332] hover:underline"
+              >
+                Ver detalhes
+              </Link>
+              {canEdit && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleOpenEdit(c)}
+                    className="h-8 text-xs rounded-lg"
+                  >
+                    Editar
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setClientToDelete(c)
+                      setDeleteDialogOpen(true)
+                    }}
+                    className="h-8 text-xs text-red-600 hover:bg-red-50 rounded-lg"
+                  >
+                    Excluir
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Modal: New / Edit Customer */}
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="max-w-xl rounded-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-[#1B4332]">
+              {editingClient ? 'Editar Cliente' : 'Novo Cliente'}
+            </DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={handleSave} className="space-y-4 pt-2 text-xs">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="nome" className="font-semibold text-gray-700">
+                  Nome do Contato Principal *
+                </Label>
+                <Input
+                  id="nome"
+                  value={formNome}
+                  onChange={(e) => setFormNome(e.target.value)}
+                  placeholder="Ex: Carlos Eduardo Andrade"
+                  className={errors.nome ? 'border-red-500' : ''}
+                />
+                {errors.nome && <p className="text-[11px] text-red-600">{errors.nome}</p>}
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="empresa" className="font-semibold text-gray-700">
+                  Razão Social / Empresa
+                </Label>
+                <Input
+                  id="empresa"
+                  value={formEmpresa}
+                  onChange={(e) => setFormEmpresa(e.target.value)}
+                  placeholder="Ex: Construtora Andrade Jr."
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="cnpj" className="font-semibold text-gray-700">
+                  CNPJ (XX.XXX.XXX/XXXX-XX)
+                </Label>
+                <Input
+                  id="cnpj"
+                  value={formCNPJ}
+                  onChange={(e) => setFormCNPJ(maskCNPJ(e.target.value))}
+                  placeholder="00.000.000/0000-00"
+                  className={errors.cnpj ? 'border-red-500' : ''}
+                />
+                {errors.cnpj && <p className="text-[11px] text-red-600">{errors.cnpj}</p>}
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="telefone" className="font-semibold text-gray-700">
+                  Telefone / WhatsApp
+                </Label>
+                <Input
+                  id="telefone"
+                  value={formTelefone}
+                  onChange={(e) => setFormTelefone(maskPhone(e.target.value))}
+                  placeholder="(11) 98765-4321"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="space-y-1 md:col-span-2">
+                <Label htmlFor="email" className="font-semibold text-gray-700">
+                  E-mail Comercial
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formEmail}
+                  onChange={(e) => setFormEmail(e.target.value)}
+                  placeholder="contato@empresa.com.br"
+                  className={errors.email ? 'border-red-500' : ''}
+                />
+                {errors.email && <p className="text-[11px] text-red-600">{errors.email}</p>}
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="status" className="font-semibold text-gray-700">
+                  Status
+                </Label>
+                <Select
+                  value={formStatus}
+                  onValueChange={(val) => setFormStatus(val as ClienteStatus)}
+                >
+                  <SelectTrigger id="status" className="h-10 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ativo">Ativo</SelectItem>
+                    <SelectItem value="inativo">Inativo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="space-y-1 md:col-span-2">
+                <Label htmlFor="cidade" className="font-semibold text-gray-700">
+                  Cidade
+                </Label>
+                <Input
+                  id="cidade"
+                  value={formCidade}
+                  onChange={(e) => setFormCidade(e.target.value)}
+                  placeholder="Ex: São Paulo"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="estado" className="font-semibold text-gray-700">
+                  Estado (UF)
+                </Label>
+                <Input
+                  id="estado"
+                  maxLength={2}
+                  value={formEstado}
+                  onChange={(e) => setFormEstado(e.target.value.toUpperCase())}
+                  placeholder="SP"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="obs" className="font-semibold text-gray-700">
+                Observações Operacionais
+              </Label>
+              <Textarea
+                id="obs"
+                rows={3}
+                value={formObservacoes}
+                onChange={(e) => setFormObservacoes(e.target.value)}
+                placeholder="Detalhes sobre frota atual, linhas de crédito ou histórico..."
+                className="text-xs"
+              />
+            </div>
+
+            <DialogFooter className="pt-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setModalOpen(false)}
+                className="rounded-xl text-xs"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={submitting}
+                className="bg-[#DC2626] hover:bg-[#b91c1c] text-white rounded-xl text-xs font-semibold px-5"
+              >
+                {submitting ? 'Salvando...' : 'Salvar Cliente'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmation Dialog: Delete Customer */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-base font-bold text-gray-900">
+              Tem certeza que deseja excluir este cliente?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-gray-500">
+              Esta ação não pode ser desfeita. Todos os registros deste cliente (
+              <strong>{clientToDelete?.empresa || clientToDelete?.nome}</strong>) serão
+              desvinculados do sistema.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="text-xs rounded-xl">Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-[#DC2626] hover:bg-[#b91c1c] text-white text-xs font-semibold rounded-xl"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  )
+}
