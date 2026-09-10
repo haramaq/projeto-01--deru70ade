@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'vendedor' | 'suporte'
+export type UserRole = 'admin' | 'triagem' | 'vendedor' | 'revendedor' | 'gestor' | 'suporte'
 
 export interface User {
   id: string
@@ -6,6 +6,8 @@ export interface User {
   name: string
   avatar?: string
   role: UserRole
+  ativo: boolean
+  carteira?: string
   created: string
   updated: string
 }
@@ -23,6 +25,8 @@ export interface Cliente {
   estado?: string
   status: ClienteStatus
   observacoes?: string
+  responsavel?: string
+  carteira?: string
   created: string
   updated: string
 }

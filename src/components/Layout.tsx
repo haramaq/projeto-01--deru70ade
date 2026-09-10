@@ -121,17 +121,23 @@ export default function Layout() {
 
   const roleLabels: Record<string, string> = {
     admin: 'Administrador',
+    gestor: 'Gestor',
+    triagem: 'Triagem',
     vendedor: 'Vendedor',
+    revendedor: 'Revendedor',
     suporte: 'Suporte',
   }
 
   const roleColors: Record<string, string> = {
     admin: 'bg-red-500/20 text-red-300 border-red-500/30',
+    gestor: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
+    triagem: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
     vendedor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+    revendedor: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
     suporte: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
   }
 
-  const canCreateClient = role === 'admin' || role === 'vendedor'
+  const canCreateClient = ['admin', 'gestor', 'triagem', 'vendedor', 'revendedor'].includes(role)
 
   return (
     <div className="flex min-h-screen bg-[#F8FAF9]">

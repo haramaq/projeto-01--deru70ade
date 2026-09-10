@@ -95,10 +95,18 @@ export default function Configuracoes() {
         const payload: Partial<User> = {
           name: formName.trim(),
           role: formRole,
+          ativo: editingUser.ativo,
         }
         const updated = await userService.update(editingUser.id, payload)
+        await userService.audit({
+          autor: 'sessão atual',
+          alvo: editingUser.id,
+          acao: 'alterar_acesso',
+          antes: { role: editingUser.role, ativo: editingUser.ativo },
+          depois: { role: formRole, ativo: editingUser.ativo },
+        })
         setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)))
-        toast.success('Usuário atualizado com sucesso!')
+        toast.success('Usuário atualizado e auditado.')
       } else {
         if (!formPassword || formPassword.length < 8) {
           toast.error('A senha deve ter no mínimo 8 caracteres.')
@@ -130,9 +138,16 @@ export default function Configuracoes() {
     }
     if (!confirm(`Deseja desativar/remover o acesso de ${u.name || u.email}?`)) return
     try {
-      await userService.delete(u.id)
-      setUsers((prev) => prev.filter((item) => item.id !== u.id))
-      toast.success('Usuário removido.')
+      const updated = await userService.deactivate(u.id)
+      await userService.audit({
+        autor: 'sessão atual',
+        alvo: u.id,
+        acao: 'desativar_usuario',
+        antes: { ativo: u.ativo },
+        depois: { ativo: false },
+      })
+      setUsers((prev) => prev.map((item) => (item.id === updated.id ? updated : item)))
+      toast.success('Usuário desativado e auditado.')
     } catch {
       toast.error('Erro ao remover usuário.')
     }
@@ -146,10 +161,28 @@ export default function Configuracoes() {
       color: 'border-red-300 bg-red-50 text-red-800',
     },
     {
+      role: 'triagem',
+      title: 'Triagem',
+      desc: 'Recebe e organiza leads, sem acesso a configurações ou dados fora das regras de carteira.',
+      color: 'border-amber-300 bg-amber-50 text-amber-800',
+    },
+    {
       role: 'vendedor',
       title: 'Vendedor Comercial',
       desc: 'Acesso ao Dashboard, Funil de Vendas (Kanban), carteira de Clientes e catálogo de Revendas credenciadas.',
       color: 'border-emerald-300 bg-emerald-50 text-emerald-800',
+    },
+    {
+      role: 'revendedor',
+      title: 'Revendedor',
+      desc: 'Acesso somente à carteira autorizada para atendimento comercial.',
+      color: 'border-purple-300 bg-purple-50 text-purple-800',
+    },
+    {
+      role: 'gestor',
+      title: 'Gestor',
+      desc: 'Acompanha carteiras e auditoria operacional, sem administração global de sistema.',
+      color: 'border-cyan-300 bg-cyan-50 text-cyan-800',
     },
     {
       role: 'suporte',
@@ -244,7 +277,13 @@ export default function Configuracoes() {
                   }
 
                   return (
-                    <tr key={u.id} className="hover:bg-gray-50/70 transition-colors">
+                    <tr
+                      key={u.id}
+                      className={cn(
+                        'hover:bg-gray-50/70 transition-colors',
+                        u.ativo === false && 'opacity-60',
+                      )}
+                    >
                       <td className="py-3.5 px-4 font-bold text-gray-900">
                         {u.name || 'Sem nome'}
                       </td>
@@ -273,7 +312,7 @@ export default function Configuracoes() {
                             <Edit2 className="w-3.5 h-3.5" />
                           </Button>
 
-                          {u.email !== 'elisandrodesousaharamaq@gmail.com' && (
+                          {u.email !== 'elisandrodesousaharamaq@gmail.com' && u.ativo !== false && (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -362,7 +401,10 @@ export default function Configuracoes() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="admin">Administrador (Acesso Geral)</SelectItem>
-                  <SelectItem value="vendedor">Vendedor (Funil, Clientes, Revendas)</SelectItem>
+                  <SelectItem value="gestor">Gestor (Carteiras e auditoria)</SelectItem>
+                  <SelectItem value="triagem">Triagem (Leads)</SelectItem>
+                  <SelectItem value="vendedor">Vendedor (Carteira comercial)</SelectItem>
+                  <SelectItem value="revendedor">Revendedor (Carteira autorizada)</SelectItem>
                   <SelectItem value="suporte">Suporte (Chamados, Clientes)</SelectItem>
                 </SelectContent>
               </Select>

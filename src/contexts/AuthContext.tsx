@@ -24,6 +24,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         name: rec.name || rec.email.split('@')[0],
         avatar: rec.avatar,
         role: (rec.role as UserRole) || 'vendedor',
+        ativo: rec.ativo !== false,
+        carteira: rec.carteira || '',
         created: rec.created,
         updated: rec.updated,
       }
@@ -36,12 +38,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       if (pb.authStore.isValid && pb.authStore.record?.id) {
         const fresh = await pb.collection('users').getOne(pb.authStore.record.id)
+        if (fresh.ativo === false) {
+          pb.authStore.clear()
+          setUser(null)
+          return
+        }
         setUser({
           id: fresh.id,
           email: fresh.email,
           name: fresh.name || fresh.email.split('@')[0],
           avatar: fresh.avatar,
           role: (fresh.role as UserRole) || 'vendedor',
+          ativo: fresh.ativo !== false,
+          carteira: fresh.carteira || '',
           created: fresh.created,
           updated: fresh.updated,
         })
@@ -50,6 +59,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch {
       // If token expired
+      pb.authStore.clear()
       setUser(null)
     }
   }
@@ -63,6 +73,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           name: model.name || model.email.split('@')[0],
           avatar: model.avatar,
           role: (model.role as UserRole) || 'vendedor',
+          ativo: model.ativo !== false,
+          carteira: model.carteira || '',
           created: model.created,
           updated: model.updated,
         })
@@ -75,8 +87,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(false)
     })
 
+    const interval = window.setInterval(() => {
+      if (pb.authStore.isValid) refreshUser()
+    }, 60000)
+
     return () => {
       unsub()
+      window.clearInterval(interval)
     }
   }, [])
 
@@ -88,6 +105,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       name: authData.record.name || authData.record.email.split('@')[0],
       avatar: authData.record.avatar,
       role: (authData.record.role as UserRole) || 'vendedor',
+      ativo: authData.record.ativo !== false,
+      carteira: authData.record.carteira || '',
       created: authData.record.created,
       updated: authData.record.updated,
     })

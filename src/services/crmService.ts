@@ -196,7 +196,17 @@ export const userService = {
     return (await pb.collection('users').update(id, data)) as unknown as User
   },
 
-  async delete(id: string): Promise<boolean> {
-    return await pb.collection('users').delete(id)
+  async deactivate(id: string): Promise<User> {
+    return (await pb.collection('users').update(id, { ativo: false })) as unknown as User
+  },
+
+  async audit(data: {
+    autor: string
+    alvo: string
+    acao: string
+    antes: unknown
+    depois: unknown
+  }) {
+    return pb.collection('auditoria_acesso').create(data)
   },
 }
