@@ -25,6 +25,12 @@ export interface Cliente {
   estado?: string
   status: ClienteStatus
   observacoes?: string
+  origem?: string
+  altforce_id?: string
+  altforce_sync_status?: 'pending' | 'not_connected' | 'synced' | 'error'
+  altforce_last_synced_at?: string
+  altforce_payload?: Record<string, unknown>
+  campos_customizados?: Record<string, unknown>
   responsavel?: string
   carteira?: string
   created: string
@@ -50,7 +56,13 @@ export interface Revenda {
   updated: string
 }
 
-export type VendaEtapa = 'prospeccao' | 'orcamento' | 'negociacao' | 'fechamento'
+export type VendaEtapa =
+  | 'prospeccao'
+  | 'orcamento'
+  | 'negociacao'
+  | 'fechamento'
+  | 'pecas_pos_vendas'
+  | 'financeiro_fiscal'
 
 export interface Venda {
   id: string
@@ -62,6 +74,14 @@ export interface Venda {
   data_prevista_fechamento?: string
   vendedor?: string // ID
   proxima_acao?: string
+  origem?: string
+  altforce_id?: string
+  altforce_stage_id?: string
+  altforce_stage_name?: string
+  altforce_sync_status?: 'pending' | 'not_connected' | 'synced' | 'error'
+  altforce_last_synced_at?: string
+  altforce_payload?: Record<string, unknown>
+  campos_customizados?: Record<string, unknown>
   created: string
   updated: string
   expand?: {

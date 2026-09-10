@@ -45,6 +45,18 @@ const ETAPAS: { key: VendaEtapa; label: string; borderTop: string; color: string
   { key: 'orcamento', label: 'Orçamento', borderTop: 'border-t-[#2D6A4F]', color: '#2D6A4F' },
   { key: 'negociacao', label: 'Negociação', borderTop: 'border-t-[#F59E0B]', color: '#F59E0B' },
   { key: 'fechamento', label: 'Fechamento', borderTop: 'border-t-[#DC2626]', color: '#DC2626' },
+  {
+    key: 'pecas_pos_vendas',
+    label: 'Peças e Pós-vendas',
+    borderTop: 'border-t-[#7C3AED]',
+    color: '#7C3AED',
+  },
+  {
+    key: 'financeiro_fiscal',
+    label: 'Financeiro e Fiscal',
+    borderTop: 'border-t-[#0369A1]',
+    color: '#0369A1',
+  },
 ]
 
 export default function Vendas() {
@@ -154,6 +166,8 @@ export default function Vendas() {
       orcamento: [],
       negociacao: [],
       fechamento: [],
+      pecas_pos_vendas: [],
+      financeiro_fiscal: [],
     }
 
     filteredDeals.forEach((d) => {
@@ -380,8 +394,8 @@ export default function Vendas() {
         )}
       </div>
 
-      {/* Kanban Board (4 Columns) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 overflow-x-auto pb-4">
+      {/* Kanban Board — etapas compatíveis com o fluxo configurável do Altforce */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 overflow-x-auto pb-4">
         {ETAPAS.map((col) => {
           const deals = dealsByStage[col.key] || []
           const totalVal = deals.reduce((acc, d) => acc + (d.valor || 0), 0)
@@ -605,7 +619,8 @@ export default function Vendas() {
                 <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-2 block">
                   Linha do Tempo das Etapas
                 </span>
-                <div className="flex items-center justify-between relative">
+                <div className="flex items-center justify-between relative overflow-x-auto pb-2">
+                  {' '}
                   <div className="absolute left-2 right-2 top-3 h-0.5 bg-gray-200 -z-0" />
                   {ETAPAS.map((st, i) => {
                     const currentIdx = ETAPAS.findIndex((e) => e.key === activeDeal.etapa)
@@ -752,6 +767,8 @@ export default function Vendas() {
                     <SelectItem value="orcamento">Orçamento</SelectItem>
                     <SelectItem value="negociacao">Negociação</SelectItem>
                     <SelectItem value="fechamento">Fechamento</SelectItem>
+                    <SelectItem value="pecas_pos_vendas">Peças e Pós-vendas</SelectItem>
+                    <SelectItem value="financeiro_fiscal">Financeiro e Fiscal</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
