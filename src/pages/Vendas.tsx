@@ -807,7 +807,7 @@ export default function Vendas() {
                       <SelectTrigger className="bg-white">
                         <SelectValue placeholder="Selecione um motivo" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="z-[80]">
                         {motivos
                           .filter((m) => {
                             const status =
@@ -866,7 +866,7 @@ export default function Vendas() {
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione um motivo" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[80]">
                   {motivos
                     .filter((m) => {
                       const status =
