@@ -787,11 +787,7 @@ export default function Vendas() {
                       type="button"
                       variant="outline"
                       size="sm"
-                      onPointerDown={(event) => {
-                        event.preventDefault()
-                        event.stopPropagation()
-                        requestMove(detailLead, stage.key)
-                      }}
+                      onClick={() => requestMove(detailLead, stage.key)}
                     >
                       {stage.label}
                     </Button>
