@@ -259,6 +259,7 @@ export default function Vendas() {
     if (TERMINAIS.includes(etapa)) {
       setMoveLead({ lead, etapa })
       setSelectedMotivo('')
+      setDetailLead(null)
       return
     }
     void applyMove(lead, etapa)
@@ -839,6 +840,56 @@ export default function Vendas() {
           )}
         </DialogContent>
       </Dialog>
+
+      {moveLead && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-2xl">
+            <h2 className="text-base font-bold text-[#1E293B]">
+              Motivo obrigatório para encerramento
+            </h2>
+            <p className="mt-2 text-xs text-[#64748B]">
+              Selecione o motivo antes de mover o lead para{' '}
+              <strong>{stageLabels[moveLead.etapa]}</strong>.
+            </p>
+            <div className="mt-4">
+              <Select value={selectedMotivo} onValueChange={setSelectedMotivo}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um motivo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {motivos
+                    .filter((m) => {
+                      const status =
+                        moveLead.etapa === 'arquivado_nao_retorna'
+                          ? 'arquivado'
+                          : moveLead.etapa === 'perdido_concorrencia'
+                            ? 'perdido'
+                            : 'convertido_pedido'
+                      return m.status === status
+                    })
+                    .map((m) => (
+                      <SelectItem key={m.codigo} value={m.codigo}>
+                        {m.codigo} · {m.descricao}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setMoveLead(null)}>
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                disabled={!selectedMotivo || saving}
+                onClick={() => applyMove(moveLead.lead, moveLead.etapa, selectedMotivo)}
+              >
+                Confirmar movimento
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </PageContainer>
   )
 }
