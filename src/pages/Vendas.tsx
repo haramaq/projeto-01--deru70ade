@@ -1,8 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
-  AlertTriangle,
-=======
   CheckCircle2,
   Clock3,
   GripVertical,
@@ -101,14 +99,15 @@ const ETAPAS_COM_PRAZO = new Set<LeadEtapa>([
   'contato_futuro_agendado',
 ])
 
-const legacyStageLabels: Record<string, string> = Object.fromEntries(
+const stageLabels: Record<string, string> = Object.fromEntries(
   ETAPAS.map((stage) => [stage.key, stage.label]),
 )
 
 function elapsedSince(value?: string) {
   if (!value) return '—'
-  const diff = Math.max(0, Date.now() - new Date(value).getTime())
-  const minutes = Math.floor(diff / 60000)
+  const timestamp = new Date(value).getTime()
+  if (Number.isNaN(timestamp)) return '—'
+  const minutes = Math.max(0, Math.floor((Date.now() - timestamp) / 60000))
   if (minutes < 60) return `${minutes} min`
   const hours = Math.floor(minutes / 60)
   if (hours < 24) return `${hours} h`
@@ -127,8 +126,8 @@ function dateTime(value?: string) {
 function isOverdue(lead: Venda) {
   return Boolean(
     ETAPAS_COM_PRAZO.has(lead.etapa) &&
-      lead.prazo_etapa_em &&
-      new Date(lead.prazo_etapa_em).getTime() < Date.now(),
+    lead.prazo_etapa_em &&
+    new Date(lead.prazo_etapa_em).getTime() < Date.now(),
   )
 }
 
@@ -151,7 +150,6 @@ export default function Vendas() {
   const [originFilter, setOriginFilter] = useState('todos')
   const [categoryFilter, setCategoryFilter] = useState('todos')
   const [interestFilter, setInterestFilter] = useState('todos')
-
   const [createOpen, setCreateOpen] = useState(false)
   const [detailLead, setDetailLead] = useState<Venda | null>(null)
   const [history, setHistory] = useState<LeadHistorico[]>([])
@@ -204,19 +202,28 @@ export default function Vendas() {
   }, [searchParams, setSearchParams])
 
   useRealtime('vendas', () => {
-    vendaService.getAll().then(setLeads).catch(() => {})
+    vendaService
+      .getAll()
+      .then(setLeads)
+      .catch(() => {})
   })
 
   const filteredLeads = useMemo(() => {
     const query = search.trim().toLowerCase()
     return leads.filter((lead) => {
       const client = lead.expand?.cliente
-      const text = [lead.numero_lead, client?.nome, client?.empresa, lead.categoria_produto, lead.origem_lead]
+      const searchable = [
+        lead.numero_lead,
+        client?.nome,
+        client?.empresa,
+        lead.categoria_produto,
+        lead.origem_lead,
+      ]
         .filter(Boolean)
         .join(' ')
         .toLowerCase()
       return (
-        (!query || text.includes(query)) &&
+        (!query || searchable.includes(query)) &&
         (originFilter === 'todos' || lead.origem_lead === originFilter) &&
         (categoryFilter === 'todos' || lead.categoria_produto === categoryFilter) &&
         (interestFilter === 'todos' || String(lead.nivel_interesse) === interestFilter)
@@ -265,11 +272,10 @@ export default function Vendas() {
       setLeads((current) => current.map((item) => (item.id === updated.id ? updated : item)))
       if (detailLead?.id === updated.id) {
         setDetailLead(updated)
-        const nextHistory = await vendaService.getHistorico(updated.id)
-        setHistory(nextHistory)
+        setHistory(await vendaService.getHistorico(updated.id))
       }
       setMoveLead(null)
-      toast.success(`Lead movido para ${legacyStageLabels[etapa]}.`)
+      toast.success(`Lead movido para ${stageLabels[etapa]}.`)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Não foi possível mover o lead.')
     } finally {
@@ -340,42 +346,77 @@ export default function Vendas() {
           </span>
         }
         actions={
-          canCreate && (
+          canCreate ? (
             <HaramaqButton icon={<Plus className="h-4 w-4" />} onClick={() => setCreateOpen(true)}>
               Novo lead
             </HaramaqButton>
-          )
+          ) : undefined
         }
       />
 
       <div className="mb-5 grid grid-cols-1 gap-2 rounded-xl border border-[#E2E8F0] bg-white p-3 shadow-xs md:grid-cols-[1fr_190px_210px_140px_auto]">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94A3B8]" />
-          <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por ID, cliente, categoria ou origem..." className="h-9 pl-9 text-xs" />
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Buscar por ID, cliente, categoria ou origem..."
+            className="h-9 pl-9 text-xs"
+          />
         </div>
         <Select value={originFilter} onValueChange={setOriginFilter}>
-          <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Origem" /></SelectTrigger>
+          <SelectTrigger className="h-9 text-xs">
+            <SelectValue placeholder="Origem" />
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="todos">Todas as origens</SelectItem>
-            {ORIGENS.map((origin) => <SelectItem key={origin} value={origin}>{origin}</SelectItem>)}
+            {ORIGENS.map((origin) => (
+              <SelectItem key={origin} value={origin}>
+                {origin}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Categoria" /></SelectTrigger>
+          <SelectTrigger className="h-9 text-xs">
+            <SelectValue placeholder="Categoria" />
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="todos">Todas as categorias</SelectItem>
-            {CATEGORIAS.map((category) => <SelectItem key={category} value={category}>{category}</SelectItem>)}
+            {CATEGORIAS.map((category) => (
+              <SelectItem key={category} value={category}>
+                {category}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
         <Select value={interestFilter} onValueChange={setInterestFilter}>
-          <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Interesse" /></SelectTrigger>
+          <SelectTrigger className="h-9 text-xs">
+            <SelectValue placeholder="Interesse" />
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="todos">Interesse</SelectItem>
-            {[1, 2, 3, 4, 5].map((value) => <SelectItem key={value} value={String(value)}>{value}/5</SelectItem>)}
+            {[1, 2, 3, 4, 5].map((value) => (
+              <SelectItem key={value} value={String(value)}>
+                {value}/5
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
-        {(search || originFilter !== 'todos' || categoryFilter !== 'todos' || interestFilter !== 'todos') && (
-          <Button variant="ghost" className="h-9 text-xs" onClick={() => { setSearch(''); setOriginFilter('todos'); setCategoryFilter('todos'); setInterestFilter('todos') }}>
+        {(search ||
+          originFilter !== 'todos' ||
+          categoryFilter !== 'todos' ||
+          interestFilter !== 'todos') && (
+          <Button
+            variant="ghost"
+            className="h-9 text-xs"
+            onClick={() => {
+              setSearch('')
+              setOriginFilter('todos')
+              setCategoryFilter('todos')
+              setInterestFilter('todos')
+            }}
+          >
             <X className="mr-1 h-3.5 w-3.5" /> Limpar
           </Button>
         )}
@@ -393,20 +434,28 @@ export default function Vendas() {
             >
               <header className="border-t-4 bg-white p-2.5" style={{ borderTopColor: stage.color }}>
                 <div className="flex items-start justify-between gap-1">
-                  <h2 className="text-[10px] font-bold uppercase leading-tight tracking-wide text-[#334155]">{stage.label}</h2>
-                  <span className="rounded-full bg-[#F1F5F9] px-1.5 py-0.5 text-[10px] font-bold text-[#475569]">{stageLeads.length}</span>
+                  <h2 className="text-[10px] font-bold uppercase leading-tight tracking-wide text-[#334155]">
+                    {stage.label}
+                  </h2>
+                  <span className="rounded-full bg-[#F1F5F9] px-1.5 py-0.5 text-[10px] font-bold text-[#475569]">
+                    {stageLeads.length}
+                  </span>
                 </div>
               </header>
               <div className="flex-1 space-y-2 p-2">
                 {stageLeads.map((lead) => {
                   const overdue = isOverdue(lead)
                   const client = lead.expand?.cliente
-                  const responsible = lead.expand?.vendedor?.name || lead.expand?.vendedor?.email || 'Não atribuído'
+                  const responsible =
+                    lead.expand?.vendedor?.name || lead.expand?.vendedor?.email || 'Não atribuído'
                   return (
                     <article
                       key={lead.id}
                       draggable
-                      onDragStart={(event) => { event.dataTransfer.setData('text/plain', lead.id); setDraggedId(lead.id) }}
+                      onDragStart={(event) => {
+                        event.dataTransfer.setData('text/plain', lead.id)
+                        setDraggedId(lead.id)
+                      }}
                       onClick={() => openDetail(lead)}
                       className={cn(
                         'cursor-pointer rounded-lg border bg-white p-2.5 shadow-2xs transition hover:-translate-y-0.5 hover:shadow-sm',
@@ -414,28 +463,67 @@ export default function Vendas() {
                       )}
                     >
                       <div className="mb-2 flex items-start justify-between gap-1">
-                        <span className="font-mono text-[10px] font-bold text-[#D92323]">{lead.numero_lead || `#${lead.id}`}</span>
+                        <span className="font-mono text-[10px] font-bold text-[#D92323]">
+                          {lead.numero_lead || `#${lead.id}`}
+                        </span>
                         <GripVertical className="h-3.5 w-3.5 text-[#CBD5E1]" />
                       </div>
-                      <h3 className="line-clamp-2 text-xs font-bold text-[#1E293B]">{client?.empresa || client?.nome || 'Cliente não informado'}</h3>
-                      <p className="mt-0.5 line-clamp-1 text-[10px] text-[#64748B]">{client?.nome || 'Sem contato'}</p>
+                      <h3 className="line-clamp-2 text-xs font-bold text-[#1E293B]">
+                        {client?.empresa || client?.nome || 'Cliente não informado'}
+                      </h3>
+                      <p className="mt-0.5 line-clamp-1 text-[10px] text-[#64748B]">
+                        {client?.nome || 'Sem contato'}
+                      </p>
                       <div className="mt-2 space-y-1.5 text-[10px] text-[#475569]">
-                        <div className="flex items-center gap-1"><UserRound className="h-3 w-3 text-[#94A3B8]" /><span className="line-clamp-1">{responsible}</span></div>
-                        <div className="flex items-center gap-1"><span className="font-semibold text-[#1E293B]">{lead.categoria_produto || 'Categoria pendente'}</span></div>
-                        <div className="flex items-center justify-between gap-1"><span className="line-clamp-1">{lead.origem_lead || 'Origem pendente'}</span><span className="font-bold text-[#B45309]">{lead.nivel_interesse || 0}/5</span></div>
+                        <div className="flex items-center gap-1">
+                          <UserRound className="h-3 w-3 text-[#94A3B8]" />
+                          <span className="line-clamp-1">{responsible}</span>
+                        </div>
+                        <div className="font-semibold text-[#1E293B]">
+                          {lead.categoria_produto || 'Categoria pendente'}
+                        </div>
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="line-clamp-1">
+                            {lead.origem_lead || 'Origem pendente'}
+                          </span>
+                          <span className="font-bold text-[#B45309]">
+                            {lead.nivel_interesse || 0}/5
+                          </span>
+                        </div>
                       </div>
                       <div className="mt-2 flex items-center justify-between border-t border-[#F1F5F9] pt-1.5 text-[10px]">
-                        <span className={cn('font-bold', overdue ? 'text-[#B45309]' : 'text-[#64748B]')}><Clock3 className="mr-0.5 inline h-3 w-3" />{elapsedSince(lead.etapa_atual_desde)}</span>
-                        <span className="text-[#94A3B8]">{formatDateBR(lead.data_solicitacao || lead.created)}</span>
+                        <span
+                          className={cn('font-bold', overdue ? 'text-[#B45309]' : 'text-[#64748B]')}
+                        >
+                          <Clock3 className="mr-0.5 inline h-3 w-3" />
+                          {elapsedSince(lead.etapa_atual_desde)}
+                        </span>
+                        <span className="text-[#94A3B8]">
+                          {formatDateBR(lead.data_solicitacao || lead.created)}
+                        </span>
                       </div>
                       <div className="mt-1.5 flex items-center justify-between gap-1">
-                        <StatusBadge variant={statusVariant(lead)} size="sm" dot>{lead.status_motivo_codigo ? `${lead.status_motivo_codigo} · ${lead.status_motivo_descricao}` : lead.status_lead === 'em_andamento' ? 'Em andamento' : lead.status_lead || 'Em andamento'}</StatusBadge>
-                        {overdue && <span className="text-[9px] font-bold uppercase text-[#B45309]">Vencido</span>}
+                        <StatusBadge variant={statusVariant(lead)} size="sm" dot>
+                          {lead.status_motivo_codigo
+                            ? `${lead.status_motivo_codigo} · ${lead.status_motivo_descricao}`
+                            : lead.status_lead === 'em_andamento'
+                              ? 'Em andamento'
+                              : lead.status_lead || 'Em andamento'}
+                        </StatusBadge>
+                        {overdue && (
+                          <span className="text-[9px] font-bold uppercase text-[#B45309]">
+                            Vencido
+                          </span>
+                        )}
                       </div>
                     </article>
                   )
                 })}
-                {stageLeads.length === 0 && <div className="rounded-lg border border-dashed border-[#CBD5E1] p-4 text-center text-[10px] text-[#94A3B8]">Arraste leads para cá</div>}
+                {stageLeads.length === 0 && (
+                  <div className="rounded-lg border border-dashed border-[#CBD5E1] p-4 text-center text-[10px] text-[#94A3B8]">
+                    Arraste leads para cá
+                  </div>
+                )}
               </div>
             </section>
           )
@@ -444,49 +532,301 @@ export default function Vendas() {
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
-          <DialogHeader><DialogTitle>Novo lead Haramaq</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Novo lead Haramaq</DialogTitle>
+          </DialogHeader>
           <form onSubmit={createLead} className="grid grid-cols-1 gap-4 py-2 md:grid-cols-2">
-            <div className="space-y-1 md:col-span-2"><Label>Cliente *</Label><Select value={newCliente} onValueChange={setNewCliente}><SelectTrigger><SelectValue placeholder="Selecione o cliente" /></SelectTrigger><SelectContent>{clientes.map((client) => <SelectItem key={client.id} value={client.id}>{client.empresa || client.nome} — {client.nome}</SelectItem>)}</SelectContent></Select></div>
-            <div className="space-y-1"><Label>Categoria do produto *</Label><Select value={newCategoria} onValueChange={(value) => setNewCategoria(value as CategoriaProduto)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{CATEGORIAS.map((category) => <SelectItem key={category} value={category}>{category}</SelectItem>)}</SelectContent></Select></div>
-            <div className="space-y-1"><Label>Origem do lead *</Label><Select value={newOrigem} onValueChange={setNewOrigem}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{ORIGENS.map((origin) => <SelectItem key={origin} value={origin}>{origin}</SelectItem>)}</SelectContent></Select></div>
-            <div className="space-y-1"><Label>Nível de interesse (1 a 5)</Label><Select value={String(newInterest)} onValueChange={(value) => setNewInterest(Number(value) as NivelInteresse)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{[1, 2, 3, 4, 5].map((value) => <SelectItem key={value} value={String(value)}>{value}/5</SelectItem>)}</SelectContent></Select></div>
-            <div className="space-y-1"><Label>Responsável</Label><Select value={newResponsavel || 'automatico'} onValueChange={(value) => setNewResponsavel(value === 'automatico' ? '' : value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="automatico">Usuário atual</SelectItem>{responsaveis.map((person) => <SelectItem key={person.id} value={person.id}>{person.name || person.email}</SelectItem>)}</SelectContent></Select></div>
-            <div className="space-y-1 md:col-span-2"><Label>Observações / resumo da conversa com a IA</Label><Textarea value={newObservacoes} onChange={(event) => setNewObservacoes(event.target.value)} placeholder="Resumo para leitura do representante; o agente não deve prolongar a conversa após obter os dados necessários." rows={4} /></div>
-            <DialogFooter className="md:col-span-2"><Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button><Button type="submit" disabled={saving}>Criar lead</Button></DialogFooter>
+            <div className="space-y-1 md:col-span-2">
+              <Label>Cliente *</Label>
+              <Select value={newCliente} onValueChange={setNewCliente}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o cliente" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clientes.map((client) => (
+                    <SelectItem key={client.id} value={client.id}>
+                      {client.empresa || client.nome} — {client.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Categoria do produto *</Label>
+              <Select
+                value={newCategoria}
+                onValueChange={(value) => setNewCategoria(value as CategoriaProduto)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORIAS.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Origem do lead *</Label>
+              <Select value={newOrigem} onValueChange={setNewOrigem}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ORIGENS.map((origin) => (
+                    <SelectItem key={origin} value={origin}>
+                      {origin}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Nível de interesse (1 a 5)</Label>
+              <Select
+                value={String(newInterest)}
+                onValueChange={(value) => setNewInterest(Number(value) as NivelInteresse)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[1, 2, 3, 4, 5].map((value) => (
+                    <SelectItem key={value} value={String(value)}>
+                      {value}/5
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Responsável</Label>
+              <Select
+                value={newResponsavel || 'automatico'}
+                onValueChange={(value) => setNewResponsavel(value === 'automatico' ? '' : value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="automatico">Usuário atual</SelectItem>
+                  {responsaveis.map((person) => (
+                    <SelectItem key={person.id} value={person.id}>
+                      {person.name || person.email}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1 md:col-span-2">
+              <Label>Observações / resumo da conversa com a IA</Label>
+              <Textarea
+                value={newObservacoes}
+                onChange={(event) => setNewObservacoes(event.target.value)}
+                placeholder="Resumo para leitura do representante; o agente não deve prolongar a conversa após obter os dados necessários."
+                rows={4}
+              />
+            </div>
+            <DialogFooter className="md:col-span-2">
+              <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={saving}>
+                Criar lead
+              </Button>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
       <Dialog open={Boolean(moveLead)} onOpenChange={(open) => !open && setMoveLead(null)}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Motivo obrigatório para encerramento</DialogTitle></DialogHeader>
-          <p className="text-xs text-[#64748B]">Selecione o motivo antes de mover o lead para <strong>{moveLead && legacyStageLabels[moveLead.etapa]}</strong>.</p>
-          <Select value={selectedMotivo} onValueChange={setSelectedMotivo}><SelectTrigger><SelectValue placeholder="Selecione um motivo" /></SelectTrigger><SelectContent>{motivos.filter((m) => { const status = moveLead?.etapa === 'arquivado_nao_retorna' ? 'arquivado' : moveLead?.etapa === 'perdido_concorrencia' ? 'perdido' : 'convertido_pedido'; return (m as StatusMotivo & { status?: string }).status === status || !('status' in m) }).map((m) => <SelectItem key={m.codigo} value={m.codigo}>{m.codigo} · {m.descricao}</SelectItem>)}</SelectContent></Select>
-          <DialogFooter><Button variant="outline" onClick={() => setMoveLead(null)}>Cancelar</Button><Button disabled={!selectedMotivo || saving} onClick={() => moveLead && applyMove(moveLead.lead, moveLead.etapa, selectedMotivo)}>Confirmar movimento</Button></DialogFooter>
+          <DialogHeader>
+            <DialogTitle>Motivo obrigatório para encerramento</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-[#64748B]">
+            Selecione o motivo antes de mover o lead para{' '}
+            <strong>{moveLead && stageLabels[moveLead.etapa]}</strong>.
+          </p>
+          <Select value={selectedMotivo} onValueChange={setSelectedMotivo}>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione um motivo" />
+            </SelectTrigger>
+            <SelectContent>
+              {motivos
+                .filter((m) => {
+                  const status =
+                    moveLead?.etapa === 'arquivado_nao_retorna'
+                      ? 'arquivado'
+                      : moveLead?.etapa === 'perdido_concorrencia'
+                        ? 'perdido'
+                        : 'convertido_pedido'
+                  return m.status === status
+                })
+                .map((m) => (
+                  <SelectItem key={m.codigo} value={m.codigo}>
+                    {m.codigo} · {m.descricao}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMoveLead(null)}>
+              Cancelar
+            </Button>
+            <Button
+              disabled={!selectedMotivo || saving}
+              onClick={() => moveLead && applyMove(moveLead.lead, moveLead.etapa, selectedMotivo)}
+            >
+              Confirmar movimento
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog open={Boolean(detailLead)} onOpenChange={(open) => !open && setDetailLead(null)}>
         <DialogContent className="max-h-[92vh] max-w-4xl overflow-y-auto">
-          <DialogHeader><DialogTitle>Detalhe do lead {detailLead?.numero_lead || detailLead?.id}</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Detalhe do lead {detailLead?.numero_lead || detailLead?.id}</DialogTitle>
+          </DialogHeader>
           {detailLead && (
             <div className="space-y-5 text-xs">
-              <div className="flex flex-wrap items-center gap-2"><StatusBadge variant={statusVariant(detailLead)} dot>{detailLead.status_lead === 'em_andamento' ? 'Em andamento' : detailLead.status_lead}</StatusBadge><Badge variant="outline">{legacyStageLabels[detailLead.etapa]}</Badge>{detailLead.status_motivo_codigo && <Badge variant="outline">{detailLead.status_motivo_codigo} · {detailLead.status_motivo_descricao}</Badge>}</div>
+              <div className="flex flex-wrap items-center gap-2">
+                <StatusBadge variant={statusVariant(detailLead)} dot>
+                  {detailLead.status_lead === 'em_andamento'
+                    ? 'Em andamento'
+                    : detailLead.status_lead}
+                </StatusBadge>
+                <Badge variant="outline">{stageLabels[detailLead.etapa]}</Badge>
+                {detailLead.status_motivo_codigo && (
+                  <Badge variant="outline">
+                    {detailLead.status_motivo_codigo} · {detailLead.status_motivo_descricao}
+                  </Badge>
+                )}
+              </div>
               <div className="grid grid-cols-1 gap-4 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4 md:grid-cols-3">
-                <div><span className="label-detail">Data da solicitação</span><p className="font-semibold">{dateTime(detailLead.data_solicitacao || detailLead.created)}</p></div>
-                <div><span className="label-detail">Responsável</span><p className="font-semibold">{detailLead.expand?.vendedor?.name || detailLead.expand?.vendedor?.email || 'Não atribuído'}</p><p className="text-[#64748B]">{detailLead.responsavel_cargo || 'Representante comercial'}</p></div>
-                <div><span className="label-detail">Tempo na etapa</span><p className={cn('font-semibold', isOverdue(detailLead) && 'text-[#B45309]')}>{elapsedSince(detailLead.etapa_atual_desde)}{isOverdue(detailLead) ? ' · prazo vencido' : ''}</p></div>
+                <div>
+                  <span className="label-detail">Data da solicitação</span>
+                  <p className="font-semibold">
+                    {dateTime(detailLead.data_solicitacao || detailLead.created)}
+                  </p>
+                </div>
+                <div>
+                  <span className="label-detail">Responsável</span>
+                  <p className="font-semibold">
+                    {detailLead.expand?.vendedor?.name ||
+                      detailLead.expand?.vendedor?.email ||
+                      'Não atribuído'}
+                  </p>
+                  <p className="text-[#64748B]">
+                    {detailLead.responsavel_cargo || 'Representante comercial'}
+                  </p>
+                </div>
+                <div>
+                  <span className="label-detail">Tempo na etapa</span>
+                  <p className={cn('font-semibold', isOverdue(detailLead) && 'text-[#B45309]')}>
+                    {elapsedSince(detailLead.etapa_atual_desde)}
+                    {isOverdue(detailLead) ? ' · prazo vencido' : ''}
+                  </p>
+                </div>
               </div>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="rounded-xl border border-[#E2E8F0] p-4"><h3 className="mb-3 font-bold text-[#1E293B]">Cliente</h3><p className="font-semibold">{detailLead.expand?.cliente?.nome || '—'}</p><p>{detailLead.expand?.cliente?.telefone || 'Telefone não informado'}</p><p className="flex items-center gap-1 text-[#64748B]"><MapPin className="h-3.5 w-3.5" />{detailLead.expand?.cliente?.cidade || 'Localização não informada'}{detailLead.expand?.cliente?.estado ? ` - ${detailLead.expand.cliente.estado}` : ''}</p></div>
-                <div className="rounded-xl border border-[#E2E8F0] p-4"><h3 className="mb-3 font-bold text-[#1E293B]">Classificação</h3><p><strong>Categoria:</strong> {detailLead.categoria_produto || '—'}</p><p><strong>Origem:</strong> {detailLead.origem_lead || '—'}</p><p><strong>Interesse:</strong> {detailLead.nivel_interesse || 0}/5</p></div>
+                <div className="rounded-xl border border-[#E2E8F0] p-4">
+                  <h3 className="mb-3 font-bold text-[#1E293B]">Cliente</h3>
+                  <p className="font-semibold">{detailLead.expand?.cliente?.nome || '—'}</p>
+                  <p>{detailLead.expand?.cliente?.telefone || 'Telefone não informado'}</p>
+                  <p className="flex items-center gap-1 text-[#64748B]">
+                    <MapPin className="h-3.5 w-3.5" />
+                    {detailLead.expand?.cliente?.cidade || 'Localização não informada'}
+                    {detailLead.expand?.cliente?.estado
+                      ? ` - ${detailLead.expand.cliente.estado}`
+                      : ''}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-[#E2E8F0] p-4">
+                  <h3 className="mb-3 font-bold text-[#1E293B]">Classificação</h3>
+                  <p>
+                    <strong>Categoria:</strong> {detailLead.categoria_produto || '—'}
+                  </p>
+                  <p>
+                    <strong>Origem:</strong> {detailLead.origem_lead || '—'}
+                  </p>
+                  <p>
+                    <strong>Interesse:</strong> {detailLead.nivel_interesse || 0}/5
+                  </p>
+                </div>
               </div>
-              <div className="rounded-xl border border-[#E2E8F0] p-4"><h3 className="mb-2 font-bold text-[#1E293B]">Observações / resumo da conversa com a IA</h3><p className="whitespace-pre-wrap text-[#475569]">{detailLead.observacoes_ia || 'Nenhum resumo registrado.'}</p></div>
+              <div className="rounded-xl border border-[#E2E8F0] p-4">
+                <h3 className="mb-2 font-bold text-[#1E293B]">
+                  Observações / resumo da conversa com a IA
+                </h3>
+                <p className="whitespace-pre-wrap text-[#475569]">
+                  {detailLead.observacoes_ia || 'Nenhum resumo registrado.'}
+                </p>
+              </div>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="rounded-xl border border-[#E2E8F0] p-4"><h3 className="mb-3 flex items-center gap-2 font-bold"><CheckCircle2 className="h-4 w-4 text-[#D92323]" /> Equipes e tarefas</h3><p className="mb-2"><strong>Equipe:</strong> {detailLead.equipe || 'Comercial Haramaq'}</p>{tasks.length ? tasks.map((task) => <div key={task.id} className="border-t py-2"><p className="font-semibold">{task.titulo}</p><p className="text-[#64748B]">{task.status} {task.prazo ? `· prazo ${formatDateBR(task.prazo)}` : ''}</p></div>) : <p className="text-[#94A3B8]">Nenhuma tarefa vinculada.</p>}</div>
-                <div className="rounded-xl border border-[#E2E8F0] p-4"><h3 className="mb-3 flex items-center gap-2 font-bold"><History className="h-4 w-4 text-[#D92323]" /> Histórico de etapas</h3>{history.length ? history.map((item) => <div key={item.id} className="border-t py-2"><p className="font-semibold">{item.etapa_anterior ? `${legacyStageLabels[item.etapa_anterior] || item.etapa_anterior} → ` : ''}{legacyStageLabels[item.etapa_nova] || item.etapa_nova}</p><p className="text-[#64748B]">{dateTime(item.data_hora)} · {item.motivo_descricao || item.responsavel || 'Sistema'}</p></div>) : <p className="text-[#94A3B8]">Histórico ainda não registrado.</p>}</div>
+                <div className="rounded-xl border border-[#E2E8F0] p-4">
+                  <h3 className="mb-3 flex items-center gap-2 font-bold">
+                    <CheckCircle2 className="h-4 w-4 text-[#D92323]" /> Equipes e tarefas
+                  </h3>
+                  <p className="mb-2">
+                    <strong>Equipe:</strong> {detailLead.equipe || 'Comercial Haramaq'}
+                  </p>
+                  {tasks.length ? (
+                    tasks.map((task) => (
+                      <div key={task.id} className="border-t py-2">
+                        <p className="font-semibold">{task.titulo}</p>
+                        <p className="text-[#64748B]">
+                          {task.status} {task.prazo ? `· prazo ${formatDateBR(task.prazo)}` : ''}
+                        </p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-[#94A3B8]">Nenhuma tarefa vinculada.</p>
+                  )}
+                </div>
+                <div className="rounded-xl border border-[#E2E8F0] p-4">
+                  <h3 className="mb-3 flex items-center gap-2 font-bold">
+                    <History className="h-4 w-4 text-[#D92323]" /> Histórico de etapas
+                  </h3>
+                  {history.length ? (
+                    history.map((item) => (
+                      <div key={item.id} className="border-t py-2">
+                        <p className="font-semibold">
+                          {item.etapa_anterior
+                            ? `${stageLabels[item.etapa_anterior] || item.etapa_anterior} → `
+                            : ''}
+                          {stageLabels[item.etapa_nova] || item.etapa_nova}
+                        </p>
+                        <p className="text-[#64748B]">
+                          {dateTime(item.data_hora)} ·{' '}
+                          {item.motivo_descricao || item.responsavel || 'Sistema'}
+                        </p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-[#94A3B8]">Histórico ainda não registrado.</p>
+                  )}
+                </div>
               </div>
-              <div className="rounded-xl border border-[#E2E8F0] p-4"><h3 className="mb-3 font-bold">Mover lead</h3><div className="flex flex-wrap gap-2">{ETAPAS.filter((stage) => stage.key !== detailLead.etapa).map((stage) => <Button key={stage.key} variant="outline" size="sm" onClick={() => requestMove(detailLead, stage.key)}>{stage.label}</Button>)}</div></div>
+              <div className="rounded-xl border border-[#E2E8F0] p-4">
+                <h3 className="mb-3 font-bold">Mover lead</h3>
+                <div className="flex flex-wrap gap-2">
+                  {ETAPAS.filter((stage) => stage.key !== detailLead.etapa).map((stage) => (
+                    <Button
+                      key={stage.key}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => requestMove(detailLead, stage.key)}
+                    >
+                      {stage.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
         </DialogContent>
