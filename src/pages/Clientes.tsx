@@ -228,7 +228,7 @@ export default function Clientes() {
             </span>
           </div>
           <p className="text-xs sm:text-sm text-[#64748B] mt-0.5">
-            Gerencie construtoras, usinas de concreto e frotistas em todo o Brasil
+            Gerencie produtores rurais, revendas e representantes do agronegócio em todo o Brasil
           </p>
         </div>
 
@@ -579,7 +579,7 @@ export default function Clientes() {
                 rows={3}
                 value={formObservacoes}
                 onChange={(e) => setFormObservacoes(e.target.value)}
-                placeholder="Detalhes sobre frota atual, linhas de crédito ou histórico..."
+                placeholder="Detalhes sobre rebanho, manejo alimentar, equipamento atual ou histórico..."
                 className="text-xs"
               />
             </div>

@@ -77,10 +77,10 @@ export default function Layout() {
       roles: ['admin', 'vendedor', 'suporte'],
     },
     {
-      title: 'Vendas',
+      title: 'Leads / Kanban',
       path: '/vendas',
       icon: TrendingUp,
-      roles: ['admin', 'vendedor'],
+      roles: ['admin', 'gestor', 'triagem', 'vendedor', 'revendedor', 'suporte'],
     },
     {
       title: 'Clientes',
@@ -408,10 +408,11 @@ export default function Layout() {
       <footer className="mt-auto py-3 border-t border-[#E2E8F0] bg-white text-center text-xs text-[#64748B]">
         <div className="max-w-[1440px] mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <span>
-            &copy; {new Date().getFullYear()} HARAMAQ &mdash; Vagões Misturadores de Concreto
+            &copy; {new Date().getFullYear()} HARAMAQ &mdash; Tecnologia para o manejo alimentar do
+            rebanho
           </span>
           <span className="text-[11px] text-[#94A3B8]">
-            Linhas PROHMIX &amp; SUPERMIX &bull; CRM Corporativo
+            Prohmix &bull; Supermix &bull; Tipper &bull; Vagões Rodoviários
           </span>
         </div>
       </footer>

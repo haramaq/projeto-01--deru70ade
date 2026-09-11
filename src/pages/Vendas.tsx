@@ -1,34 +1,44 @@
-import React, { useState, useEffect, useMemo, useTransition } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
+  AlertTriangle,
+=======
+  CheckCircle2,
+  Clock3,
+  GripVertical,
+  History,
+  MapPin,
   Plus,
   Search,
-  Filter,
-  DollarSign,
-  Calendar,
-  Clock,
-  ArrowRight,
-  TrendingUp,
+  UserRound,
   X,
-  Edit2,
-  Trash2,
-  CheckCircle2,
 } from 'lucide-react'
 import { vendaService, clienteService, userService } from '@/services/crmService'
-import type { Venda, VendaEtapa, Cliente, User, ProdutoModelo } from '@/types/crm'
-import { formatCurrencyBRL, formatDateBR } from '@/lib/formatters'
+import type {
+  CategoriaProduto,
+  Cliente,
+  LeadEtapa,
+  LeadHistorico,
+  LeadTarefa,
+  NivelInteresse,
+  StatusMotivo,
+  User,
+  Venda,
+} from '@/types/crm'
+import { formatDateBR } from '@/lib/formatters'
 import useRealtime from '@/hooks/use-realtime'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from '@/components/ui/dialog'
 import {
   Select,
@@ -39,82 +49,142 @@ import {
 } from '@/components/ui/select'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import {
-  PageContainer,
-  PageHeader,
-  HaramaqButton,
-  SearchInput,
-  StatusBadge,
-} from '@/components/haramaq'
+import { PageContainer, PageHeader, HaramaqButton, StatusBadge } from '@/components/haramaq'
 
-const ETAPAS: { key: VendaEtapa; label: string; borderTop: string; color: string }[] = [
-  { key: 'prospeccao', label: 'Prospecção', borderTop: 'border-t-[#2563EB]', color: '#2563EB' },
-  { key: 'orcamento', label: 'Orçamento', borderTop: 'border-t-[#0284C7]', color: '#0284C7' },
-  { key: 'negociacao', label: 'Negociação', borderTop: 'border-t-[#F59E0B]', color: '#F59E0B' },
-  { key: 'fechamento', label: 'Fechamento', borderTop: 'border-t-[#D92323]', color: '#D92323' },
-  {
-    key: 'pecas_pos_vendas',
-    label: 'Peças e Pós-vendas',
-    borderTop: 'border-t-[#7C3AED]',
-    color: '#7C3AED',
-  },
-  {
-    key: 'financeiro_fiscal',
-    label: 'Financeiro e Fiscal',
-    borderTop: 'border-t-[#475569]',
-    color: '#475569',
-  },
+const ETAPAS: { key: LeadEtapa; label: string; color: string }[] = [
+  { key: 'agendamento_primeiro_contato', label: 'Agendamento de 1º contato', color: '#2563EB' },
+  { key: 'em_contato', label: 'Em contato', color: '#0284C7' },
+  { key: 'revenda_contato', label: 'Revenda Contato', color: '#7C3AED' },
+  { key: 'orcamentacao', label: 'Orçamentação', color: '#F59E0B' },
+  { key: 'contato_futuro_agendado', label: 'Contato futuro (Agendado)', color: '#64748B' },
+  { key: 'arquivado_nao_retorna', label: 'Arquivado (não retorna)', color: '#94A3B8' },
+  { key: 'perdido_concorrencia', label: 'Perdido (comprou da concorrência)', color: '#E11D48' },
+  { key: 'convertido_pedido', label: 'Convertido para pedido', color: '#16A34A' },
+  { key: 'pecas_pos_vendas', label: 'Peças e Pós-vendas', color: '#9333EA' },
+  { key: 'financeiro_fiscal', label: 'Financeiro e Fiscal', color: '#0369A1' },
 ]
+
+const CATEGORIAS: CategoriaProduto[] = [
+  'Linha Prohmix',
+  'Linha Supermix',
+  'Linha Tipper',
+  'Vagões Rodoviários',
+  'Colhedora de forragens',
+  'Homogeneizador de esterco',
+  'Revolvedor de cama',
+]
+
+const ORIGENS = [
+  'Campanhas',
+  'Eventos',
+  'Redes Sociais',
+  'Prospecção direta a campo',
+  'Google',
+  'Site',
+  'Ligação na empresa',
+  'Indicação de parceiros',
+  'Cliente antigo',
+  'Cliente de revenda',
+]
+
+const TERMINAIS: LeadEtapa[] = [
+  'arquivado_nao_retorna',
+  'perdido_concorrencia',
+  'convertido_pedido',
+]
+
+const ETAPAS_COM_PRAZO = new Set<LeadEtapa>([
+  'agendamento_primeiro_contato',
+  'em_contato',
+  'revenda_contato',
+  'orcamentacao',
+  'contato_futuro_agendado',
+])
+
+const legacyStageLabels: Record<string, string> = Object.fromEntries(
+  ETAPAS.map((stage) => [stage.key, stage.label]),
+)
+
+function elapsedSince(value?: string) {
+  if (!value) return '—'
+  const diff = Math.max(0, Date.now() - new Date(value).getTime())
+  const minutes = Math.floor(diff / 60000)
+  if (minutes < 60) return `${minutes} min`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours} h`
+  const days = Math.floor(hours / 24)
+  return `${days} ${days === 1 ? 'dia' : 'dias'}`
+}
+
+function dateTime(value?: string) {
+  if (!value) return '—'
+  const date = new Date(value)
+  return Number.isNaN(date.getTime())
+    ? '—'
+    : date.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+}
+
+function isOverdue(lead: Venda) {
+  return Boolean(
+    ETAPAS_COM_PRAZO.has(lead.etapa) &&
+      lead.prazo_etapa_em &&
+      new Date(lead.prazo_etapa_em).getTime() < Date.now(),
+  )
+}
+
+function statusVariant(lead: Venda): 'success' | 'danger' | 'neutral' | 'info' {
+  if (lead.status_lead === 'convertido_pedido') return 'success'
+  if (lead.status_lead === 'perdido') return 'danger'
+  if (lead.status_lead === 'arquivado') return 'neutral'
+  return 'info'
+}
 
 export default function Vendas() {
   const { user, role } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
-  const [, startTransition] = useTransition()
-
-  const [vendas, setVendas] = useState<Venda[]>([])
+  const [leads, setLeads] = useState<Venda[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [vendedores, setVendedores] = useState<User[]>([])
+  const [responsaveis, setResponsaveis] = useState<User[]>([])
+  const [motivos, setMotivos] = useState<StatusMotivo[]>([])
   const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [originFilter, setOriginFilter] = useState('todos')
+  const [categoryFilter, setCategoryFilter] = useState('todos')
+  const [interestFilter, setInterestFilter] = useState('todos')
 
-  // Filters
-  const [searchTerm, setSearchTerm] = useState('')
-  const [selectedProduto, setSelectedProduto] = useState<string>('todos')
-  const [selectedVendedor, setSelectedVendedor] = useState<string>('todos')
+  const [createOpen, setCreateOpen] = useState(false)
+  const [detailLead, setDetailLead] = useState<Venda | null>(null)
+  const [history, setHistory] = useState<LeadHistorico[]>([])
+  const [tasks, setTasks] = useState<LeadTarefa[]>([])
+  const [moveLead, setMoveLead] = useState<{ lead: Venda; etapa: LeadEtapa } | null>(null)
+  const [selectedMotivo, setSelectedMotivo] = useState('')
+  const [draggedId, setDraggedId] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
 
-  // Modals
-  const [detailModalOpen, setDetailModalOpen] = useState(false)
-  const [activeDeal, setActiveDeal] = useState<Venda | null>(null)
-  const [proximaAcaoInput, setProximaAcaoInput] = useState('')
-  const [savingAction, setSavingAction] = useState(false)
-
-  // Create Modal
-  const [createModalOpen, setCreateModalOpen] = useState(false)
   const [newCliente, setNewCliente] = useState('')
-  const [newProduto, setNewProduto] = useState<ProdutoModelo>('PROHMIX')
-  const [newValor, setNewValor] = useState<string>('350000')
-  const [newEtapa, setNewEtapa] = useState<VendaEtapa>('prospeccao')
-  const [newProbabilidade, setNewProbabilidade] = useState<number>(30)
-  const [newDataFechamento, setNewDataFechamento] = useState<string>('')
-  const [newProximaAcao, setNewProximaAcao] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [newCategoria, setNewCategoria] = useState<CategoriaProduto>('Linha Prohmix')
+  const [newOrigem, setNewOrigem] = useState('Site')
+  const [newInterest, setNewInterest] = useState<NivelInteresse>(3)
+  const [newObservacoes, setNewObservacoes] = useState('')
+  const [newResponsavel, setNewResponsavel] = useState('')
 
-  // Drag state
-  const [draggedVendaId, setDraggedVendaId] = useState<string | null>(null)
-  const [dragOverCol, setDragOverCol] = useState<VendaEtapa | null>(null)
+  const canCreate = ['admin', 'gestor', 'triagem', 'vendedor', 'revendedor'].includes(role)
 
   const loadData = async () => {
     try {
-      const [vList, cList, uList] = await Promise.all([
+      const [leadList, clientList, userList, motiveList] = await Promise.all([
         vendaService.getAll(),
         clienteService.getAll(),
         userService.getAll(),
+        vendaService.getMotivos(),
       ])
-      setVendas(vList)
-      setClientes(cList)
-      setVendedores(uList)
-    } catch (err) {
-      console.error(err)
-      toast.error('Erro ao carregar dados do funil de vendas.')
+      setLeads(leadList)
+      setClientes(clientList)
+      setResponsaveis(userList)
+      setMotivos(motiveList)
+    } catch (error) {
+      console.error(error)
+      toast.error('Erro ao carregar os leads do Kanban.')
     } finally {
       setLoading(false)
     }
@@ -124,723 +194,301 @@ export default function Vendas() {
     loadData()
   }, [])
 
-  // Check query params for "nova=true"
   useEffect(() => {
     if (searchParams.get('nova') === 'true') {
-      setCreateModalOpen(true)
-      const cId = searchParams.get('clienteId')
-      if (cId) setNewCliente(cId)
-      // clear query
+      setCreateOpen(true)
       searchParams.delete('nova')
       searchParams.delete('clienteId')
       setSearchParams(searchParams, { replace: true })
     }
   }, [searchParams, setSearchParams])
 
-  // Realtime
   useRealtime('vendas', () => {
-    vendaService
-      .getAll()
-      .then(setVendas)
-      .catch(() => {})
+    vendaService.getAll().then(setLeads).catch(() => {})
   })
 
-  // Filtered Deals
-  const filteredDeals = useMemo(() => {
-    return vendas.filter((v) => {
-      // search
-      const cName = v.expand?.cliente?.nome || ''
-      const cEmpresa = v.expand?.cliente?.empresa || ''
-      const matchesSearch =
-        cName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        cEmpresa.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        v.produto.toLowerCase().includes(searchTerm.toLowerCase())
-
-      // produto
-      const matchesProduto = selectedProduto === 'todos' || v.produto === selectedProduto
-
-      // vendedor
-      const matchesVendedor = selectedVendedor === 'todos' || v.vendedor === selectedVendedor
-
-      return matchesSearch && matchesProduto && matchesVendedor
+  const filteredLeads = useMemo(() => {
+    const query = search.trim().toLowerCase()
+    return leads.filter((lead) => {
+      const client = lead.expand?.cliente
+      const text = [lead.numero_lead, client?.nome, client?.empresa, lead.categoria_produto, lead.origem_lead]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+      return (
+        (!query || text.includes(query)) &&
+        (originFilter === 'todos' || lead.origem_lead === originFilter) &&
+        (categoryFilter === 'todos' || lead.categoria_produto === categoryFilter) &&
+        (interestFilter === 'todos' || String(lead.nivel_interesse) === interestFilter)
+      )
     })
-  }, [vendas, searchTerm, selectedProduto, selectedVendedor])
+  }, [leads, search, originFilter, categoryFilter, interestFilter])
 
-  // Group by stage and sort descending by value
-  const dealsByStage = useMemo(() => {
-    const map: Record<VendaEtapa, Venda[]> = {
-      prospeccao: [],
-      orcamento: [],
-      negociacao: [],
-      fechamento: [],
-      pecas_pos_vendas: [],
-      financeiro_fiscal: [],
-    }
-
-    filteredDeals.forEach((d) => {
-      if (map[d.etapa]) {
-        map[d.etapa].push(d)
-      }
+  const byStage = useMemo(() => {
+    const result = {} as Record<LeadEtapa, Venda[]>
+    ETAPAS.forEach((stage) => {
+      result[stage.key] = filteredLeads.filter((lead) => lead.etapa === stage.key)
     })
+    return result
+  }, [filteredLeads])
 
-    // Sort descending by value
-    Object.keys(map).forEach((key) => {
-      map[key as VendaEtapa].sort((a, b) => (b.valor || 0) - (a.valor || 0))
-    })
-
-    return map
-  }, [filteredDeals])
-
-  // Drag and drop handlers
-  const handleDragStart = (e: React.DragEvent, id: string) => {
-    e.dataTransfer.setData('text/plain', id)
-    setDraggedVendaId(id)
-  }
-
-  const handleDragOver = (e: React.DragEvent, etapa: VendaEtapa) => {
-    e.preventDefault()
-    setDragOverCol(etapa)
-  }
-
-  const handleDragLeave = () => {
-    setDragOverCol(null)
-  }
-
-  const handleDrop = async (e: React.DragEvent, targetEtapa: VendaEtapa) => {
-    e.preventDefault()
-    setDragOverCol(null)
-    const id = e.dataTransfer.getData('text/plain') || draggedVendaId
-    if (!id) return
-
-    const targetVenda = vendas.find((v) => v.id === id)
-    if (!targetVenda || targetVenda.etapa === targetEtapa) return
-
-    // Optimistic UI update
-    setVendas((prev) => prev.map((v) => (v.id === id ? { ...v, etapa: targetEtapa } : v)))
-
+  const openDetail = async (lead: Venda) => {
+    setDetailLead(lead)
     try {
-      const etapaLabel = ETAPAS.find((et) => et.key === targetEtapa)?.label
-      await vendaService.updateEtapa(id, targetEtapa)
-      toast.success(`Negócio movido para ${etapaLabel}`)
-    } catch (err) {
-      console.error(err)
-      toast.error('Erro ao atualizar etapa no banco de dados.')
-      // Revert
-      loadData()
-    } finally {
-      setDraggedVendaId(null)
-    }
-  }
-
-  // Handle open deal detail
-  const handleOpenDetail = (deal: Venda) => {
-    setActiveDeal(deal)
-    setProximaAcaoInput(deal.proxima_acao || '')
-    setDetailModalOpen(true)
-  }
-
-  // Handle save Next Action
-  const handleSaveNextAction = async () => {
-    if (!activeDeal) return
-    setSavingAction(true)
-    try {
-      const updated = await vendaService.update(activeDeal.id, {
-        proxima_acao: proximaAcaoInput,
-      })
-      setActiveDeal(updated)
-      setVendas((prev) => prev.map((v) => (v.id === updated.id ? updated : v)))
-      toast.success('Próxima ação atualizada!')
+      const [historyList, taskList] = await Promise.all([
+        vendaService.getHistorico(lead.id),
+        vendaService.getTarefas(lead.id),
+      ])
+      setHistory(historyList)
+      setTasks(taskList)
     } catch {
-      toast.error('Erro ao salvar próxima ação.')
-    } finally {
-      setSavingAction(false)
+      setHistory([])
+      setTasks([])
     }
   }
 
-  // Handle create deal
-  const handleCreateDeal = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newCliente) {
-      toast.error('Selecione um cliente para a venda.')
+  const requestMove = (lead: Venda, etapa: LeadEtapa) => {
+    if (lead.etapa === etapa) return
+    if (TERMINAIS.includes(etapa)) {
+      setMoveLead({ lead, etapa })
+      setSelectedMotivo('')
       return
     }
+    void applyMove(lead, etapa)
+  }
 
-    setIsSubmitting(true)
+  const applyMove = async (lead: Venda, etapa: LeadEtapa, motivoCode?: string) => {
+    setSaving(true)
+    try {
+      const reason = motivos.find((item) => item.codigo === motivoCode)
+      const updated = await vendaService.updateEtapa(lead.id, etapa, reason)
+      setLeads((current) => current.map((item) => (item.id === updated.id ? updated : item)))
+      if (detailLead?.id === updated.id) {
+        setDetailLead(updated)
+        const nextHistory = await vendaService.getHistorico(updated.id)
+        setHistory(nextHistory)
+      }
+      setMoveLead(null)
+      toast.success(`Lead movido para ${legacyStageLabels[etapa]}.`)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Não foi possível mover o lead.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDrop = (event: React.DragEvent, etapa: LeadEtapa) => {
+    event.preventDefault()
+    const id = event.dataTransfer.getData('text/plain') || draggedId
+    const lead = leads.find((item) => item.id === id)
+    setDraggedId(null)
+    if (lead) requestMove(lead, etapa)
+  }
+
+  const createLead = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (!newCliente || !newCategoria || !newOrigem) {
+      toast.error('Cliente, categoria e origem são obrigatórios.')
+      return
+    }
+    setSaving(true)
     try {
       const created = await vendaService.create({
         cliente: newCliente,
-        produto: newProduto,
-        valor: parseFloat(newValor) || 0,
-        etapa: newEtapa,
-        probabilidade: Number(newProbabilidade),
-        data_prevista_fechamento: newDataFechamento || undefined,
-        vendedor: user?.id,
-        proxima_acao: newProximaAcao,
+        categoria_produto: newCategoria,
+        origem_lead: newOrigem,
+        nivel_interesse: newInterest,
+        observacoes_ia: newObservacoes.trim(),
+        vendedor: newResponsavel || user?.id,
+        etapa: 'agendamento_primeiro_contato',
+        produto: 'PROHMIX',
+        altforce_stage_name: 'Agendamento de 1º contato',
       })
-
-      startTransition(() => {
-        setVendas((prev) => [created, ...prev])
-      })
-      toast.success('Negócio criado com sucesso!')
-      setCreateModalOpen(false)
-      // Reset form
+      setLeads((current) => [created, ...current])
+      setCreateOpen(false)
       setNewCliente('')
-      setNewValor('350000')
-      setNewProximaAcao('')
-    } catch (err) {
-      console.error(err)
-      toast.error('Erro ao registrar novo negócio.')
+      setNewObservacoes('')
+      setNewResponsavel('')
+      toast.success('Lead criado no Kanban.')
+    } catch (error) {
+      console.error(error)
+      toast.error('Não foi possível criar o lead.')
     } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  const handleDeleteDeal = async (id: string) => {
-    if (!confirm('Deseja realmente remover esta oportunidade de venda?')) return
-    try {
-      await vendaService.delete(id)
-      setVendas((prev) => prev.filter((v) => v.id !== id))
-      setDetailModalOpen(false)
-      toast.success('Negócio excluído com sucesso.')
-    } catch {
-      toast.error('Erro ao excluir negócio.')
+      setSaving(false)
     }
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
+      <div className="flex min-h-[50vh] items-center justify-center">
         <div className="flex flex-col items-center gap-2">
-          <div className="w-8 h-8 border-4 border-[#1B4332] border-t-transparent rounded-full animate-spin" />
-          <p className="text-xs text-gray-500">Carregando funil de vendas...</p>
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#D92323] border-t-transparent" />
+          <p className="text-xs text-[#64748B]">Carregando leads do Kanban...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <PageContainer>
-      {/* Top Header */}
+    <PageContainer maxWidth="full">
       <PageHeader
-        title="Funil de Vendas"
-        subtitle="Pipeline operacional de vagões misturadores PROHMIX e SUPERMIX"
+        title="Gestão de Leads"
+        subtitle="Fluxo comercial Haramaq para pecuária de corte e leite"
         badge={
-          <span className="text-[11px] font-bold uppercase tracking-wider bg-[#FEE2E2] text-[#D92323] px-2 py-0.5 rounded-md border border-[#FCA5A5]/60">
-            {filteredDeals.length} Negócios
+          <span className="rounded-md border border-[#FCA5A5]/60 bg-[#FEE2E2] px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-[#D92323]">
+            {filteredLeads.length} leads
           </span>
         }
         actions={
-          <HaramaqButton
-            variant="danger"
-            size="md"
-            icon={<Plus className="w-4 h-4" />}
-            onClick={() => setCreateModalOpen(true)}
-          >
-            Nova Venda
-          </HaramaqButton>
+          canCreate && (
+            <HaramaqButton icon={<Plus className="h-4 w-4" />} onClick={() => setCreateOpen(true)}>
+              Novo lead
+            </HaramaqButton>
+          )
         }
       />
 
-      {/* Filter Bar */}
-      <div className="bg-white p-3 sm:p-4 rounded-xl border border-[#E2E8F0] shadow-xs flex flex-col md:flex-row items-center gap-3 mb-6">
-        {/* Search */}
-        <div className="relative flex-1 w-full">
-          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-          <Input
-            placeholder="Buscar por cliente, empresa ou modelo..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 h-9 rounded-lg border-[#E2E8F0] focus:border-[#D92323] focus:ring-[#D92323] text-xs bg-white"
-          />
+      <div className="mb-5 grid grid-cols-1 gap-2 rounded-xl border border-[#E2E8F0] bg-white p-3 shadow-xs md:grid-cols-[1fr_190px_210px_140px_auto]">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94A3B8]" />
+          <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por ID, cliente, categoria ou origem..." className="h-9 pl-9 text-xs" />
         </div>
-
-        {/* Produto Filter */}
-        <div className="w-full md:w-48">
-          <Select value={selectedProduto} onValueChange={setSelectedProduto}>
-            <SelectTrigger className="h-9 rounded-lg border-[#E2E8F0] text-xs bg-white">
-              <SelectValue placeholder="Produto" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos os Produtos</SelectItem>
-              <SelectItem value="PROHMIX">PROHMIX</SelectItem>
-              <SelectItem value="SUPERMIX">SUPERMIX</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Vendedor Filter */}
-        <div className="w-full md:w-56">
-          <Select value={selectedVendedor} onValueChange={setSelectedVendedor}>
-            <SelectTrigger className="h-9 rounded-lg border-[#E2E8F0] text-xs bg-white">
-              <SelectValue placeholder="Vendedor" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos os Vendedores</SelectItem>
-              {vendedores.map((vnd) => (
-                <SelectItem key={vnd.id} value={vnd.id}>
-                  {vnd.name || vnd.email}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {(searchTerm || selectedProduto !== 'todos' || selectedVendedor !== 'todos') && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setSearchTerm('')
-              setSelectedProduto('todos')
-              setSelectedVendedor('todos')
-            }}
-            className="text-xs text-gray-500 hover:text-[#D92323] gap-1 h-9 rounded-lg"
-          >
-            <X className="w-3.5 h-3.5" />
-            Limpar
+        <Select value={originFilter} onValueChange={setOriginFilter}>
+          <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Origem" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todas as origens</SelectItem>
+            {ORIGENS.map((origin) => <SelectItem key={origin} value={origin}>{origin}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Categoria" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todas as categorias</SelectItem>
+            {CATEGORIAS.map((category) => <SelectItem key={category} value={category}>{category}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={interestFilter} onValueChange={setInterestFilter}>
+          <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Interesse" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Interesse</SelectItem>
+            {[1, 2, 3, 4, 5].map((value) => <SelectItem key={value} value={String(value)}>{value}/5</SelectItem>)}
+          </SelectContent>
+        </Select>
+        {(search || originFilter !== 'todos' || categoryFilter !== 'todos' || interestFilter !== 'todos') && (
+          <Button variant="ghost" className="h-9 text-xs" onClick={() => { setSearch(''); setOriginFilter('todos'); setCategoryFilter('todos'); setInterestFilter('todos') }}>
+            <X className="mr-1 h-3.5 w-3.5" /> Limpar
           </Button>
         )}
       </div>
 
-      {/* Kanban Board — etapas compatíveis com o fluxo configurável do Altforce */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3.5 overflow-x-auto pb-4">
-        {ETAPAS.map((col) => {
-          const deals = dealsByStage[col.key] || []
-          const totalVal = deals.reduce((acc, d) => acc + (d.valor || 0), 0)
-          const isOver = dragOverCol === col.key
-
+      <div className="grid min-w-[1280px] grid-cols-10 gap-2 overflow-x-auto pb-4">
+        {ETAPAS.map((stage) => {
+          const stageLeads = byStage[stage.key] || []
           return (
-            <div
-              key={col.key}
-              onDragOver={(e) => handleDragOver(e, col.key)}
-              onDragLeave={handleDragLeave}
-              onDrop={(e) => handleDrop(e, col.key)}
-              className={cn(
-                'bg-gray-50/80 rounded-[16px] border-2 border-dashed border-transparent p-3 flex flex-col min-h-[580px] transition-colors',
-                isOver && 'border-emerald-500 bg-emerald-50/40',
-              )}
+            <section
+              key={stage.key}
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={(event) => handleDrop(event, stage.key)}
+              className="flex min-h-[620px] flex-col rounded-xl border border-[#E2E8F0] bg-[#F8FAFC]"
             >
-              {/* Column Header with specific top border color */}
-              <div
-                className={cn(
-                  'bg-white rounded-xl p-3.5 border border-[#E5E7EB] border-t-4 mb-3 shadow-2xs flex items-center justify-between',
-                  col.borderTop,
-                )}
-              >
-                <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-800">
-                    {col.label}
-                  </h3>
-                  <p className="text-[11px] font-semibold text-gray-500 mt-0.5">
-                    {formatCurrencyBRL(totalVal)}
-                  </p>
+              <header className="border-t-4 bg-white p-2.5" style={{ borderTopColor: stage.color }}>
+                <div className="flex items-start justify-between gap-1">
+                  <h2 className="text-[10px] font-bold uppercase leading-tight tracking-wide text-[#334155]">{stage.label}</h2>
+                  <span className="rounded-full bg-[#F1F5F9] px-1.5 py-0.5 text-[10px] font-bold text-[#475569]">{stageLeads.length}</span>
                 </div>
-                <Badge
-                  variant="secondary"
-                  className="bg-gray-100 text-gray-800 text-xs font-bold rounded-lg px-2"
-                >
-                  {deals.length}
-                </Badge>
-              </div>
-
-              {/* Cards Container */}
-              <div className="space-y-3 flex-1">
-                {deals.map((deal) => {
-                  const clienteName =
-                    deal.expand?.cliente?.empresa || deal.expand?.cliente?.nome || 'Cliente'
-                  const vendedorName =
-                    deal.expand?.vendedor?.name || deal.expand?.vendedor?.email || 'Vendedor'
-
+              </header>
+              <div className="flex-1 space-y-2 p-2">
+                {stageLeads.map((lead) => {
+                  const overdue = isOverdue(lead)
+                  const client = lead.expand?.cliente
+                  const responsible = lead.expand?.vendedor?.name || lead.expand?.vendedor?.email || 'Não atribuído'
                   return (
-                    <div
-                      key={deal.id}
+                    <article
+                      key={lead.id}
                       draggable
-                      onDragStart={(e) => handleDragStart(e, deal.id)}
-                      onClick={() => handleOpenDetail(deal)}
+                      onDragStart={(event) => { event.dataTransfer.setData('text/plain', lead.id); setDraggedId(lead.id) }}
+                      onClick={() => openDetail(lead)}
                       className={cn(
-                        'bg-white rounded-xl p-4 border border-[#E5E7EB] shadow-xs hover:border-[#1B4332]/40 hover:shadow-md cursor-grab active:cursor-grabbing transition-all duration-200 transform',
-                        draggedVendaId === deal.id ? 'opacity-40 scale-95' : 'hover:-translate-y-1',
+                        'cursor-pointer rounded-lg border bg-white p-2.5 shadow-2xs transition hover:-translate-y-0.5 hover:shadow-sm',
+                        overdue ? 'border-amber-400 ring-1 ring-amber-200' : 'border-[#E2E8F0]',
                       )}
                     >
-                      {/* Top row: Client name & product badge */}
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <span className="font-bold text-xs text-gray-900 line-clamp-1">
-                          {clienteName}
-                        </span>
-                        <Badge
-                          variant="secondary"
-                          className={cn(
-                            'text-[10px] font-extrabold uppercase px-1.5 py-0',
-                            deal.produto === 'SUPERMIX'
-                              ? 'bg-red-50 text-[#DC2626] border border-red-200'
-                              : 'bg-emerald-50 text-[#1B4332] border border-emerald-200',
-                          )}
-                        >
-                          {deal.produto}
-                        </Badge>
+                      <div className="mb-2 flex items-start justify-between gap-1">
+                        <span className="font-mono text-[10px] font-bold text-[#D92323]">{lead.numero_lead || `#${lead.id}`}</span>
+                        <GripVertical className="h-3.5 w-3.5 text-[#CBD5E1]" />
                       </div>
-
-                      {/* Value (R$) & Probability */}
-                      <div className="flex items-baseline justify-between mb-3">
-                        <div className="text-base font-extrabold text-gray-900 tabular-nums">
-                          {formatCurrencyBRL(deal.valor)}
-                        </div>
-                        <span className="text-[11px] font-semibold text-gray-500">
-                          {deal.probabilidade}% prob.
-                        </span>
+                      <h3 className="line-clamp-2 text-xs font-bold text-[#1E293B]">{client?.empresa || client?.nome || 'Cliente não informado'}</h3>
+                      <p className="mt-0.5 line-clamp-1 text-[10px] text-[#64748B]">{client?.nome || 'Sem contato'}</p>
+                      <div className="mt-2 space-y-1.5 text-[10px] text-[#475569]">
+                        <div className="flex items-center gap-1"><UserRound className="h-3 w-3 text-[#94A3B8]" /><span className="line-clamp-1">{responsible}</span></div>
+                        <div className="flex items-center gap-1"><span className="font-semibold text-[#1E293B]">{lead.categoria_produto || 'Categoria pendente'}</span></div>
+                        <div className="flex items-center justify-between gap-1"><span className="line-clamp-1">{lead.origem_lead || 'Origem pendente'}</span><span className="font-bold text-[#B45309]">{lead.nivel_interesse || 0}/5</span></div>
                       </div>
-
-                      {/* Next Action preview */}
-                      {deal.proxima_acao && (
-                        <div className="p-2 rounded-lg bg-[#F8FAF9] text-[11px] text-gray-600 border border-gray-100 mb-3 line-clamp-2">
-                          <strong className="text-gray-800">Próx:</strong> {deal.proxima_acao}
-                        </div>
-                      )}
-
-                      {/* Bottom Footer: Date & Assigned salesperson */}
-                      <div className="flex items-center justify-between pt-2 border-t border-gray-100 text-[10px] text-gray-400">
-                        <div className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          <span>{formatDateBR(deal.data_prevista_fechamento || deal.created)}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-5 h-5 rounded-full bg-[#1B4332] text-white flex items-center justify-center font-bold text-[9px]">
-                            {vendedorName.charAt(0).toUpperCase()}
-                          </div>
-                          <span className="truncate max-w-[70px] text-gray-600 font-medium">
-                            {vendedorName.split(' ')[0]}
-                          </span>
-                        </div>
+                      <div className="mt-2 flex items-center justify-between border-t border-[#F1F5F9] pt-1.5 text-[10px]">
+                        <span className={cn('font-bold', overdue ? 'text-[#B45309]' : 'text-[#64748B]')}><Clock3 className="mr-0.5 inline h-3 w-3" />{elapsedSince(lead.etapa_atual_desde)}</span>
+                        <span className="text-[#94A3B8]">{formatDateBR(lead.data_solicitacao || lead.created)}</span>
                       </div>
-                    </div>
+                      <div className="mt-1.5 flex items-center justify-between gap-1">
+                        <StatusBadge variant={statusVariant(lead)} size="sm" dot>{lead.status_motivo_codigo ? `${lead.status_motivo_codigo} · ${lead.status_motivo_descricao}` : lead.status_lead === 'em_andamento' ? 'Em andamento' : lead.status_lead || 'Em andamento'}</StatusBadge>
+                        {overdue && <span className="text-[9px] font-bold uppercase text-[#B45309]">Vencido</span>}
+                      </div>
+                    </article>
                   )
                 })}
-
-                {deals.length === 0 && (
-                  <div className="h-28 border border-dashed border-gray-200 rounded-xl flex items-center justify-center text-xs text-gray-400">
-                    Nenhum negócio nesta etapa
-                  </div>
-                )}
+                {stageLeads.length === 0 && <div className="rounded-lg border border-dashed border-[#CBD5E1] p-4 text-center text-[10px] text-[#94A3B8]">Arraste leads para cá</div>}
               </div>
-            </div>
+            </section>
           )
         })}
       </div>
 
-      {/* Deal Detail Modal */}
-      <Dialog open={detailModalOpen} onOpenChange={setDetailModalOpen}>
-        <DialogContent className="max-w-xl rounded-2xl">
-          <DialogHeader>
-            <div className="flex items-center justify-between pr-4">
-              <DialogTitle className="text-lg font-bold text-[#1B4332]">
-                Detalhes do Negócio
-              </DialogTitle>
-              <Badge
-                variant="outline"
-                className={cn(
-                  'text-xs font-bold uppercase',
-                  activeDeal?.produto === 'SUPERMIX'
-                    ? 'border-red-300 text-red-700 bg-red-50'
-                    : 'border-emerald-300 text-emerald-800 bg-emerald-50',
-                )}
-              >
-                {activeDeal?.produto}
-              </Badge>
-            </div>
-          </DialogHeader>
-
-          {activeDeal && (
-            <div className="space-y-4 pt-2 text-xs">
-              {/* Client & Values info */}
-              <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-2">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
-                      Cliente / Empresa
-                    </span>
-                    <p className="text-sm font-bold text-gray-900">
-                      {activeDeal.expand?.cliente?.empresa || activeDeal.expand?.cliente?.nome}
-                    </p>
-                    <p className="text-gray-500">{activeDeal.expand?.cliente?.nome}</p>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
-                      Valor Proposto
-                    </span>
-                    <p className="text-lg font-black text-gray-900">
-                      {formatCurrencyBRL(activeDeal.valor)}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-gray-200/60">
-                  <div>
-                    <span className="text-[10px] text-gray-400 font-semibold">Etapa Atual</span>
-                    <p className="font-bold text-gray-800 capitalize">{activeDeal.etapa}</p>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-gray-400 font-semibold">Probabilidade</span>
-                    <p className="font-bold text-gray-800">{activeDeal.probabilidade}%</p>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-gray-400 font-semibold">
-                      Previsão Fechamento
-                    </span>
-                    <p className="font-bold text-gray-800">
-                      {formatDateBR(activeDeal.data_prevista_fechamento)}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Editable "Próxima Ação" */}
-              <div className="space-y-2">
-                <Label
-                  htmlFor="nextAction"
-                  className="font-bold text-gray-700 flex items-center justify-between"
-                >
-                  <span>Próxima Ação Comercial</span>
-                  <span className="text-[11px] font-normal text-gray-400">
-                    O que precisa ser feito para avançar a venda
-                  </span>
-                </Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="nextAction"
-                    value={proximaAcaoInput}
-                    onChange={(e) => setProximaAcaoInput(e.target.value)}
-                    placeholder="Ex: Agendar demonstração técnica na fábrica ou alinhar FINAME..."
-                    className="h-10 text-xs rounded-xl"
-                  />
-                  <Button
-                    onClick={handleSaveNextAction}
-                    disabled={savingAction}
-                    className="bg-[#1B4332] hover:bg-[#2D6A4F] text-white text-xs rounded-xl px-4 shrink-0"
-                  >
-                    {savingAction ? 'Salvando...' : 'Atualizar'}
-                  </Button>
-                </div>
-              </div>
-
-              {/* Stage Progress Timeline */}
-              <div className="pt-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-2 block">
-                  Linha do Tempo das Etapas
-                </span>
-                <div className="flex items-center justify-between relative overflow-x-auto pb-2">
-                  {' '}
-                  <div className="absolute left-2 right-2 top-3 h-0.5 bg-gray-200 -z-0" />
-                  {ETAPAS.map((st, i) => {
-                    const currentIdx = ETAPAS.findIndex((e) => e.key === activeDeal.etapa)
-                    const isPassed = i <= currentIdx
-                    const isCurrent = i === currentIdx
-
-                    return (
-                      <div
-                        key={st.key}
-                        onClick={async () => {
-                          const updated = await vendaService.updateEtapa(activeDeal.id, st.key)
-                          setActiveDeal(updated)
-                          setVendas((prev) => prev.map((v) => (v.id === updated.id ? updated : v)))
-                          toast.success(`Etapa alterada para ${st.label}`)
-                        }}
-                        className="flex flex-col items-center gap-1 z-10 cursor-pointer group"
-                      >
-                        <div
-                          className={cn(
-                            'w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold border-2 transition-transform group-hover:scale-110',
-                            isPassed
-                              ? 'bg-[#1B4332] border-[#1B4332] text-white'
-                              : 'bg-white border-gray-300 text-gray-400',
-                            isCurrent && 'ring-2 ring-red-500',
-                          )}
-                        >
-                          {i + 1}
-                        </div>
-                        <span
-                          className={cn(
-                            'text-[10px] font-semibold',
-                            isPassed ? 'text-gray-900' : 'text-gray-400',
-                          )}
-                        >
-                          {st.label}
-                        </span>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
-
-          <DialogFooter className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3">
-            {activeDeal && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleDeleteDeal(activeDeal.id)}
-                className="text-xs text-red-600 hover:bg-red-50 hover:text-red-700 gap-1 rounded-xl"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                Excluir Negócio
-              </Button>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setDetailModalOpen(false)}
-              className="text-xs rounded-xl"
-            >
-              Fechar
-            </Button>
-          </DialogFooter>
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+          <DialogHeader><DialogTitle>Novo lead Haramaq</DialogTitle></DialogHeader>
+          <form onSubmit={createLead} className="grid grid-cols-1 gap-4 py-2 md:grid-cols-2">
+            <div className="space-y-1 md:col-span-2"><Label>Cliente *</Label><Select value={newCliente} onValueChange={setNewCliente}><SelectTrigger><SelectValue placeholder="Selecione o cliente" /></SelectTrigger><SelectContent>{clientes.map((client) => <SelectItem key={client.id} value={client.id}>{client.empresa || client.nome} — {client.nome}</SelectItem>)}</SelectContent></Select></div>
+            <div className="space-y-1"><Label>Categoria do produto *</Label><Select value={newCategoria} onValueChange={(value) => setNewCategoria(value as CategoriaProduto)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{CATEGORIAS.map((category) => <SelectItem key={category} value={category}>{category}</SelectItem>)}</SelectContent></Select></div>
+            <div className="space-y-1"><Label>Origem do lead *</Label><Select value={newOrigem} onValueChange={setNewOrigem}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{ORIGENS.map((origin) => <SelectItem key={origin} value={origin}>{origin}</SelectItem>)}</SelectContent></Select></div>
+            <div className="space-y-1"><Label>Nível de interesse (1 a 5)</Label><Select value={String(newInterest)} onValueChange={(value) => setNewInterest(Number(value) as NivelInteresse)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{[1, 2, 3, 4, 5].map((value) => <SelectItem key={value} value={String(value)}>{value}/5</SelectItem>)}</SelectContent></Select></div>
+            <div className="space-y-1"><Label>Responsável</Label><Select value={newResponsavel || 'automatico'} onValueChange={(value) => setNewResponsavel(value === 'automatico' ? '' : value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="automatico">Usuário atual</SelectItem>{responsaveis.map((person) => <SelectItem key={person.id} value={person.id}>{person.name || person.email}</SelectItem>)}</SelectContent></Select></div>
+            <div className="space-y-1 md:col-span-2"><Label>Observações / resumo da conversa com a IA</Label><Textarea value={newObservacoes} onChange={(event) => setNewObservacoes(event.target.value)} placeholder="Resumo para leitura do representante; o agente não deve prolongar a conversa após obter os dados necessários." rows={4} /></div>
+            <DialogFooter className="md:col-span-2"><Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button><Button type="submit" disabled={saving}>Criar lead</Button></DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
-      {/* New Deal Creation Modal */}
-      <Dialog open={createModalOpen} onOpenChange={setCreateModalOpen}>
-        <DialogContent className="max-w-lg rounded-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold text-[#1B4332]">
-              Nova Oportunidade de Venda
-            </DialogTitle>
-          </DialogHeader>
+      <Dialog open={Boolean(moveLead)} onOpenChange={(open) => !open && setMoveLead(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Motivo obrigatório para encerramento</DialogTitle></DialogHeader>
+          <p className="text-xs text-[#64748B]">Selecione o motivo antes de mover o lead para <strong>{moveLead && legacyStageLabels[moveLead.etapa]}</strong>.</p>
+          <Select value={selectedMotivo} onValueChange={setSelectedMotivo}><SelectTrigger><SelectValue placeholder="Selecione um motivo" /></SelectTrigger><SelectContent>{motivos.filter((m) => { const status = moveLead?.etapa === 'arquivado_nao_retorna' ? 'arquivado' : moveLead?.etapa === 'perdido_concorrencia' ? 'perdido' : 'convertido_pedido'; return (m as StatusMotivo & { status?: string }).status === status || !('status' in m) }).map((m) => <SelectItem key={m.codigo} value={m.codigo}>{m.codigo} · {m.descricao}</SelectItem>)}</SelectContent></Select>
+          <DialogFooter><Button variant="outline" onClick={() => setMoveLead(null)}>Cancelar</Button><Button disabled={!selectedMotivo || saving} onClick={() => moveLead && applyMove(moveLead.lead, moveLead.etapa, selectedMotivo)}>Confirmar movimento</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-          <form onSubmit={handleCreateDeal} className="space-y-4 pt-2 text-xs">
-            <div className="space-y-1.5">
-              <Label htmlFor="clienteSelect" className="font-semibold text-gray-700">
-                Cliente / Construtora / Usina *
-              </Label>
-              <Select value={newCliente} onValueChange={setNewCliente} required>
-                <SelectTrigger id="clienteSelect" className="h-10 rounded-xl text-xs">
-                  <SelectValue placeholder="Selecione o cliente" />
-                </SelectTrigger>
-                <SelectContent>
-                  {clientes.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.empresa ? `${c.empresa} (${c.nome})` : c.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="produtoSelect" className="font-semibold text-gray-700">
-                  Modelo do Misturador *
-                </Label>
-                <Select
-                  value={newProduto}
-                  onValueChange={(val) => setNewProduto(val as ProdutoModelo)}
-                >
-                  <SelectTrigger id="produtoSelect" className="h-10 rounded-xl text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="PROHMIX">PROHMIX (Compacto / Médio)</SelectItem>
-                    <SelectItem value="SUPERMIX">SUPERMIX (Pesado / Grande Porte)</SelectItem>
-                  </SelectContent>
-                </Select>
+      <Dialog open={Boolean(detailLead)} onOpenChange={(open) => !open && setDetailLead(null)}>
+        <DialogContent className="max-h-[92vh] max-w-4xl overflow-y-auto">
+          <DialogHeader><DialogTitle>Detalhe do lead {detailLead?.numero_lead || detailLead?.id}</DialogTitle></DialogHeader>
+          {detailLead && (
+            <div className="space-y-5 text-xs">
+              <div className="flex flex-wrap items-center gap-2"><StatusBadge variant={statusVariant(detailLead)} dot>{detailLead.status_lead === 'em_andamento' ? 'Em andamento' : detailLead.status_lead}</StatusBadge><Badge variant="outline">{legacyStageLabels[detailLead.etapa]}</Badge>{detailLead.status_motivo_codigo && <Badge variant="outline">{detailLead.status_motivo_codigo} · {detailLead.status_motivo_descricao}</Badge>}</div>
+              <div className="grid grid-cols-1 gap-4 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4 md:grid-cols-3">
+                <div><span className="label-detail">Data da solicitação</span><p className="font-semibold">{dateTime(detailLead.data_solicitacao || detailLead.created)}</p></div>
+                <div><span className="label-detail">Responsável</span><p className="font-semibold">{detailLead.expand?.vendedor?.name || detailLead.expand?.vendedor?.email || 'Não atribuído'}</p><p className="text-[#64748B]">{detailLead.responsavel_cargo || 'Representante comercial'}</p></div>
+                <div><span className="label-detail">Tempo na etapa</span><p className={cn('font-semibold', isOverdue(detailLead) && 'text-[#B45309]')}>{elapsedSince(detailLead.etapa_atual_desde)}{isOverdue(detailLead) ? ' · prazo vencido' : ''}</p></div>
               </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="valorInput" className="font-semibold text-gray-700">
-                  Valor Negociado (R$) *
-                </Label>
-                <Input
-                  id="valorInput"
-                  type="number"
-                  step="1000"
-                  value={newValor}
-                  onChange={(e) => setNewValor(e.target.value)}
-                  placeholder="350000"
-                  required
-                  className="h-10 rounded-xl text-xs"
-                />
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="rounded-xl border border-[#E2E8F0] p-4"><h3 className="mb-3 font-bold text-[#1E293B]">Cliente</h3><p className="font-semibold">{detailLead.expand?.cliente?.nome || '—'}</p><p>{detailLead.expand?.cliente?.telefone || 'Telefone não informado'}</p><p className="flex items-center gap-1 text-[#64748B]"><MapPin className="h-3.5 w-3.5" />{detailLead.expand?.cliente?.cidade || 'Localização não informada'}{detailLead.expand?.cliente?.estado ? ` - ${detailLead.expand.cliente.estado}` : ''}</p></div>
+                <div className="rounded-xl border border-[#E2E8F0] p-4"><h3 className="mb-3 font-bold text-[#1E293B]">Classificação</h3><p><strong>Categoria:</strong> {detailLead.categoria_produto || '—'}</p><p><strong>Origem:</strong> {detailLead.origem_lead || '—'}</p><p><strong>Interesse:</strong> {detailLead.nivel_interesse || 0}/5</p></div>
               </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="etapaSelect" className="font-semibold text-gray-700">
-                  Etapa Inicial
-                </Label>
-                <Select value={newEtapa} onValueChange={(val) => setNewEtapa(val as VendaEtapa)}>
-                  <SelectTrigger id="etapaSelect" className="h-10 rounded-xl text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="prospeccao">Prospecção</SelectItem>
-                    <SelectItem value="orcamento">Orçamento</SelectItem>
-                    <SelectItem value="negociacao">Negociação</SelectItem>
-                    <SelectItem value="fechamento">Fechamento</SelectItem>
-                    <SelectItem value="pecas_pos_vendas">Peças e Pós-vendas</SelectItem>
-                    <SelectItem value="financeiro_fiscal">Financeiro e Fiscal</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="rounded-xl border border-[#E2E8F0] p-4"><h3 className="mb-2 font-bold text-[#1E293B]">Observações / resumo da conversa com a IA</h3><p className="whitespace-pre-wrap text-[#475569]">{detailLead.observacoes_ia || 'Nenhum resumo registrado.'}</p></div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="rounded-xl border border-[#E2E8F0] p-4"><h3 className="mb-3 flex items-center gap-2 font-bold"><CheckCircle2 className="h-4 w-4 text-[#D92323]" /> Equipes e tarefas</h3><p className="mb-2"><strong>Equipe:</strong> {detailLead.equipe || 'Comercial Haramaq'}</p>{tasks.length ? tasks.map((task) => <div key={task.id} className="border-t py-2"><p className="font-semibold">{task.titulo}</p><p className="text-[#64748B]">{task.status} {task.prazo ? `· prazo ${formatDateBR(task.prazo)}` : ''}</p></div>) : <p className="text-[#94A3B8]">Nenhuma tarefa vinculada.</p>}</div>
+                <div className="rounded-xl border border-[#E2E8F0] p-4"><h3 className="mb-3 flex items-center gap-2 font-bold"><History className="h-4 w-4 text-[#D92323]" /> Histórico de etapas</h3>{history.length ? history.map((item) => <div key={item.id} className="border-t py-2"><p className="font-semibold">{item.etapa_anterior ? `${legacyStageLabels[item.etapa_anterior] || item.etapa_anterior} → ` : ''}{legacyStageLabels[item.etapa_nova] || item.etapa_nova}</p><p className="text-[#64748B]">{dateTime(item.data_hora)} · {item.motivo_descricao || item.responsavel || 'Sistema'}</p></div>) : <p className="text-[#94A3B8]">Histórico ainda não registrado.</p>}</div>
               </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="probInput" className="font-semibold text-gray-700">
-                  Probabilidade (%)
-                </Label>
-                <Input
-                  id="probInput"
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={newProbabilidade}
-                  onChange={(e) => setNewProbabilidade(Number(e.target.value))}
-                  className="h-10 rounded-xl text-xs"
-                />
-              </div>
+              <div className="rounded-xl border border-[#E2E8F0] p-4"><h3 className="mb-3 font-bold">Mover lead</h3><div className="flex flex-wrap gap-2">{ETAPAS.filter((stage) => stage.key !== detailLead.etapa).map((stage) => <Button key={stage.key} variant="outline" size="sm" onClick={() => requestMove(detailLead, stage.key)}>{stage.label}</Button>)}</div></div>
             </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="dataPrevista" className="font-semibold text-gray-700">
-                Previsão de Fechamento
-              </Label>
-              <Input
-                id="dataPrevista"
-                type="date"
-                value={newDataFechamento}
-                onChange={(e) => setNewDataFechamento(e.target.value)}
-                className="h-10 rounded-xl text-xs"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="proximaAcao" className="font-semibold text-gray-700">
-                Próxima Ação
-              </Label>
-              <Input
-                id="proximaAcao"
-                value={newProximaAcao}
-                onChange={(e) => setNewProximaAcao(e.target.value)}
-                placeholder="Ex: Enviar proposta comercial técnica com prazo de garantia..."
-                className="h-10 rounded-xl text-xs"
-              />
-            </div>
-
-            <DialogFooter className="pt-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setCreateModalOpen(false)}
-                className="rounded-xl text-xs"
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                className="bg-[#DC2626] hover:bg-[#b91c1c] text-white rounded-xl text-xs font-semibold px-5"
-              >
-                {isSubmitting ? 'Salvando...' : 'Salvar Negócio'}
-              </Button>
-            </DialogFooter>
-          </form>
+          )}
         </DialogContent>
       </Dialog>
     </PageContainer>

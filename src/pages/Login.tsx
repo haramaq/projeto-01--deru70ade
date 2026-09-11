@@ -52,7 +52,8 @@ export default function Login() {
         <div className="relative z-10">
           <HaramaqLogo module="CRM" size="lg" inverted={true} />
           <p className="text-xs uppercase tracking-widest text-white/80 font-semibold mt-2">
-            Vagões Misturadores de Concreto &bull; PROHMIX &amp; SUPERMIX
+            Vagões Misturadores para alimentação de bovinos &bull; PROHMIX, SUPERMIX, TIPPER e
+            RODOVIÁRIOS
           </p>
         </div>
 

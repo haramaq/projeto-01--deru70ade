@@ -108,10 +108,41 @@ export default function Dashboard() {
   // Funnel calculations
   const funnelStages = useMemo(() => {
     const stages = [
-      { key: 'prospeccao', label: 'Prospecção', color: '#2563EB', variant: 'em_andamento' },
-      { key: 'orcamento', label: 'Orçamento', color: '#0284C7', variant: 'info' },
-      { key: 'negociacao', label: 'Negociação', color: '#F59E0B', variant: 'em_espera' },
-      { key: 'fechamento', label: 'Fechamento', color: '#DC2626', variant: 'gargalo' },
+      {
+        key: 'agendamento_primeiro_contato',
+        label: 'Agendamento de 1º contato',
+        color: '#2563EB',
+        variant: 'em_andamento',
+      },
+      { key: 'em_contato', label: 'Em contato', color: '#0284C7', variant: 'info' },
+      { key: 'revenda_contato', label: 'Revenda Contato', color: '#7C3AED', variant: 'info' },
+      { key: 'orcamentacao', label: 'Orçamentação', color: '#F59E0B', variant: 'em_espera' },
+      {
+        key: 'contato_futuro_agendado',
+        label: 'Contato futuro (Agendado)',
+        color: '#64748B',
+        variant: 'em_espera',
+      },
+      {
+        key: 'arquivado_nao_retorna',
+        label: 'Arquivado (não retorna)',
+        color: '#94A3B8',
+        variant: 'em_espera',
+      },
+      {
+        key: 'perdido_concorrencia',
+        label: 'Perdido (comprou da concorrência)',
+        color: '#E11D48',
+        variant: 'gargalo',
+      },
+      {
+        key: 'convertido_pedido',
+        label: 'Convertido para pedido',
+        color: '#16A34A',
+        variant: 'concluidas',
+      },
+      { key: 'pecas_pos_vendas', label: 'Peças e Pós-vendas', color: '#9333EA', variant: 'info' },
+      { key: 'financeiro_fiscal', label: 'Financeiro e Fiscal', color: '#0369A1', variant: 'info' },
     ]
 
     return stages.map((st, idx) => {
@@ -141,7 +172,7 @@ export default function Dashboard() {
     )
   }
 
-  const canCreate = role === 'admin' || role === 'vendedor'
+  const canCreate = ['admin', 'gestor', 'triagem', 'vendedor', 'revendedor'].includes(role)
 
   return (
     <PageContainer>
@@ -160,15 +191,15 @@ export default function Dashboard() {
                 <TrendingUp className="w-5 h-5" />
               </span>
               <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white uppercase">
-                Painel Geral de Vendas e Operações
+                Painel Geral de Leads e Operações
               </h1>
               <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-white/10 text-white border border-white/20">
                 HARAMAQ PRO
               </span>
             </div>
             <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
-              Monitoramento em tempo real do pipeline de vagões misturadores, rede de revendas
-              autorizadas e atendimentos de pós-venda.
+              Monitoramento em tempo real dos leads de produtores rurais, revendas e representantes,
+              com foco em eficiência no manejo alimentar do rebanho.
             </p>
           </div>
 
@@ -180,7 +211,7 @@ export default function Dashboard() {
                 icon={<PlusCircle className="w-4 h-4" />}
                 onClick={() => navigate('/vendas?nova=true')}
               >
-                Nova Venda
+                Novo Lead
               </HaramaqButton>
               <button
                 type="button"
@@ -282,7 +313,7 @@ export default function Dashboard() {
           title={
             <div className="flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-[#D92323]" />
-              <span>Funil de Vendas &mdash; Vagões Misturadores (PROHMIX / SUPERMIX)</span>
+              <span>Fluxo de Leads &mdash; Equipamentos para alimentação de bovinos</span>
             </div>
           }
           subtitle="Volume financeiro e oportunidades ativas por etapa do pipeline"
@@ -295,7 +326,7 @@ export default function Dashboard() {
             </Link>
           }
         >
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 mb-5">
             {funnelStages.map((stage, idx) => {
               const prevStage = idx > 0 ? funnelStages[idx - 1] : null
               const convRate =
@@ -321,7 +352,7 @@ export default function Dashboard() {
                   <div className="my-1.5">
                     <div className="text-xl font-black text-[#1E293B] tabular-nums">
                       {stage.count}{' '}
-                      <span className="text-xs font-medium text-[#64748B]">negócios</span>
+                      <span className="text-xs font-medium text-[#64748B]">leads</span>
                     </div>
                     <div className="text-xs font-bold text-[#334155] mt-0.5">
                       {formatCurrencyBRL(stage.total)}
@@ -350,7 +381,7 @@ export default function Dashboard() {
             <div className="flex justify-between text-xs text-[#64748B] font-medium">
               <span>Distribuição do Volume no Pipeline</span>
               <span>
-                Total em Negociação:{' '}
+                Total no fluxo:{' '}
                 <strong className="text-[#1E293B]">
                   {formatCurrencyBRL(vendas.reduce((acc, v) => acc + (v.valor || 0), 0))}
                 </strong>
@@ -368,7 +399,7 @@ export default function Dashboard() {
                       width: `${pct}%`,
                       backgroundColor: stage.color,
                     }}
-                    title={`${stage.label}: ${stage.count} propostas (${formatCurrencyBRL(stage.total)})`}
+                    title={`${stage.label}: ${stage.count} leads (${formatCurrencyBRL(stage.total)})`}
                     className="h-full rounded-full transition-all"
                   />
                 )
@@ -385,7 +416,7 @@ export default function Dashboard() {
         {/* Recent Clientes */}
         <HaramaqCard
           title="Clientes Recentes"
-          subtitle="Últimos cadastros de usinas e construtoras"
+          subtitle="Últimos cadastros de produtores, revendas e representantes"
           headerActions={
             <Link
               to="/clientes"

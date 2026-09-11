@@ -42,11 +42,13 @@ const App = () => (
             {/* Dashboard / - accessible by admin, vendedor, suporte */}
             <Route index element={<Dashboard />} />
 
-            {/* Vendas - admin & vendedor */}
+            {/* Leads/Kanban - perfis operacionais */}
             <Route
               path="vendas"
               element={
-                <ProtectedRoute allowedRoles={['admin', 'vendedor']}>
+                <ProtectedRoute
+                  allowedRoles={['admin', 'gestor', 'triagem', 'vendedor', 'revendedor', 'suporte']}
+                >
                   <Vendas />
                 </ProtectedRoute>
               }

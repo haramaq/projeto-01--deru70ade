@@ -126,7 +126,7 @@ export default function ClienteDetalhe() {
             className="bg-[#D92323] hover:bg-[#B91C1C] text-white font-semibold rounded-lg gap-2 shadow-xs transition-colors self-start sm:self-auto h-9 text-xs"
           >
             <PlusCircle className="w-4 h-4" />
-            Nova Venda para este Cliente
+            Novo Lead para este Cliente{' '}
           </Button>
         )}
       </div>
@@ -209,7 +209,7 @@ export default function ClienteDetalhe() {
               <div>
                 <CardTitle className="text-sm font-bold text-[#1E293B] flex items-center gap-2">
                   <TrendingUp className="w-4 h-4 text-[#D92323]" />
-                  Oportunidades de Venda ({vendas.length})
+                  Leads deste Cliente ({vendas.length})
                 </CardTitle>
                 <p className="text-xs text-[#64748B] mt-0.5">
                   Volume total negociado:{' '}
@@ -226,7 +226,9 @@ export default function ClienteDetalhe() {
                   >
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-xs text-gray-900">Linha {v.produto}</span>
+                        <span className="font-bold text-xs text-gray-900">
+                          {v.categoria_produto || 'Categoria não informada'}
+                        </span>
                         <Badge
                           variant="outline"
                           className={
@@ -263,7 +265,7 @@ export default function ClienteDetalhe() {
 
                 {vendas.length === 0 && (
                   <div className="py-8 text-center text-xs text-gray-400">
-                    Nenhuma venda vinculada a este cliente até o momento.
+                    Nenhum lead vinculado a este cliente até o momento.
                   </div>
                 )}
               </div>
