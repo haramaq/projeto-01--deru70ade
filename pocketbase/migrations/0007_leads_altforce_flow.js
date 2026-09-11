@@ -221,7 +221,10 @@ migrate(
         historyRecord.set('lead_id', record.id)
         historyRecord.set('etapa_nova', record.get('etapa'))
         historyRecord.set('responsavel', record.get('vendedor') || '')
-        historyRecord.set('data_hora', record.get('etapa_atual_desde') || record.get('created'))
+        historyRecord.set(
+          'data_hora',
+          record.get('etapa_atual_desde') || record.get('created') || new Date().toISOString(),
+        )
         app.save(historyRecord)
       }
     }
