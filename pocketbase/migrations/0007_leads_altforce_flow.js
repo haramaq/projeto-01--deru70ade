@@ -207,6 +207,7 @@ migrate(
           { name: 'data_hora', type: 'date', required: true },
           { name: 'observacao', type: 'text' },
           { name: 'created', type: 'autodate', onCreate: true, onUpdate: false },
+          { name: 'updated', type: 'autodate', onCreate: true, onUpdate: true },
         ],
         indexes: [
           'CREATE INDEX idx_lead_historico_lead ON lead_historico (lead_id)',
@@ -258,6 +259,7 @@ migrate(
           { name: 'prazo', type: 'date' },
           { name: 'observacoes', type: 'text' },
           { name: 'created', type: 'autodate', onCreate: true, onUpdate: false },
+          { name: 'updated', type: 'autodate', onCreate: true, onUpdate: true },
         ],
         indexes: ['CREATE INDEX idx_lead_tarefas_lead ON lead_tarefas (lead_id)'],
       })
@@ -284,6 +286,8 @@ migrate(
           { name: 'ordem', type: 'number', required: true },
           { name: 'altforce_reason_code', type: 'text' },
           { name: 'altforce_reason_name', type: 'text' },
+          { name: 'created', type: 'autodate', onCreate: true, onUpdate: false },
+          { name: 'updated', type: 'autodate', onCreate: true, onUpdate: true },
         ],
         indexes: ['CREATE UNIQUE INDEX idx_lead_motivos_codigo ON lead_motivos_status (codigo)'],
       })

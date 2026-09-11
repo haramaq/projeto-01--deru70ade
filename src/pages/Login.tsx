@@ -60,57 +60,23 @@ export default function Login() {
         {/* Center Illustration & Silhouette */}
         <div className="relative z-10 flex flex-col items-center justify-center my-auto py-8">
           <div className="w-full max-w-md bg-white/10 p-8 rounded-2xl border border-white/20 backdrop-blur-xs shadow-2xl">
-            {/* Geometric Concrete Mixer Silhouette SVG */}
-            <svg
-              className="w-full h-44 text-white drop-shadow mb-6"
-              viewBox="0 0 400 200"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              {/* Chassis / Truck Base */}
-              <path
-                d="M30 150 L370 150 L360 115 L280 115 L260 85 L180 85 L160 150 Z"
-                fill="#FFFFFF"
-                opacity="0.85"
-              />
-              {/* Mixer Drum */}
-              <path d="M70 145 L130 65 L270 75 L220 145 Z" fill="#FFFFFF" opacity="0.95" />
-              <path d="M130 65 L270 75 L215 110 L95 110 Z" fill="#991B1B" opacity="0.8" />
-              {/* Spiral Stripe across drum */}
-              <path
-                d="M100 135 Q170 100 240 73"
-                stroke="#D92323"
-                strokeWidth="6"
-                strokeLinecap="round"
-                opacity="0.9"
-              />
-              <path
-                d="M135 145 Q195 110 260 80"
-                stroke="#D92323"
-                strokeWidth="4"
-                strokeLinecap="round"
-                opacity="0.7"
-              />
-              {/* Discharge Chute */}
-              <path d="M50 110 L30 140 L45 145 L65 118 Z" fill="#FFFFFF" />
-              {/* Wheels */}
-              <circle cx="80" cy="155" r="22" fill="#1E293B" stroke="#FFFFFF" strokeWidth="4" />
-              <circle cx="80" cy="155" r="8" fill="#F1F3F5" />
-              <circle cx="135" cy="155" r="22" fill="#1E293B" stroke="#FFFFFF" strokeWidth="4" />
-              <circle cx="135" cy="155" r="8" fill="#F1F3F5" />
-              <circle cx="310" cy="155" r="22" fill="#1E293B" stroke="#FFFFFF" strokeWidth="4" />
-              <circle cx="310" cy="155" r="8" fill="#F1F3F5" />
-              {/* Cab / Windshield */}
-              <polygon points="280,115 320,115 340,135 280,135" fill="#FEE2E2" opacity="0.85" />
-            </svg>
+            <div className="mb-6 flex h-44 items-center justify-center">
+              <div className="relative flex h-36 w-64 items-end justify-center rounded-[42%] border-4 border-white/80 bg-white/10 px-8 pb-4 shadow-inner">
+                <div className="absolute -top-6 left-8 h-16 w-16 rounded-full border-4 border-white/80 bg-[#D92323]" />
+                <div className="absolute -top-3 right-10 h-12 w-12 rounded-full border-4 border-white/80 bg-[#D92323]" />
+                <div className="absolute bottom-2 left-5 h-7 w-7 rounded-full bg-[#1E293B] ring-2 ring-white" />
+                <div className="absolute bottom-2 right-5 h-7 w-7 rounded-full bg-[#1E293B] ring-2 ring-white" />
+                <div className="h-16 w-40 rounded-t-[50%] border-4 border-white/80 bg-[#FEE2E2]" />
+              </div>
+            </div>
 
             <blockquote className="text-center">
-              <p className="text-lg font-bold text-white tracking-tight">
-                "Equipamentos que constroem o Brasil"
+              <p className="text-lg font-bold tracking-tight text-white">
+                "Eficiência que alimenta resultados"
               </p>
-              <p className="text-xs text-white/80 mt-2 leading-relaxed">
-                Linhas PROHMIX e SUPERMIX &mdash; Máxima robustez, durabilidade e produtividade para
-                a usinagem e transporte de concreto.
+              <p className="mt-2 text-xs leading-relaxed text-white/80">
+                Tecnologia para otimizar o manejo alimentar de bovinos de corte e leite, com
+                robustez, produtividade e eficiência no campo.
               </p>
             </blockquote>
           </div>
