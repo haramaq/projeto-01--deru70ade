@@ -257,7 +257,6 @@ export default function Vendas() {
   const requestMove = (lead: Venda, etapa: LeadEtapa) => {
     if (lead.etapa === etapa) return
     if (TERMINAIS.includes(etapa)) {
-      setDetailLead(null)
       setMoveLead({ lead, etapa })
       setSelectedMotivo('')
       return
