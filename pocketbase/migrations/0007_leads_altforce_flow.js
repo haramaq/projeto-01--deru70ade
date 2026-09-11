@@ -204,7 +204,7 @@ migrate(
           { name: 'motivo_codigo', type: 'text' },
           { name: 'motivo_descricao', type: 'text' },
           { name: 'responsavel', type: 'text' },
-          { name: 'data_hora', type: 'date', required: true },
+          { name: 'data_hora', type: 'date', required: false },
           { name: 'observacao', type: 'text' },
           { name: 'created', type: 'autodate', onCreate: true, onUpdate: false },
           { name: 'updated', type: 'autodate', onCreate: true, onUpdate: true },
