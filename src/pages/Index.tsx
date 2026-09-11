@@ -11,15 +11,24 @@ import {
   ChevronRight,
   Clock,
   ShieldCheck,
+  CheckCircle,
+  HelpCircle,
+  SlidersHorizontal,
 } from 'lucide-react'
 import { clienteService, revendaService, vendaService, ticketService } from '@/services/crmService'
 import type { Cliente, Revenda, Venda, Ticket } from '@/types/crm'
 import { formatCurrencyBRL, formatDateBR } from '@/lib/formatters'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import useRealtime from '@/hooks/use-realtime'
 import { useAuth } from '@/contexts/AuthContext'
+import {
+  PageContainer,
+  PageHeader,
+  MetricCard,
+  StatusBadge,
+  HaramaqCard,
+  HaramaqButton,
+  HaramaqDataTable,
+} from '@/components/haramaq'
 
 export default function Dashboard() {
   const { role } = useAuth()
@@ -30,6 +39,9 @@ export default function Dashboard() {
   const [vendas, setVendas] = useState<Venda[]>([])
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [loading, setLoading] = useState(true)
+  const [periodoFiltro, setPeriodoFiltro] = useState<'30dias' | '7dias' | 'esteMes' | 'todos'>(
+    '30dias',
+  )
 
   const loadData = async () => {
     try {
@@ -75,7 +87,6 @@ export default function Dashboard() {
   })
 
   // Calculations
-  // 1. Vendas no Mês (ganho ou fechamento)
   const stats = useMemo(() => {
     const fechamentoVendas = vendas.filter((v) => v.etapa === 'fechamento')
     const totalVendasMes = fechamentoVendas.reduce((acc, curr) => acc + (curr.valor || 0), 0)
@@ -83,22 +94,24 @@ export default function Dashboard() {
     const clientesAtivos = clientes.filter((c) => c.status === 'ativo').length
     const revendasAutorizadas = revendas.filter((r) => r.status === 'autorizada').length
     const ticketsAbertos = tickets.filter((t) => t.status === 'aberto').length
+    const ticketsFinalizados = tickets.filter((t) => t.status === 'finalizado').length
 
     return {
       totalVendasMes,
       clientesAtivos,
       revendasAutorizadas,
       ticketsAbertos,
+      ticketsFinalizados,
     }
   }, [vendas, clientes, revendas, tickets])
 
   // Funnel calculations
   const funnelStages = useMemo(() => {
     const stages = [
-      { key: 'prospeccao', label: 'Prospecção', color: '#40916C', bg: 'bg-[#40916C]' },
-      { key: 'orcamento', label: 'Orçamento', color: '#2D6A4F', bg: 'bg-[#2D6A4F]' },
-      { key: 'negociacao', label: 'Negociação', color: '#F59E0B', bg: 'bg-[#F59E0B]' },
-      { key: 'fechamento', label: 'Fechamento', color: '#DC2626', bg: 'bg-[#DC2626]' },
+      { key: 'prospeccao', label: 'Prospecção', color: '#2563EB', variant: 'em_andamento' },
+      { key: 'orcamento', label: 'Orçamento', color: '#0284C7', variant: 'info' },
+      { key: 'negociacao', label: 'Negociação', color: '#F59E0B', variant: 'em_espera' },
+      { key: 'fechamento', label: 'Fechamento', color: '#DC2626', variant: 'gargalo' },
     ]
 
     return stages.map((st, idx) => {
@@ -121,8 +134,8 @@ export default function Dashboard() {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <div className="flex flex-col items-center gap-2">
-          <div className="w-8 h-8 border-4 border-[#1B4332] border-t-transparent rounded-full animate-spin" />
-          <p className="text-xs text-gray-500">Carregando indicadores...</p>
+          <div className="w-8 h-8 border-3 border-[#D92323] border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-[#64748B]">Carregando painel operacional Haramaq...</p>
         </div>
       </div>
     )
@@ -131,146 +144,158 @@ export default function Dashboard() {
   const canCreate = role === 'admin' || role === 'vendedor'
 
   return (
-    <div className="space-y-6">
-      {/* Welcome banner & summary */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-[#1B4332] tracking-tight">
-            Painel Executivo Haramaq
-          </h1>
-          <p className="text-sm text-gray-500">
-            Visão consolidada do pipeline de vendas, rede de revendas e suporte técnico.
-          </p>
-        </div>
+    <PageContainer>
+      {/*
+        Hero Banner in the reference style:
+        Dark textured banner (or contextual header) with module title, description and quick filter buttons
+      */}
+      <div className="bg-[#1E293B] text-white rounded-2xl p-5 sm:p-6 mb-6 shadow-sm border border-slate-700/60 relative overflow-hidden">
+        {/* Subtle decorative glow */}
+        <div className="absolute top-0 right-0 w-80 h-80 bg-[#D92323]/10 rounded-full blur-3xl pointer-events-none" />
 
-        {canCreate && (
-          <div className="flex items-center gap-3">
-            <Button
-              onClick={() => navigate('/vendas?nova=true')}
-              className="bg-[#DC2626] hover:bg-[#b91c1c] text-white font-semibold rounded-xl gap-2 shadow-sm transition-transform hover:scale-[1.02]"
-            >
-              <PlusCircle className="w-4 h-4" />
-              Nova Venda
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => navigate('/clientes?novo=true')}
-              className="border-[#1B4332] text-[#1B4332] hover:bg-[#1B4332]/10 font-semibold rounded-xl gap-2"
-            >
-              <Users className="w-4 h-4" />
-              Novo Cliente
-            </Button>
-          </div>
-        )}
-      </div>
-
-      {/* 4 Statistics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
-        {/* Card 1: Vendas no Mês */}
-        <Card className="rounded-[16px] border border-[#E5E7EB] shadow-xs hover:translate-y-[-2px] transition-all duration-200">
-          <CardContent className="p-5 flex items-center justify-between">
-            <div className="space-y-1">
-              <span className="text-xs uppercase font-medium tracking-wider text-gray-500">
-                Vendas no Mês
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <span className="p-2 bg-[#D92323] rounded-lg text-white shadow-xs">
+                <TrendingUp className="w-5 h-5" />
               </span>
-              <p className="text-2xl font-bold text-gray-900 tabular-nums">
-                {formatCurrencyBRL(stats.totalVendasMes)}
-              </p>
-              <div className="flex items-center gap-1 text-xs font-semibold text-emerald-600">
-                <ArrowUpRight className="w-3.5 h-3.5" />
-                <span>+14,2% vs. mês anterior</span>
-              </div>
-            </div>
-            <div className="w-12 h-12 rounded-2xl bg-emerald-100/60 flex items-center justify-center text-[#1B4332]">
-              <DollarSign className="w-6 h-6" />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Card 2: Clientes Ativos */}
-        <Card className="rounded-[16px] border border-[#E5E7EB] shadow-xs hover:translate-y-[-2px] transition-all duration-200">
-          <CardContent className="p-5 flex items-center justify-between">
-            <div className="space-y-1">
-              <span className="text-xs uppercase font-medium tracking-wider text-gray-500">
-                Clientes Ativos
+              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white uppercase">
+                Painel Geral de Vendas e Operações
+              </h1>
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-white/10 text-white border border-white/20">
+                HARAMAQ PRO
               </span>
-              <p className="text-2xl font-bold text-gray-900 tabular-nums">
-                {stats.clientesAtivos}
-              </p>
-              <div className="flex items-center gap-1 text-xs text-gray-500">
-                <span>{clientes.length} cadastrados no total</span>
-              </div>
             </div>
-            <div className="w-12 h-12 rounded-2xl bg-[#40916C]/15 flex items-center justify-center text-[#2D6A4F]">
-              <Users className="w-6 h-6" />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Card 3: Revendas Autorizadas */}
-        <Card className="rounded-[16px] border border-[#E5E7EB] shadow-xs hover:translate-y-[-2px] transition-all duration-200">
-          <CardContent className="p-5 flex items-center justify-between">
-            <div className="space-y-1">
-              <span className="text-xs uppercase font-medium tracking-wider text-gray-500">
-                Revendas Autorizadas
-              </span>
-              <p className="text-2xl font-bold text-gray-900 tabular-nums">
-                {stats.revendasAutorizadas}
-              </p>
-              <div className="flex items-center gap-1 text-xs text-emerald-700">
-                <ShieldCheck className="w-3.5 h-3.5" />
-                <span>Rede credenciada ativa</span>
-              </div>
-            </div>
-            <div className="w-12 h-12 rounded-2xl bg-[#2D6A4F]/15 flex items-center justify-center text-[#1B4332]">
-              <Building2 className="w-6 h-6" />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Card 4: Tickets em Aberto */}
-        <Card className="rounded-[16px] border border-[#E5E7EB] shadow-xs hover:translate-y-[-2px] transition-all duration-200">
-          <CardContent className="p-5 flex items-center justify-between">
-            <div className="space-y-1">
-              <span className="text-xs uppercase font-medium tracking-wider text-gray-500">
-                Tickets em Aberto
-              </span>
-              <p className="text-2xl font-bold text-[#DC2626] tabular-nums">
-                {stats.ticketsAbertos}
-              </p>
-              <div className="flex items-center gap-1 text-xs text-red-600 font-medium">
-                <Clock className="w-3.5 h-3.5" />
-                <span>Aguardando atendimento</span>
-              </div>
-            </div>
-            <div className="w-12 h-12 rounded-2xl bg-red-100 flex items-center justify-center text-[#DC2626]">
-              <AlertTriangle className="w-6 h-6" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Sales Funnel Chart Section */}
-      <Card className="rounded-[16px] border border-[#E5E7EB] shadow-xs overflow-hidden">
-        <CardHeader className="border-b border-gray-100 pb-4 bg-white flex flex-row items-center justify-between">
-          <div>
-            <CardTitle className="text-base font-bold text-[#1B4332] flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-[#40916C]" />
-              Funil de Vendas de Misturadores (PROHMIX / SUPERMIX)
-            </CardTitle>
-            <p className="text-xs text-gray-500 mt-0.5">
-              Volume financeiro e conversão por etapa do ciclo de vendas
+            <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
+              Monitoramento em tempo real do pipeline de vagões misturadores, rede de revendas
+              autorizadas e atendimentos de pós-venda.
             </p>
           </div>
-          <Link
-            to="/vendas"
-            className="text-xs font-semibold text-[#1B4332] hover:text-[#2D6A4F] flex items-center gap-1"
-          >
-            Ver Kanban completo <ChevronRight className="w-3.5 h-3.5" />
-          </Link>
-        </CardHeader>
-        <CardContent className="p-6 bg-white space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+
+          {canCreate && (
+            <div className="flex items-center gap-2.5 flex-wrap shrink-0">
+              <HaramaqButton
+                variant="danger"
+                size="md"
+                icon={<PlusCircle className="w-4 h-4" />}
+                onClick={() => navigate('/vendas?nova=true')}
+              >
+                Nova Venda
+              </HaramaqButton>
+              <button
+                type="button"
+                onClick={() => navigate('/clientes?novo=true')}
+                className="inline-flex items-center gap-2 px-3.5 h-9 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/20 text-white border border-white/20 transition-colors"
+              >
+                <Users className="w-4 h-4" />
+                <span>Novo Cliente</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Period Filter bar matching reference */}
+        <div className="mt-5 pt-4 border-t border-slate-700/80 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2 text-slate-300 font-semibold uppercase tracking-wider text-[11px]">
+            <SlidersHorizontal className="w-3.5 h-3.5 text-[#D92323]" />
+            <span>Filtrar Período:</span>
+          </div>
+
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {[
+              { id: '7dias', label: 'Últimos 7 dias' },
+              { id: '30dias', label: 'Últimos 30 dias' },
+              { id: 'esteMes', label: 'Este mês' },
+              { id: 'todos', label: 'Todo o Histórico' },
+            ].map((p) => {
+              const isActive = periodoFiltro === p.id
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setPeriodoFiltro(p.id as typeof periodoFiltro)}
+                  className={`px-3 py-1 rounded-md text-xs font-semibold transition-all ${
+                    isActive
+                      ? 'bg-[#D92323] text-white shadow-xs font-bold'
+                      : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/*
+        KPI ROW (Matches Haramaq reference inspection cards):
+        EM ANDAMENTO | CONCLUÍDAS | EM GARGALO | EM ESPERA | PENDÊNCIAS
+      */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4 mb-6">
+        <MetricCard
+          label="Vendas no Mês"
+          value={formatCurrencyBRL(stats.totalVendasMes)}
+          description="Faturamento consolidado em fechamento"
+          variant="concluidas"
+          icon={<DollarSign className="w-5 h-5 text-emerald-600" />}
+          badge={
+            <span className="flex items-center gap-0.5 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+              <ArrowUpRight className="w-3 h-3" /> +14.2%
+            </span>
+          }
+        />
+
+        <MetricCard
+          label="Clientes Ativos"
+          value={stats.clientesAtivos}
+          unit="cadastrados"
+          description={`${clientes.length} contatos registrados no sistema`}
+          variant="em_andamento"
+          icon={<Users className="w-5 h-5 text-blue-600" />}
+        />
+
+        <MetricCard
+          label="Revendas Autorizadas"
+          value={stats.revendasAutorizadas}
+          unit="ativas"
+          description="Rede credenciada em operação"
+          variant="em_espera"
+          icon={<Building2 className="w-5 h-5 text-amber-600" />}
+        />
+
+        <MetricCard
+          label="Tickets em Aberto"
+          value={stats.ticketsAbertos}
+          unit="chamados"
+          description="Aguardando atendimento técnico"
+          variant="gargalo"
+          icon={<AlertTriangle className="w-5 h-5 text-red-600" />}
+        />
+      </div>
+
+      {/*
+        Funnel Pipeline Operational Section
+      */}
+      <div className="mb-6">
+        <HaramaqCard
+          title={
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-[#D92323]" />
+              <span>Funil de Vendas &mdash; Vagões Misturadores (PROHMIX / SUPERMIX)</span>
+            </div>
+          }
+          subtitle="Volume financeiro e oportunidades ativas por etapa do pipeline"
+          headerActions={
+            <Link
+              to="/vendas"
+              className="text-xs font-semibold text-[#D92323] hover:text-[#B91C1C] flex items-center gap-1"
+            >
+              Ver Kanban completo <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          }
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-5">
             {funnelStages.map((stage, idx) => {
               const prevStage = idx > 0 ? funnelStages[idx - 1] : null
               const convRate =
@@ -281,40 +306,36 @@ export default function Dashboard() {
               return (
                 <div
                   key={stage.key}
-                  className="p-4 rounded-xl border border-gray-100 bg-[#F8FAF9] flex flex-col justify-between relative overflow-hidden"
+                  className="p-4 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] flex flex-col justify-between relative overflow-hidden"
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold uppercase tracking-wider text-gray-600">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-[#475569]">
                       {stage.label}
                     </span>
                     <span
-                      className="w-3 h-3 rounded-full"
+                      className="w-2.5 h-2.5 rounded-full"
                       style={{ backgroundColor: stage.color }}
                     />
                   </div>
 
-                  <div className="my-2">
-                    <div className="text-xl font-black text-gray-900 tabular-nums">
+                  <div className="my-1.5">
+                    <div className="text-xl font-black text-[#1E293B] tabular-nums">
                       {stage.count}{' '}
-                      <span className="text-xs font-medium text-gray-500">negócios</span>
+                      <span className="text-xs font-medium text-[#64748B]">negócios</span>
                     </div>
-                    <div className="text-xs font-semibold text-gray-700 mt-0.5">
+                    <div className="text-xs font-bold text-[#334155] mt-0.5">
                       {formatCurrencyBRL(stage.total)}
                     </div>
                   </div>
 
-                  {convRate !== null ? (
-                    <div className="text-[11px] text-gray-500 pt-2 border-t border-gray-200/60 flex items-center justify-between">
-                      <span>Conversão anterior:</span>
-                      <span className="font-bold text-gray-700">{convRate}%</span>
-                    </div>
-                  ) : (
-                    <div className="text-[11px] text-gray-400 pt-2 border-t border-gray-200/60">
-                      Início do pipeline
-                    </div>
-                  )}
+                  <div className="pt-2 border-t border-[#E2E8F0] text-[11px] text-[#64748B] flex items-center justify-between mt-1">
+                    <span>{convRate !== null ? 'Conversão:' : 'Início:'}</span>
+                    <span className="font-bold text-[#1E293B]">
+                      {convRate !== null ? `${convRate}%` : 'Entrada'}
+                    </span>
+                  </div>
 
-                  {/* Visual colored bottom stripe */}
+                  {/* Accent stripe */}
                   <div
                     className="absolute bottom-0 left-0 right-0 h-1"
                     style={{ backgroundColor: stage.color }}
@@ -324,18 +345,18 @@ export default function Dashboard() {
             })}
           </div>
 
-          {/* Combined Visual Funnel Progress Bar */}
-          <div className="space-y-1.5 pt-2">
-            <div className="flex justify-between text-xs text-gray-500 font-medium">
-              <span>Distribuição do Pipeline</span>
+          {/* Progress bar visual distribution */}
+          <div className="space-y-1.5 pt-1">
+            <div className="flex justify-between text-xs text-[#64748B] font-medium">
+              <span>Distribuição do Volume no Pipeline</span>
               <span>
-                Total no Pipeline:{' '}
-                <strong className="text-gray-900">
+                Total em Negociação:{' '}
+                <strong className="text-[#1E293B]">
                   {formatCurrencyBRL(vendas.reduce((acc, v) => acc + (v.valor || 0), 0))}
                 </strong>
               </span>
             </div>
-            <div className="h-4 w-full bg-gray-100 rounded-full flex overflow-hidden p-0.5 gap-0.5">
+            <div className="h-3 w-full bg-[#E2E8F0] rounded-full flex overflow-hidden p-0.5 gap-0.5">
               {funnelStages.map((stage) => {
                 const totalDeals = vendas.length || 1
                 const pct = (stage.count / totalDeals) * 100
@@ -347,148 +368,145 @@ export default function Dashboard() {
                       width: `${pct}%`,
                       backgroundColor: stage.color,
                     }}
-                    title={`${stage.label}: ${stage.count} negócios (${formatCurrencyBRL(stage.total)})`}
+                    title={`${stage.label}: ${stage.count} propostas (${formatCurrencyBRL(stage.total)})`}
                     className="h-full rounded-full transition-all"
                   />
                 )
               })}
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </HaramaqCard>
+      </div>
 
-      {/* Grid: Recent Customers & Recent Support Tickets */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Customers */}
-        <Card className="rounded-[16px] border border-[#E5E7EB] shadow-xs">
-          <CardHeader className="border-b border-gray-100 pb-3 flex flex-row items-center justify-between">
-            <CardTitle className="text-base font-bold text-[#1B4332]">Clientes Recentes</CardTitle>
+      {/*
+        Two Columns Grid: Recent Clientes & Recent Support Tickets
+      */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* Recent Clientes */}
+        <HaramaqCard
+          title="Clientes Recentes"
+          subtitle="Últimos cadastros de usinas e construtoras"
+          headerActions={
             <Link
               to="/clientes"
-              className="text-xs font-semibold text-[#1B4332] hover:text-[#2D6A4F] flex items-center gap-1"
+              className="text-xs font-semibold text-[#D92323] hover:text-[#B91C1C] flex items-center gap-1"
             >
               Ver todos <ChevronRight className="w-3.5 h-3.5" />
             </Link>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-gray-50/80 border-b border-gray-100 text-gray-500 uppercase tracking-wider font-semibold">
-                  <tr>
-                    <th className="py-2.5 px-4">Nome / Empresa</th>
-                    <th className="py-2.5 px-4">Cidade</th>
-                    <th className="py-2.5 px-4">Status</th>
-                    <th className="py-2.5 px-4 text-right">Ação</th>
+          }
+          noPadding={true}
+        >
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#64748B] uppercase tracking-wider font-semibold">
+                <tr>
+                  <th className="py-2.5 px-4">Nome / Empresa</th>
+                  <th className="py-2.5 px-4">Cidade / UF</th>
+                  <th className="py-2.5 px-4">Status</th>
+                  <th className="py-2.5 px-4 text-right">Ação</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#E2E8F0]">
+                {recentClientes.map((c) => (
+                  <tr key={c.id} className="hover:bg-[#F8FAFC] transition-colors">
+                    <td className="py-3 px-4">
+                      <p className="font-bold text-[#1E293B]">{c.empresa || c.nome}</p>
+                      <p className="text-[11px] text-[#64748B]">{c.nome}</p>
+                    </td>
+                    <td className="py-3 px-4 text-[#475569]">
+                      {c.cidade ? `${c.cidade} - ${c.estado || ''}` : '-'}
+                    </td>
+                    <td className="py-3 px-4">
+                      <StatusBadge
+                        variant={c.status === 'ativo' ? 'success' : 'neutral'}
+                        dot={true}
+                      >
+                        {c.status === 'ativo' ? 'Ativo' : 'Inativo'}
+                      </StatusBadge>
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      <Link
+                        to={`/clientes/${c.id}`}
+                        className="font-semibold text-[#D92323] hover:text-[#991B1B] transition-colors text-xs"
+                      >
+                        Ver detalhes
+                      </Link>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {recentClientes.map((c) => (
-                    <tr key={c.id} className="hover:bg-gray-50/60 transition-colors">
-                      <td className="py-3 px-4">
-                        <p className="font-semibold text-gray-900">{c.empresa || c.nome}</p>
-                        <p className="text-[11px] text-gray-500">{c.nome}</p>
-                      </td>
-                      <td className="py-3 px-4 text-gray-600">
-                        {c.cidade ? `${c.cidade} - ${c.estado || ''}` : '-'}
-                      </td>
-                      <td className="py-3 px-4">
-                        <Badge
-                          variant="secondary"
-                          className={
-                            c.status === 'ativo'
-                              ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
-                              : 'bg-gray-100 text-gray-700 border-gray-200'
-                          }
-                        >
-                          {c.status === 'ativo' ? 'Ativo' : 'Inativo'}
-                        </Badge>
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <Link
-                          to={`/clientes/${c.id}`}
-                          className="font-semibold text-[#1B4332] hover:text-[#DC2626] transition-colors"
-                        >
-                          Ver detalhes
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                  {recentClientes.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="py-6 text-center text-gray-400">
-                        Nenhum cliente cadastrado ainda.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
+                ))}
+                {recentClientes.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="py-6 text-center text-[#94A3B8]">
+                      Nenhum cliente cadastrado ainda.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </HaramaqCard>
 
         {/* Recent Tickets */}
-        <Card className="rounded-[16px] border border-[#E5E7EB] shadow-xs">
-          <CardHeader className="border-b border-gray-100 pb-3 flex flex-row items-center justify-between">
-            <CardTitle className="text-base font-bold text-[#1B4332]">
-              Chamados de Suporte
-            </CardTitle>
+        <HaramaqCard
+          title="Chamados de Suporte e Pós-Venda"
+          subtitle="Atendimentos técnicos e reposição de peças"
+          headerActions={
             <Link
               to="/suporte"
-              className="text-xs font-semibold text-[#1B4332] hover:text-[#2D6A4F] flex items-center gap-1"
+              className="text-xs font-semibold text-[#D92323] hover:text-[#B91C1C] flex items-center gap-1"
             >
               Ver suporte <ChevronRight className="w-3.5 h-3.5" />
             </Link>
-          </CardHeader>
-          <CardContent className="p-4 space-y-3">
+          }
+        >
+          <div className="space-y-3">
             {recentTickets.map((t) => {
-              const priorityColors: Record<string, string> = {
-                alta: 'bg-red-100 text-red-800 border-red-200',
-                media: 'bg-amber-100 text-amber-800 border-amber-200',
-                baixa: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-              }
+              const isAberto = t.status === 'aberto'
+              const prioVariant =
+                t.prioridade === 'alta'
+                  ? 'danger'
+                  : t.prioridade === 'media'
+                    ? 'warning'
+                    : 'success'
+
               return (
                 <div
                   key={t.id}
                   onClick={() => navigate('/suporte')}
-                  className="p-3 rounded-xl border border-gray-100 hover:border-gray-200 bg-[#F8FAF9] hover:bg-white cursor-pointer transition-all flex items-start justify-between gap-3 shadow-2xs"
+                  className="p-3.5 rounded-xl border border-[#E2E8F0] hover:border-[#D92323]/40 bg-white hover:bg-[#F8FAFC] cursor-pointer transition-all flex items-start justify-between gap-3 shadow-2xs"
                 >
                   <div className="space-y-1 min-w-0">
-                    <p className="font-semibold text-xs text-gray-900 truncate">{t.assunto}</p>
-                    <p className="text-[11px] text-gray-500">
+                    <p className="font-bold text-xs text-[#1E293B] truncate">{t.assunto}</p>
+                    <p className="text-[11px] text-[#64748B]">
                       Cliente:{' '}
-                      <span className="font-medium text-gray-700">
+                      <span className="font-semibold text-[#334155]">
                         {t.expand?.cliente?.empresa || t.expand?.cliente?.nome || 'Cliente'}
                       </span>
                     </p>
-                    <p className="text-[10px] text-gray-400">Criado em {formatDateBR(t.created)}</p>
+                    <p className="text-[10px] text-[#94A3B8]">
+                      Registrado em {formatDateBR(t.created)}
+                    </p>
                   </div>
+
                   <div className="flex flex-col items-end gap-1.5 shrink-0">
-                    <Badge
-                      variant="outline"
-                      className={`text-[10px] capitalize font-medium ${priorityColors[t.prioridade] || ''}`}
-                    >
-                      {t.prioridade}
-                    </Badge>
-                    <Badge
-                      variant="secondary"
-                      className={
-                        t.status === 'aberto'
-                          ? 'bg-red-50 text-red-600 border border-red-100'
-                          : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                      }
-                    >
-                      {t.status === 'aberto' ? 'Aberto' : 'Finalizado'}
-                    </Badge>
+                    <StatusBadge variant={prioVariant} size="sm">
+                      Prioridade {t.prioridade}
+                    </StatusBadge>
+                    <StatusBadge variant={isAberto ? 'danger' : 'success'} dot={true} size="sm">
+                      {isAberto ? 'Aberto' : 'Finalizado'}
+                    </StatusBadge>
                   </div>
                 </div>
               )
             })}
             {recentTickets.length === 0 && (
-              <p className="py-6 text-center text-xs text-gray-400">Nenhum ticket registrado.</p>
+              <p className="py-6 text-center text-xs text-[#94A3B8]">
+                Nenhum chamado de suporte registrado.
+              </p>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </HaramaqCard>
       </div>
-    </div>
+    </PageContainer>
   )
 }

@@ -39,12 +39,19 @@ import {
 } from '@/components/ui/select'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import {
+  PageContainer,
+  PageHeader,
+  HaramaqButton,
+  SearchInput,
+  StatusBadge,
+} from '@/components/haramaq'
 
 const ETAPAS: { key: VendaEtapa; label: string; borderTop: string; color: string }[] = [
-  { key: 'prospeccao', label: 'Prospecção', borderTop: 'border-t-[#40916C]', color: '#40916C' },
-  { key: 'orcamento', label: 'Orçamento', borderTop: 'border-t-[#2D6A4F]', color: '#2D6A4F' },
+  { key: 'prospeccao', label: 'Prospecção', borderTop: 'border-t-[#2563EB]', color: '#2563EB' },
+  { key: 'orcamento', label: 'Orçamento', borderTop: 'border-t-[#0284C7]', color: '#0284C7' },
   { key: 'negociacao', label: 'Negociação', borderTop: 'border-t-[#F59E0B]', color: '#F59E0B' },
-  { key: 'fechamento', label: 'Fechamento', borderTop: 'border-t-[#DC2626]', color: '#DC2626' },
+  { key: 'fechamento', label: 'Fechamento', borderTop: 'border-t-[#D92323]', color: '#D92323' },
   {
     key: 'pecas_pos_vendas',
     label: 'Peças e Pós-vendas',
@@ -54,8 +61,8 @@ const ETAPAS: { key: VendaEtapa; label: string; borderTop: string; color: string
   {
     key: 'financeiro_fiscal',
     label: 'Financeiro e Fiscal',
-    borderTop: 'border-t-[#0369A1]',
-    color: '#0369A1',
+    borderTop: 'border-t-[#475569]',
+    color: '#475569',
   },
 ]
 
@@ -312,44 +319,45 @@ export default function Vendas() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Top Header & Filters */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-[#1B4332] tracking-tight">
-            Funil de Vendas Haramaq
-          </h1>
-          <p className="text-xs text-gray-500">
-            Pipeline operacional de vagões misturadores PROHMIX e SUPERMIX
-          </p>
-        </div>
-
-        <Button
-          onClick={() => setCreateModalOpen(true)}
-          className="bg-[#DC2626] hover:bg-[#b91c1c] text-white font-semibold rounded-xl gap-2 shadow-sm transition-transform hover:scale-[1.02] self-start md:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          Nova Venda
-        </Button>
-      </div>
+    <PageContainer>
+      {/* Top Header */}
+      <PageHeader
+        title="Funil de Vendas"
+        subtitle="Pipeline operacional de vagões misturadores PROHMIX e SUPERMIX"
+        badge={
+          <span className="text-[11px] font-bold uppercase tracking-wider bg-[#FEE2E2] text-[#D92323] px-2 py-0.5 rounded-md border border-[#FCA5A5]/60">
+            {filteredDeals.length} Negócios
+          </span>
+        }
+        actions={
+          <HaramaqButton
+            variant="danger"
+            size="md"
+            icon={<Plus className="w-4 h-4" />}
+            onClick={() => setCreateModalOpen(true)}
+          >
+            Nova Venda
+          </HaramaqButton>
+        }
+      />
 
       {/* Filter Bar */}
-      <div className="bg-white p-4 rounded-[16px] border border-[#E5E7EB] shadow-xs flex flex-col md:flex-row items-center gap-3">
+      <div className="bg-white p-3 sm:p-4 rounded-xl border border-[#E2E8F0] shadow-xs flex flex-col md:flex-row items-center gap-3 mb-6">
         {/* Search */}
         <div className="relative flex-1 w-full">
-          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <Input
             placeholder="Buscar por cliente, empresa ou modelo..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 h-10 rounded-xl border-gray-200 text-xs"
+            className="pl-9 h-9 rounded-lg border-[#E2E8F0] focus:border-[#D92323] focus:ring-[#D92323] text-xs bg-white"
           />
         </div>
 
         {/* Produto Filter */}
         <div className="w-full md:w-48">
           <Select value={selectedProduto} onValueChange={setSelectedProduto}>
-            <SelectTrigger className="h-10 rounded-xl border-gray-200 text-xs">
+            <SelectTrigger className="h-9 rounded-lg border-[#E2E8F0] text-xs bg-white">
               <SelectValue placeholder="Produto" />
             </SelectTrigger>
             <SelectContent>
@@ -363,7 +371,7 @@ export default function Vendas() {
         {/* Vendedor Filter */}
         <div className="w-full md:w-56">
           <Select value={selectedVendedor} onValueChange={setSelectedVendedor}>
-            <SelectTrigger className="h-10 rounded-xl border-gray-200 text-xs">
+            <SelectTrigger className="h-9 rounded-lg border-[#E2E8F0] text-xs bg-white">
               <SelectValue placeholder="Vendedor" />
             </SelectTrigger>
             <SelectContent>
@@ -386,7 +394,7 @@ export default function Vendas() {
               setSelectedProduto('todos')
               setSelectedVendedor('todos')
             }}
-            className="text-xs text-gray-500 hover:text-red-600 gap-1"
+            className="text-xs text-gray-500 hover:text-[#D92323] gap-1 h-9 rounded-lg"
           >
             <X className="w-3.5 h-3.5" />
             Limpar
@@ -395,7 +403,7 @@ export default function Vendas() {
       </div>
 
       {/* Kanban Board — etapas compatíveis com o fluxo configurável do Altforce */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 overflow-x-auto pb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3.5 overflow-x-auto pb-4">
         {ETAPAS.map((col) => {
           const deals = dealsByStage[col.key] || []
           const totalVal = deals.reduce((acc, d) => acc + (d.valor || 0), 0)
@@ -835,6 +843,6 @@ export default function Vendas() {
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageContainer>
   )
 }

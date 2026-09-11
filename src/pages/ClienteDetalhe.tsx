@@ -84,33 +84,38 @@ export default function ClienteDetalhe() {
   const totalVolumeVendas = vendas.reduce((acc, v) => acc + (v.valor || 0), 0)
 
   return (
-    <div className="space-y-6">
+    <div className="w-full max-w-[1360px] mx-auto px-4 sm:px-6 lg:px-8 py-5 md:py-6 space-y-6">
       {/* Top Bar with Back Button & Action */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Link to="/clientes">
-            <Button variant="outline" size="sm" className="h-9 w-9 p-0 rounded-xl border-gray-300">
-              <ArrowLeft className="w-4 h-4 text-gray-700" />
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 w-9 p-0 rounded-lg border-[#E2E8F0] hover:bg-[#F8FAFC]"
+            >
+              <ArrowLeft className="w-4 h-4 text-[#1E293B]" />
             </Button>
           </Link>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-[#1B4332] tracking-tight">
+              <h1 className="text-xl sm:text-2xl font-bold text-[#1E293B] tracking-tight">
                 {cliente.empresa || cliente.nome}
               </h1>
               <Badge
                 variant="secondary"
                 className={
                   cliente.status === 'ativo'
-                    ? 'bg-emerald-100 text-emerald-800'
-                    : 'bg-gray-100 text-gray-700'
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-semibold'
+                    : 'bg-gray-100 text-gray-700 text-[10px] font-semibold'
                 }
               >
                 {cliente.status === 'ativo' ? 'Ativo' : 'Inativo'}
               </Badge>
             </div>
-            <p className="text-xs text-gray-500">
-              Contato Principal: <span className="font-semibold text-gray-700">{cliente.nome}</span>
+            <p className="text-xs text-[#64748B]">
+              Contato Principal:{' '}
+              <span className="font-semibold text-[#1E293B]">{cliente.nome}</span>
             </p>
           </div>
         </div>
@@ -118,7 +123,7 @@ export default function ClienteDetalhe() {
         {canCreate && (
           <Button
             onClick={() => navigate(`/vendas?nova=true&clienteId=${cliente.id}`)}
-            className="bg-[#DC2626] hover:bg-[#b91c1c] text-white font-semibold rounded-xl gap-2 shadow-sm transition-transform hover:scale-[1.02] self-start sm:self-auto"
+            className="bg-[#D92323] hover:bg-[#B91C1C] text-white font-semibold rounded-lg gap-2 shadow-xs transition-colors self-start sm:self-auto h-9 text-xs"
           >
             <PlusCircle className="w-4 h-4" />
             Nova Venda para este Cliente
@@ -129,9 +134,9 @@ export default function ClienteDetalhe() {
       {/* Main Details Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Info Card */}
-        <Card className="rounded-[16px] border border-[#E5E7EB] shadow-xs md:col-span-1">
-          <CardHeader className="pb-3 border-b border-gray-100">
-            <CardTitle className="text-sm font-bold text-[#1B4332]">Ficha Cadastral</CardTitle>
+        <Card className="rounded-xl border border-[#E2E8F0] shadow-xs md:col-span-1 bg-white">
+          <CardHeader className="pb-3 border-b border-[#F1F5F9]">
+            <CardTitle className="text-sm font-bold text-[#1E293B]">Ficha Cadastral</CardTitle>
           </CardHeader>
           <CardContent className="p-4 space-y-3.5 text-xs">
             <div>
@@ -199,16 +204,16 @@ export default function ClienteDetalhe() {
         {/* Deals & Tickets Tabs / Sections */}
         <div className="md:col-span-2 space-y-6">
           {/* Deals list */}
-          <Card className="rounded-[16px] border border-[#E5E7EB] shadow-xs">
-            <CardHeader className="pb-3 border-b border-gray-100 flex flex-row items-center justify-between">
+          <Card className="rounded-xl border border-[#E2E8F0] shadow-xs bg-white">
+            <CardHeader className="pb-3 border-b border-[#F1F5F9] flex flex-row items-center justify-between">
               <div>
-                <CardTitle className="text-sm font-bold text-[#1B4332] flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-[#40916C]" />
+                <CardTitle className="text-sm font-bold text-[#1E293B] flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-[#D92323]" />
                   Oportunidades de Venda ({vendas.length})
                 </CardTitle>
-                <p className="text-xs text-gray-500 mt-0.5">
+                <p className="text-xs text-[#64748B] mt-0.5">
                   Volume total negociado:{' '}
-                  <strong className="text-gray-900">{formatCurrencyBRL(totalVolumeVendas)}</strong>
+                  <strong className="text-[#1E293B]">{formatCurrencyBRL(totalVolumeVendas)}</strong>
                 </p>
               </div>
             </CardHeader>
@@ -266,15 +271,15 @@ export default function ClienteDetalhe() {
           </Card>
 
           {/* Support Tickets list */}
-          <Card className="rounded-[16px] border border-[#E5E7EB] shadow-xs">
-            <CardHeader className="pb-3 border-b border-gray-100 flex flex-row items-center justify-between">
-              <CardTitle className="text-sm font-bold text-[#1B4332] flex items-center gap-2">
-                <Headphones className="w-4 h-4 text-[#2D6A4F]" />
+          <Card className="rounded-xl border border-[#E2E8F0] shadow-xs bg-white">
+            <CardHeader className="pb-3 border-b border-[#F1F5F9] flex flex-row items-center justify-between">
+              <CardTitle className="text-sm font-bold text-[#1E293B] flex items-center gap-2">
+                <Headphones className="w-4 h-4 text-[#D92323]" />
                 Histórico de Suporte Pós-Venda ({tickets.length})
               </CardTitle>
               <Link
                 to="/suporte"
-                className="text-xs font-semibold text-[#1B4332] hover:text-[#2D6A4F]"
+                className="text-xs font-semibold text-[#D92323] hover:text-[#991B1B]"
               >
                 Abrir Suporte
               </Link>

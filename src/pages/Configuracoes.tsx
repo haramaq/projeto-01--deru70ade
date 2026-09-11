@@ -204,21 +204,21 @@ export default function Configuracoes() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="w-full max-w-[1360px] mx-auto px-4 sm:px-6 lg:px-8 py-5 md:py-6 space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-[#1B4332] tracking-tight">
+          <h1 className="text-xl sm:text-2xl font-bold text-[#1E293B] tracking-tight">
             Configurações e Níveis de Acesso
           </h1>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs sm:text-sm text-[#64748B] mt-0.5">
             Gerenciamento de papéis de usuários (RBAC) e segurança da plataforma Haramaq
           </p>
         </div>
 
         <Button
           onClick={handleOpenCreate}
-          className="bg-[#DC2626] hover:bg-[#b91c1c] text-white font-semibold rounded-xl gap-2 shadow-sm transition-transform hover:scale-[1.02] self-start sm:self-auto"
+          className="bg-[#D92323] hover:bg-[#B91C1C] text-white font-semibold rounded-lg gap-2 shadow-xs transition-colors self-start sm:self-auto h-9 text-xs"
         >
           <UserPlus className="w-4 h-4" />
           Novo Usuário
@@ -226,33 +226,36 @@ export default function Configuracoes() {
       </div>
 
       {/* Role Definitions (Read-Only) */}
-      <Card className="rounded-[16px] border border-[#E5E7EB] shadow-xs">
-        <CardHeader className="pb-3 border-b border-gray-100">
-          <CardTitle className="text-sm font-bold text-[#1B4332] flex items-center gap-2">
-            <Shield className="w-4 h-4 text-[#40916C]" />
+      <Card className="rounded-xl border border-[#E2E8F0] shadow-xs bg-white">
+        <CardHeader className="pb-3 border-b border-[#F1F5F9]">
+          <CardTitle className="text-sm font-bold text-[#1E293B] flex items-center gap-2">
+            <Shield className="w-4 h-4 text-[#D92323]" />
             Matriz de Permissões e Níveis de Acesso
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <CardContent className="p-4 grid grid-cols-1 md:grid-cols-3 gap-3.5">
           {roleDescriptions.map((item) => (
             <div
               key={item.role}
-              className="p-4 rounded-xl border border-gray-100 bg-[#F8FAF9] space-y-2"
+              className="p-3.5 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] space-y-2"
             >
-              <Badge variant="outline" className={cn('text-xs font-bold uppercase', item.color)}>
+              <Badge
+                variant="outline"
+                className={cn('text-[10px] font-bold uppercase', item.color)}
+              >
                 {item.title}
               </Badge>
-              <p className="text-xs text-gray-600 leading-relaxed">{item.desc}</p>
+              <p className="text-xs text-[#64748B] leading-relaxed">{item.desc}</p>
             </div>
           ))}
         </CardContent>
       </Card>
 
       {/* Users Table */}
-      <Card className="rounded-[16px] border border-[#E5E7EB] shadow-xs overflow-hidden">
-        <CardHeader className="pb-3 border-b border-gray-100 flex flex-row items-center justify-between">
-          <CardTitle className="text-sm font-bold text-[#1B4332] flex items-center gap-2">
-            <Users className="w-4 h-4 text-[#1B4332]" />
+      <Card className="rounded-xl border border-[#E2E8F0] shadow-xs overflow-hidden bg-white">
+        <CardHeader className="pb-3 border-b border-[#F1F5F9] flex flex-row items-center justify-between">
+          <CardTitle className="text-sm font-bold text-[#1E293B] flex items-center gap-2">
+            <Users className="w-4 h-4 text-[#D92323]" />
             Usuários Cadastrados ({users.length})
           </CardTitle>
         </CardHeader>

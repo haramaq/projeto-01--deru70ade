@@ -181,12 +181,19 @@ export default function Revendas() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="w-full max-w-[1360px] mx-auto px-4 sm:px-6 lg:px-8 py-5 md:py-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
         <div>
-          <h1 className="text-2xl font-bold text-[#1B4332] tracking-tight">Revendas Autorizadas</h1>
-          <p className="text-xs text-gray-500">
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-bold text-[#1E293B] tracking-tight">
+              Revendas Autorizadas
+            </h1>
+            <span className="text-[11px] font-bold uppercase tracking-wider bg-[#FEE2E2] text-[#D92323] px-2 py-0.5 rounded-md border border-[#FCA5A5]/60">
+              {filteredRevendas.length} Credenciadas
+            </span>
+          </div>
+          <p className="text-xs sm:text-sm text-[#64748B] mt-0.5">
             Rede credenciada e autorizada para comercialização e suporte de vagões misturadores
           </p>
         </div>
@@ -194,7 +201,7 @@ export default function Revendas() {
         {isAdmin && (
           <Button
             onClick={handleOpenCreate}
-            className="bg-[#DC2626] hover:bg-[#b91c1c] text-white font-semibold rounded-xl gap-2 shadow-sm transition-transform hover:scale-[1.02] self-start sm:self-auto"
+            className="bg-[#D92323] hover:bg-[#B91C1C] text-white font-semibold rounded-lg gap-2 shadow-xs transition-colors self-start sm:self-auto h-9 text-xs"
           >
             <Plus className="w-4 h-4" />
             Nova Revenda
@@ -203,14 +210,14 @@ export default function Revendas() {
       </div>
 
       {/* Search Bar */}
-      <div className="bg-white p-4 rounded-[16px] border border-[#E5E7EB] shadow-xs flex items-center gap-3">
+      <div className="bg-white p-3 sm:p-4 rounded-xl border border-[#E2E8F0] shadow-xs flex items-center gap-3 mb-5">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <Input
             placeholder="Buscar por nome da revenda, cidade ou CNPJ..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 h-10 rounded-xl border-gray-200 text-xs"
+            className="pl-9 h-9 rounded-lg border-[#E2E8F0] focus:border-[#D92323] focus:ring-[#D92323] text-xs bg-white"
           />
         </div>
         {searchTerm && (
@@ -218,7 +225,7 @@ export default function Revendas() {
             variant="ghost"
             size="sm"
             onClick={() => setSearchTerm('')}
-            className="text-xs text-gray-500 hover:text-red-600 gap-1"
+            className="text-xs text-gray-500 hover:text-[#D92323] gap-1 h-9 rounded-lg"
           >
             <X className="w-3.5 h-3.5" />
             Limpar
@@ -231,18 +238,18 @@ export default function Revendas() {
         {filteredRevendas.map((rev) => (
           <div
             key={rev.id}
-            className="bg-white rounded-[16px] border border-[#E5E7EB] p-5 shadow-xs hover:shadow-md hover:-translate-y-1 transition-all duration-200 flex flex-col justify-between"
+            className="bg-white rounded-xl border border-[#E2E8F0] p-5 shadow-xs hover:shadow-sm hover:border-[#D92323]/40 transition-all duration-200 flex flex-col justify-between"
           >
             <div>
               {/* Header: Name, Shield Icon, Badge */}
               <div className="flex items-start justify-between gap-2 mb-3">
                 <div className="space-y-1">
                   <div className="flex items-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4 text-[#40916C] shrink-0" />
-                    <h3 className="font-bold text-sm text-[#1B4332] line-clamp-1">{rev.nome}</h3>
+                    <ShieldCheck className="w-4 h-4 text-[#D92323] shrink-0" />
+                    <h3 className="font-bold text-sm text-[#1E293B] line-clamp-1">{rev.nome}</h3>
                   </div>
-                  <p className="text-xs text-gray-500 flex items-center gap-1">
-                    <MapPin className="w-3 h-3 text-gray-400 shrink-0" />
+                  <p className="text-xs text-[#64748B] flex items-center gap-1">
+                    <MapPin className="w-3 h-3 text-[#94A3B8] shrink-0" />
                     {rev.cidade ? `${rev.cidade} - ${rev.estado || ''}` : 'Região não informada'}
                   </p>
                 </div>
@@ -251,8 +258,8 @@ export default function Revendas() {
                   variant="secondary"
                   className={
                     rev.status === 'autorizada'
-                      ? 'bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px] font-semibold'
-                      : 'bg-amber-100 text-amber-800 border-amber-200 text-[10px] font-semibold'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-semibold'
+                      : 'bg-amber-50 text-amber-700 border-amber-200 text-[10px] font-semibold'
                   }
                 >
                   {rev.status === 'autorizada' ? 'Autorizada' : 'Pendente'}
@@ -310,7 +317,7 @@ export default function Revendas() {
             <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
               <Link
                 to={`/revendas/${rev.id}`}
-                className="text-xs font-semibold text-[#1B4332] hover:text-[#DC2626] flex items-center gap-1"
+                className="text-xs font-semibold text-[#D92323] hover:text-[#991B1B] flex items-center gap-1 transition-colors"
               >
                 Ver desempenho <ExternalLink className="w-3 h-3" />
               </Link>

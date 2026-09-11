@@ -245,45 +245,45 @@ export default function Relatorios() {
   const totalVolume = filteredVendas.reduce((acc, v) => acc + (v.valor || 0), 0)
 
   return (
-    <div className="space-y-6">
+    <div className="w-full max-w-[1360px] mx-auto px-4 sm:px-6 lg:px-8 py-5 md:py-6 space-y-6">
       {/* Header & Date Range */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-[#1B4332] tracking-tight">
+          <h1 className="text-xl sm:text-2xl font-bold text-[#1E293B] tracking-tight">
             Relatórios e Inteligência Comercial
           </h1>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs sm:text-sm text-[#64748B] mt-0.5">
             Análises gerenciais de conversão, demanda por produto e previsão de receitas
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
-          <div className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-gray-200 text-xs">
-            <span className="text-gray-400 font-medium">De:</span>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1.5 bg-white px-3 py-1 rounded-lg border border-[#E2E8F0] text-xs h-9">
+            <span className="text-[#94A3B8] font-medium">De:</span>
             <input
               type="date"
               value={dataInicio}
               onChange={(e) => setDataInicio(e.target.value)}
-              className="outline-none text-gray-700 bg-transparent text-xs"
+              className="outline-none text-[#1E293B] bg-transparent text-xs"
             />
           </div>
 
-          <div className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-gray-200 text-xs">
-            <span className="text-gray-400 font-medium">Até:</span>
+          <div className="flex items-center gap-1.5 bg-white px-3 py-1 rounded-lg border border-[#E2E8F0] text-xs h-9">
+            <span className="text-[#94A3B8] font-medium">Até:</span>
             <input
               type="date"
               value={dataFim}
               onChange={(e) => setDataFim(e.target.value)}
-              className="outline-none text-gray-700 bg-transparent text-xs"
+              className="outline-none text-[#1E293B] bg-transparent text-xs"
             />
           </div>
 
           <Button
             onClick={handleExportCSV}
-            className="bg-[#1B4332] hover:bg-[#2D6A4F] text-white font-semibold rounded-xl text-xs gap-1.5 h-9 shadow-xs"
+            className="bg-[#D92323] hover:bg-[#B91C1C] text-white font-semibold rounded-lg text-xs gap-1.5 h-9 shadow-xs transition-colors"
           >
             <Download className="w-3.5 h-3.5" />
-            Exportar Relatório (CSV)
+            Exportar CSV
           </Button>
         </div>
       </div>
@@ -320,10 +320,10 @@ export default function Relatorios() {
       {/* 4 Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Chart 1: Vendas por Período */}
-        <Card className="rounded-[16px] border border-[#E5E7EB] shadow-xs">
-          <CardHeader className="pb-2 border-b border-gray-100">
-            <CardTitle className="text-sm font-bold text-[#1B4332] flex items-center gap-2">
-              <BarChart2 className="w-4 h-4 text-[#40916C]" />
+        <Card className="rounded-xl border border-[#E2E8F0] shadow-xs bg-white">
+          <CardHeader className="pb-2 border-b border-[#F1F5F9]">
+            <CardTitle className="text-sm font-bold text-[#1E293B] flex items-center gap-2">
+              <BarChart2 className="w-4 h-4 text-[#D92323]" />
               1. Volume de Vendas por Período (Mensal)
             </CardTitle>
           </CardHeader>
@@ -331,9 +331,9 @@ export default function Relatorios() {
             <div className="h-72 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={vendasPorPeriodoData}>
-                  <XAxis dataKey="mes" stroke="#9CA3AF" fontSize={11} />
+                  <XAxis dataKey="mes" stroke="#94A3B8" fontSize={11} />
                   <YAxis
-                    stroke="#9CA3AF"
+                    stroke="#94A3B8"
                     fontSize={11}
                     tickFormatter={(v) => `R$ ${(v / 1000).toFixed(0)}k`}
                   />
@@ -341,12 +341,12 @@ export default function Relatorios() {
                     formatter={(val) => [formatCurrencyBRL(Number(val)), 'Total']}
                     contentStyle={{
                       backgroundColor: '#FFFFFF',
-                      borderRadius: '12px',
-                      border: '1px solid #E5E7EB',
+                      borderRadius: '8px',
+                      border: '1px solid #E2E8F0',
                       fontSize: '12px',
                     }}
                   />
-                  <Bar dataKey="total" fill="#2D6A4F" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="total" fill="#D92323" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

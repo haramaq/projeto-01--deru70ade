@@ -79,31 +79,37 @@ export default function RevendaDetalhe() {
   const totalPerformance = matchingDeals.reduce((acc, v) => acc + (v.valor || 0), 0)
 
   return (
-    <div className="space-y-6">
+    <div className="w-full max-w-[1360px] mx-auto px-4 sm:px-6 lg:px-8 py-5 md:py-6 space-y-6">
       {/* Top Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Link to="/revendas">
-            <Button variant="outline" size="sm" className="h-9 w-9 p-0 rounded-xl border-gray-300">
-              <ArrowLeft className="w-4 h-4 text-gray-700" />
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 w-9 p-0 rounded-lg border-[#E2E8F0] hover:bg-[#F8FAFC]"
+            >
+              <ArrowLeft className="w-4 h-4 text-[#1E293B]" />
             </Button>
           </Link>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-[#1B4332] tracking-tight">{revenda.nome}</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-[#1E293B] tracking-tight">
+                {revenda.nome}
+              </h1>
               <Badge
                 variant="secondary"
                 className={
                   revenda.status === 'autorizada'
-                    ? 'bg-emerald-100 text-emerald-800'
-                    : 'bg-amber-100 text-amber-800'
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-semibold'
+                    : 'bg-amber-50 text-amber-700 border-amber-200 text-[10px] font-semibold'
                 }
               >
                 {revenda.status === 'autorizada' ? 'Autorizada' : 'Pendente'}
               </Badge>
             </div>
-            <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
-              <MapPin className="w-3.5 h-3.5 text-gray-400" />
+            <p className="text-xs text-[#64748B] flex items-center gap-1 mt-0.5">
+              <MapPin className="w-3.5 h-3.5 text-[#94A3B8]" />
               Sede: {revenda.cidade} - {revenda.estado}
             </p>
           </div>
@@ -113,10 +119,10 @@ export default function RevendaDetalhe() {
       {/* Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Info Card */}
-        <Card className="rounded-[16px] border border-[#E5E7EB] shadow-xs md:col-span-1">
-          <CardHeader className="pb-3 border-b border-gray-100">
-            <CardTitle className="text-sm font-bold text-[#1B4332] flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-[#40916C]" />
+        <Card className="rounded-xl border border-[#E2E8F0] shadow-xs md:col-span-1 bg-white">
+          <CardHeader className="pb-3 border-b border-[#F1F5F9]">
+            <CardTitle className="text-sm font-bold text-[#1E293B] flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-[#D92323]" />
               Dados do Credenciamento
             </CardTitle>
           </CardHeader>
@@ -191,10 +197,10 @@ export default function RevendaDetalhe() {
 
         {/* Sales Performance Card */}
         <div className="md:col-span-2 space-y-6">
-          <Card className="rounded-[16px] border border-[#E5E7EB] shadow-xs">
-            <CardHeader className="pb-3 border-b border-gray-100">
-              <CardTitle className="text-sm font-bold text-[#1B4332] flex items-center gap-2">
-                <Award className="w-4 h-4 text-[#F59E0B]" />
+          <Card className="rounded-xl border border-[#E2E8F0] shadow-xs bg-white">
+            <CardHeader className="pb-3 border-b border-[#F1F5F9]">
+              <CardTitle className="text-sm font-bold text-[#1E293B] flex items-center gap-2">
+                <Award className="w-4 h-4 text-[#D92323]" />
                 Performance de Vendas na Região de Atuação
               </CardTitle>
             </CardHeader>

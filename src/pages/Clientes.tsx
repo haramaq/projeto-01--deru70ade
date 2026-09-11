@@ -215,12 +215,19 @@ export default function Clientes() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="w-full max-w-[1360px] mx-auto px-4 sm:px-6 lg:px-8 py-5 md:py-6">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
         <div>
-          <h1 className="text-2xl font-bold text-[#1B4332] tracking-tight">Clientes Cadastrados</h1>
-          <p className="text-xs text-gray-500">
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-bold text-[#1E293B] tracking-tight">
+              Clientes Cadastrados
+            </h1>
+            <span className="text-[11px] font-bold uppercase tracking-wider bg-[#FEE2E2] text-[#D92323] px-2 py-0.5 rounded-md border border-[#FCA5A5]/60">
+              {filteredClientes.length} Contatos
+            </span>
+          </div>
+          <p className="text-xs sm:text-sm text-[#64748B] mt-0.5">
             Gerencie construtoras, usinas de concreto e frotistas em todo o Brasil
           </p>
         </div>
@@ -228,7 +235,7 @@ export default function Clientes() {
         {canEdit && (
           <Button
             onClick={handleOpenCreate}
-            className="bg-[#DC2626] hover:bg-[#b91c1c] text-white font-semibold rounded-xl gap-2 shadow-sm transition-transform hover:scale-[1.02] self-start sm:self-auto"
+            className="bg-[#D92323] hover:bg-[#B91C1C] text-white font-semibold rounded-lg gap-2 shadow-xs transition-colors self-start sm:self-auto h-9 text-xs"
           >
             <Plus className="w-4 h-4" />
             Novo Cliente
@@ -237,14 +244,14 @@ export default function Clientes() {
       </div>
 
       {/* Search Bar */}
-      <div className="bg-white p-4 rounded-[16px] border border-[#E5E7EB] shadow-xs flex items-center gap-3">
+      <div className="bg-white p-3 sm:p-4 rounded-xl border border-[#E2E8F0] shadow-xs flex items-center gap-3 mb-5">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <Input
             placeholder="Pesquisar por nome, empresa, CNPJ ou cidade..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 h-10 rounded-xl border-gray-200 text-xs"
+            className="pl-9 h-9 rounded-lg border-[#E2E8F0] focus:border-[#D92323] focus:ring-[#D92323] text-xs bg-white"
           />
         </div>
         {searchTerm && (
@@ -252,7 +259,7 @@ export default function Clientes() {
             variant="ghost"
             size="sm"
             onClick={() => setSearchTerm('')}
-            className="text-xs text-gray-500 hover:text-red-600 gap-1"
+            className="text-xs text-gray-500 hover:text-[#D92323] gap-1 h-9 rounded-lg"
           >
             <X className="w-3.5 h-3.5" />
             Limpar
@@ -280,11 +287,11 @@ export default function Clientes() {
                   <td className="py-3.5 px-4 font-semibold text-gray-900">
                     <Link
                       to={`/clientes/${c.id}`}
-                      className="hover:text-[#1B4332] underline-offset-2 hover:underline"
+                      className="hover:text-[#D92323] transition-colors"
                     >
                       {c.nome}
                     </Link>
-                  </td>
+                  </td>{' '}
                   <td className="py-3.5 px-4">
                     <p className="font-semibold text-gray-800">{c.empresa || '-'}</p>
                     <p className="text-[11px] text-gray-500 font-mono">{c.cnpj || '-'}</p>
@@ -336,7 +343,7 @@ export default function Clientes() {
                               setClientToDelete(c)
                               setDeleteDialogOpen(true)
                             }}
-                            className="h-8 w-8 p-0 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                            className="h-8 w-8 p-0 text-gray-500 hover:text-[#D92323] hover:bg-red-50 rounded-lg"
                             title="Excluir Cliente"
                           >
                             <Trash2 className="w-3.5 h-3.5" />

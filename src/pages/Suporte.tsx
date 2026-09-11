@@ -236,21 +236,26 @@ export default function Suporte() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="w-full max-w-[1360px] mx-auto px-4 sm:px-6 lg:px-8 py-5 md:py-6">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
         <div>
-          <h1 className="text-2xl font-bold text-[#1B4332] tracking-tight">
-            Central de Suporte e Pós-Venda
-          </h1>
-          <p className="text-xs text-gray-500">
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-bold text-[#1E293B] tracking-tight">
+              Central de Suporte e Pós-Venda
+            </h1>
+            <span className="text-[11px] font-bold uppercase tracking-wider bg-[#FEE2E2] text-[#D92323] px-2 py-0.5 rounded-md border border-[#FCA5A5]/60">
+              {openTickets.length} Abertos
+            </span>
+          </div>
+          <p className="text-xs sm:text-sm text-[#64748B] mt-0.5">
             Acompanhamento técnico em tempo real para frotas de misturadores Haramaq
           </p>
         </div>
 
         <Button
           onClick={() => setNewModalOpen(true)}
-          className="bg-[#DC2626] hover:bg-[#b91c1c] text-white font-semibold rounded-xl gap-2 shadow-sm transition-transform hover:scale-[1.02] self-start sm:self-auto"
+          className="bg-[#D92323] hover:bg-[#B91C1C] text-white font-semibold rounded-lg gap-2 shadow-xs transition-colors self-start sm:self-auto h-9 text-xs"
         >
           <Plus className="w-4 h-4" />
           Novo Ticket
@@ -258,14 +263,14 @@ export default function Suporte() {
       </div>
 
       {/* Search Bar */}
-      <div className="bg-white p-4 rounded-[16px] border border-[#E5E7EB] shadow-xs flex items-center gap-3">
+      <div className="bg-white p-3 sm:p-4 rounded-xl border border-[#E2E8F0] shadow-xs flex items-center gap-3 mb-5">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <Input
             placeholder="Pesquisar por assunto, cliente ou descrição do chamado..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 h-10 rounded-xl border-gray-200 text-xs"
+            className="pl-9 h-9 rounded-lg border-[#E2E8F0] focus:border-[#D92323] focus:ring-[#D92323] text-xs bg-white"
           />
         </div>
         {searchTerm && (
@@ -273,7 +278,7 @@ export default function Suporte() {
             variant="ghost"
             size="sm"
             onClick={() => setSearchTerm('')}
-            className="text-xs text-gray-500 hover:text-red-600 gap-1"
+            className="text-xs text-gray-500 hover:text-[#D92323] gap-1 h-9 rounded-lg"
           >
             <X className="w-3.5 h-3.5" />
             Limpar
@@ -285,14 +290,14 @@ export default function Suporte() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left Column: Abertos */}
         <div className="space-y-3">
-          <div className="flex items-center justify-between bg-red-50/80 p-3.5 rounded-xl border border-red-100">
+          <div className="flex items-center justify-between bg-[#FEE2E2]/70 p-3.5 rounded-xl border border-[#FCA5A5]/60">
             <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-[#DC2626]" />
-              <h2 className="font-bold text-sm text-[#DC2626] uppercase tracking-wider">
+              <Clock className="w-4 h-4 text-[#D92323]" />
+              <h2 className="font-bold text-xs sm:text-sm text-[#D92323] uppercase tracking-wider">
                 Chamados em Aberto
               </h2>
             </div>
-            <Badge className="bg-[#DC2626] text-white font-bold text-xs px-2.5">
+            <Badge className="bg-[#D92323] text-white font-bold text-xs px-2.5">
               {openTickets.length}
             </Badge>
           </div>
@@ -353,14 +358,14 @@ export default function Suporte() {
 
         {/* Right Column: Finalizados */}
         <div className="space-y-3">
-          <div className="flex items-center justify-between bg-emerald-50/80 p-3.5 rounded-xl border border-emerald-100">
+          <div className="flex items-center justify-between bg-emerald-50/80 p-3.5 rounded-xl border border-emerald-200">
             <div className="flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-[#2D6A4F]" />
-              <h2 className="font-bold text-sm text-[#2D6A4F] uppercase tracking-wider">
+              <CheckCircle className="w-4 h-4 text-emerald-700" />
+              <h2 className="font-bold text-xs sm:text-sm text-emerald-800 uppercase tracking-wider">
                 Chamados Finalizados
               </h2>
             </div>
-            <Badge className="bg-[#2D6A4F] text-white font-bold text-xs px-2.5">
+            <Badge className="bg-emerald-700 text-white font-bold text-xs px-2.5">
               {closedTickets.length}
             </Badge>
           </div>
