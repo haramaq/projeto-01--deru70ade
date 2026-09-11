@@ -643,11 +643,21 @@ export default function Vendas() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={Boolean(detailLead)} onOpenChange={(open) => !open && setDetailLead(null)}>
-        <DialogContent className="max-h-[92vh] max-w-4xl overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Detalhe do lead {detailLead?.numero_lead || detailLead?.id}</DialogTitle>
-          </DialogHeader>
+      <div
+        className={cn(
+          'fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4',
+          !detailLead && 'hidden',
+        )}
+      >
+        <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-xl bg-white p-6 shadow-2xl">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-bold text-[#1E293B]">
+              Detalhe do lead {detailLead?.numero_lead || detailLead?.id}
+            </h2>
+            <Button type="button" variant="outline" size="sm" onClick={() => setDetailLead(null)}>
+              Fechar
+            </Button>
+          </div>
           {detailLead && (
             <div className="space-y-5 text-xs">
               <div className="flex flex-wrap items-center gap-2">
@@ -838,8 +848,8 @@ export default function Vendas() {
               </div>
             </div>
           )}
-        </DialogContent>
-      </Dialog>
+        </div>
+      </div>
 
       {moveLead && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4">
