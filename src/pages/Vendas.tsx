@@ -358,7 +358,9 @@ export default function Vendas() {
       resetNewClient()
       setNewObservacoes('')
       setNewResponsavel('')
-      toast.success(clientMode === 'new' ? 'Cliente e lead cadastrados no Kanban.' : 'Lead criado no Kanban.')
+      toast.success(
+        clientMode === 'new' ? 'Cliente e lead cadastrados no Kanban.' : 'Lead criado no Kanban.',
+      )
     } catch (error) {
       console.error(error)
       toast.error('Não foi possível criar o lead.')
@@ -603,9 +605,7 @@ export default function Vendas() {
                     }}
                     className={cn(
                       'rounded-md px-2.5 py-1 font-semibold transition',
-                      clientMode === 'new'
-                        ? 'bg-white text-[#D92323] shadow-xs'
-                        : 'text-[#64748B]',
+                      clientMode === 'new' ? 'bg-white text-[#D92323] shadow-xs' : 'text-[#64748B]',
                     )}
                   >
                     Cadastrar novo

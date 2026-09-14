@@ -1,14 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import {
-  Users,
-  Shield,
-  UserPlus,
-  Edit2,
-  UserX,
-  History,
-  CheckCircle,
-  Lock,
-} from 'lucide-react'
+import { Users, Shield, UserPlus, Edit2, UserX, History, CheckCircle, Lock } from 'lucide-react'
 import { userService } from '@/services/crmService'
 import type { AuditEntry, User, UserRole } from '@/types/crm'
 import { formatDateBR } from '@/lib/formatters'
@@ -126,9 +117,8 @@ export default function Configuracoes() {
   const [formRole, setFormRole] = useState<UserRole>('vendedor')
   const [formCarteira, setFormCarteira] = useState('')
   const [formAtivo, setFormAtivo] = useState(true)
-  const [formPermissions, setFormPermissions] = useState<Record<string, boolean>>(
-    DEFAULT_PERMISSIONS,
-  )
+  const [formPermissions, setFormPermissions] =
+    useState<Record<string, boolean>>(DEFAULT_PERMISSIONS)
   const [submitting, setSubmitting] = useState(false)
   const [auditSearch, setAuditSearch] = useState('')
 
@@ -349,7 +339,10 @@ export default function Configuracoes() {
                   </thead>
                   <tbody className="divide-y divide-[#E5E7EB]">
                     {users.map((item) => (
-                      <tr key={item.id} className={cn('hover:bg-gray-50/70', item.ativo === false && 'opacity-60')}>
+                      <tr
+                        key={item.id}
+                        className={cn('hover:bg-gray-50/70', item.ativo === false && 'opacity-60')}
+                      >
                         <td className="px-4 py-3.5">
                           <p className="font-bold text-gray-900">{item.name || 'Sem nome'}</p>
                           <p className="font-mono text-[11px] text-gray-500">{item.email}</p>
@@ -359,11 +352,17 @@ export default function Configuracoes() {
                             {ROLE_LABELS[item.role] || item.role}
                           </Badge>
                         </td>
-                        <td className="px-4 py-3.5 text-gray-600">{item.carteira || 'Todas / não definida'}</td>
+                        <td className="px-4 py-3.5 text-gray-600">
+                          {item.carteira || 'Todas / não definida'}
+                        </td>
                         <td className="px-4 py-3.5">
                           <Badge
                             variant="outline"
-                            className={item.ativo === false ? 'border-gray-200 bg-gray-50 text-gray-500' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}
+                            className={
+                              item.ativo === false
+                                ? 'border-gray-200 bg-gray-50 text-gray-500'
+                                : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                            }
                           >
                             {item.ativo === false ? 'Inativo' : 'Ativo'}
                           </Badge>
@@ -371,12 +370,30 @@ export default function Configuracoes() {
                         <td className="px-4 py-3.5 text-gray-500">{formatDateBR(item.created)}</td>
                         <td className="px-4 py-3.5 text-right">
                           <div className="flex justify-end gap-1.5">
-                            <Button variant="ghost" size="sm" onClick={() => handleOpenEdit(item)} className="h-8 w-8 p-0 text-gray-500 hover:bg-blue-50 hover:text-blue-600" title="Editar usuário">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleOpenEdit(item)}
+                              className="h-8 w-8 p-0 text-gray-500 hover:bg-blue-50 hover:text-blue-600"
+                              title="Editar usuário"
+                            >
                               <Edit2 className="h-3.5 w-3.5" />
                             </Button>
                             {item.email !== 'elisandrodesousaharamaq@gmail.com' && (
-                              <Button variant="ghost" size="sm" onClick={() => void toggleUser(item)} className="h-8 w-8 p-0 text-gray-500 hover:bg-red-50 hover:text-red-600" title={item.ativo === false ? 'Reativar usuário' : 'Desativar usuário'}>
-                                {item.ativo === false ? <CheckCircle className="h-3.5 w-3.5" /> : <UserX className="h-3.5 w-3.5" />}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => void toggleUser(item)}
+                                className="h-8 w-8 p-0 text-gray-500 hover:bg-red-50 hover:text-red-600"
+                                title={
+                                  item.ativo === false ? 'Reativar usuário' : 'Desativar usuário'
+                                }
+                              >
+                                {item.ativo === false ? (
+                                  <CheckCircle className="h-3.5 w-3.5" />
+                                ) : (
+                                  <UserX className="h-3.5 w-3.5" />
+                                )}
                               </Button>
                             )}
                           </div>
@@ -399,8 +416,14 @@ export default function Configuracoes() {
             </CardHeader>
             <CardContent className="grid grid-cols-1 gap-3.5 p-4 md:grid-cols-3">
               {ROLE_DESCRIPTIONS.map((item) => (
-                <div key={item.role} className="space-y-2 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-3.5">
-                  <Badge variant="outline" className={cn('text-[10px] font-bold uppercase', item.color)}>
+                <div
+                  key={item.role}
+                  className="space-y-2 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-3.5"
+                >
+                  <Badge
+                    variant="outline"
+                    className={cn('text-[10px] font-bold uppercase', item.color)}
+                  >
                     {ROLE_LABELS[item.role]}
                   </Badge>
                   <p className="text-xs leading-relaxed text-[#64748B]">{item.desc}</p>
@@ -412,27 +435,50 @@ export default function Configuracoes() {
 
         <TabsContent value="auditoria" className="space-y-4">
           <div className="flex items-center gap-2">
-            <Input value={auditSearch} onChange={(event) => setAuditSearch(event.target.value)} placeholder="Filtrar por usuário, ação ou alvo..." className="h-9 max-w-md text-xs" />
-            <Badge variant="outline" className="text-xs">{filteredAudit.length} eventos</Badge>
+            <Input
+              value={auditSearch}
+              onChange={(event) => setAuditSearch(event.target.value)}
+              placeholder="Filtrar por usuário, ação ou alvo..."
+              className="h-9 max-w-md text-xs"
+            />
+            <Badge variant="outline" className="text-xs">
+              {filteredAudit.length} eventos
+            </Badge>
           </div>
           <Card className="overflow-hidden rounded-xl border-[#E2E8F0] bg-white shadow-xs">
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[900px] text-left text-xs">
                   <thead className="border-b border-[#E5E7EB] bg-[#F8FAF9] text-gray-500">
-                    <tr><th className="px-4 py-3">Data</th><th className="px-4 py-3">Autor</th><th className="px-4 py-3">Ação</th><th className="px-4 py-3">Alvo</th><th className="px-4 py-3">Alteração</th></tr>
+                    <tr>
+                      <th className="px-4 py-3">Data</th>
+                      <th className="px-4 py-3">Autor</th>
+                      <th className="px-4 py-3">Ação</th>
+                      <th className="px-4 py-3">Alvo</th>
+                      <th className="px-4 py-3">Alteração</th>
+                    </tr>
                   </thead>
                   <tbody className="divide-y divide-[#E5E7EB]">
                     {filteredAudit.map((entry) => (
                       <tr key={entry.id}>
-                        <td className="whitespace-nowrap px-4 py-3 text-gray-500">{formatDateBR(entry.created)}</td>
+                        <td className="whitespace-nowrap px-4 py-3 text-gray-500">
+                          {formatDateBR(entry.created)}
+                        </td>
                         <td className="px-4 py-3 font-mono text-gray-600">{entry.autor}</td>
                         <td className="px-4 py-3 font-semibold text-gray-800">{entry.acao}</td>
                         <td className="px-4 py-3 font-mono text-gray-600">{entry.alvo}</td>
-                        <td className="max-w-[420px] px-4 py-3 text-gray-500">{auditText(entry.depois)}</td>
+                        <td className="max-w-[420px] px-4 py-3 text-gray-500">
+                          {auditText(entry.depois)}
+                        </td>
                       </tr>
                     ))}
-                    {!filteredAudit.length && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">Nenhum evento de auditoria encontrado.</td></tr>}
+                    {!filteredAudit.length && (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                          Nenhum evento de auditoria encontrado.
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -450,17 +496,108 @@ export default function Configuracoes() {
           </DialogHeader>
           <form onSubmit={handleSaveUser} className="space-y-4 pt-2 text-xs">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="space-y-1"><Label htmlFor="uName">Nome completo</Label><Input id="uName" value={formName} onChange={(e) => setFormName(e.target.value)} required /></div>
-              <div className="space-y-1"><Label htmlFor="uEmail">E-mail corporativo</Label><Input id="uEmail" type="email" disabled={!!editingUser} value={formEmail} onChange={(e) => setFormEmail(e.target.value)} required /></div>
+              <div className="space-y-1">
+                <Label htmlFor="uName">Nome completo</Label>
+                <Input
+                  id="uName"
+                  value={formName}
+                  onChange={(e) => setFormName(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="uEmail">E-mail corporativo</Label>
+                <Input
+                  id="uEmail"
+                  type="email"
+                  disabled={!!editingUser}
+                  value={formEmail}
+                  onChange={(e) => setFormEmail(e.target.value)}
+                  required
+                />
+              </div>
             </div>
-            {!editingUser && <div className="space-y-1"><Label htmlFor="uPass">Senha provisória (mínimo 8 caracteres)</Label><Input id="uPass" type="password" value={formPassword} onChange={(e) => setFormPassword(e.target.value)} required /></div>}
+            {!editingUser && (
+              <div className="space-y-1">
+                <Label htmlFor="uPass">Senha provisória (mínimo 8 caracteres)</Label>
+                <Input
+                  id="uPass"
+                  type="password"
+                  value={formPassword}
+                  onChange={(e) => setFormPassword(e.target.value)}
+                  required
+                />
+              </div>
+            )}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="space-y-1"><Label>Perfil base</Label><Select value={formRole} onValueChange={(value) => setFormRole(value as UserRole)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{(Object.keys(ROLE_LABELS) as UserRole[]).map((role) => <SelectItem key={role} value={role}>{ROLE_LABELS[role]}</SelectItem>)}</SelectContent></Select></div>
-              <div className="space-y-1"><Label htmlFor="uWallet">Carteira / território</Label><Input id="uWallet" value={formCarteira} onChange={(e) => setFormCarteira(e.target.value)} placeholder="Ex.: Sul de MG" /></div>
+              <div className="space-y-1">
+                <Label>Perfil base</Label>
+                <Select value={formRole} onValueChange={(value) => setFormRole(value as UserRole)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(ROLE_LABELS) as UserRole[]).map((role) => (
+                      <SelectItem key={role} value={role}>
+                        {ROLE_LABELS[role]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="uWallet">Carteira / território</Label>
+                <Input
+                  id="uWallet"
+                  value={formCarteira}
+                  onChange={(e) => setFormCarteira(e.target.value)}
+                  placeholder="Ex.: Sul de MG"
+                />
+              </div>
             </div>
-            {editingUser && <div className="flex items-center justify-between rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-3"><div><p className="font-semibold text-gray-800">Usuário ativo</p><p className="text-[11px] text-gray-500">Usuários inativos perdem acesso após a revalidação da sessão.</p></div><Switch checked={formAtivo} onCheckedChange={setFormAtivo} /></div>}
-            <div className="rounded-lg border border-[#E2E8F0] p-3"><p className="mb-2 font-semibold text-gray-800">Permissões adicionais registradas</p><p className="mb-3 text-[11px] text-gray-500">O perfil base continua preservado; estas marcações ficam registradas para controle administrativo.</p><div className="grid grid-cols-1 gap-2 sm:grid-cols-2">{Object.entries(PERMISSION_LABELS).map(([key, label]) => <label key={key} className="flex items-center gap-2 text-gray-700"><Switch checked={!!formPermissions[key]} onCheckedChange={(checked) => setFormPermissions((current) => ({ ...current, [key]: checked }))} /><span>{label}</span></label>)}</div></div>
-            <DialogFooter className="pt-3"><Button type="button" variant="outline" onClick={() => setModalOpen(false)}>Cancelar</Button><Button type="submit" disabled={submitting} className="bg-[#DC2626] text-white hover:bg-[#B91C1C]">{submitting ? 'Salvando...' : 'Salvar usuário'}</Button></DialogFooter>
+            {editingUser && (
+              <div className="flex items-center justify-between rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-3">
+                <div>
+                  <p className="font-semibold text-gray-800">Usuário ativo</p>
+                  <p className="text-[11px] text-gray-500">
+                    Usuários inativos perdem acesso após a revalidação da sessão.
+                  </p>
+                </div>
+                <Switch checked={formAtivo} onCheckedChange={setFormAtivo} />
+              </div>
+            )}
+            <div className="rounded-lg border border-[#E2E8F0] p-3">
+              <p className="mb-2 font-semibold text-gray-800">Permissões adicionais registradas</p>
+              <p className="mb-3 text-[11px] text-gray-500">
+                O perfil base continua preservado; estas marcações ficam registradas para controle
+                administrativo.
+              </p>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {Object.entries(PERMISSION_LABELS).map(([key, label]) => (
+                  <label key={key} className="flex items-center gap-2 text-gray-700">
+                    <Switch
+                      checked={!!formPermissions[key]}
+                      onCheckedChange={(checked) =>
+                        setFormPermissions((current) => ({ ...current, [key]: checked }))
+                      }
+                    />
+                    <span>{label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <DialogFooter className="pt-3">
+              <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={submitting}
+                className="bg-[#DC2626] text-white hover:bg-[#B91C1C]"
+              >
+                {submitting ? 'Salvando...' : 'Salvar usuário'}
+              </Button>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
