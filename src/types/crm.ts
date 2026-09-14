@@ -10,6 +10,7 @@ export interface User {
   carteira?: string
   created: string
   updated: string
+  permissoes?: Record<string, boolean>
 }
 
 export type ClienteStatus = 'ativo' | 'inativo'
@@ -77,6 +78,7 @@ export type LeadEtapa =
   | 'convertido_pedido'
   | 'pecas_pos_vendas'
   | 'financeiro_fiscal'
+  | 'fornecedores'
 
 /** @deprecated Use LeadEtapa; retained to avoid breaking existing modules. */
 export type VendaEtapa = LeadEtapa
@@ -154,6 +156,16 @@ export interface Venda {
     cliente?: Cliente
     vendedor?: User
   }
+}
+
+export interface AuditEntry {
+  id: string
+  autor: string
+  alvo: string
+  acao: string
+  antes?: unknown
+  depois?: unknown
+  created: string
 }
 
 export type TicketPrioridade = 'baixa' | 'media' | 'alta'

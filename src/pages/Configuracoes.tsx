@@ -1,18 +1,18 @@
-import React, { useState, useEffect } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   Users,
   Shield,
   UserPlus,
-  KeyRound,
   Edit2,
-  Trash2,
+  UserX,
+  History,
   CheckCircle,
-  AlertCircle,
   Lock,
 } from 'lucide-react'
 import { userService } from '@/services/crmService'
-import type { User, UserRole } from '@/types/crm'
+import type { AuditEntry, User, UserRole } from '@/types/crm'
 import { formatDateBR } from '@/lib/formatters'
+import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -32,37 +32,132 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
-export default function Configuracoes() {
-  const [users, setUsers] = useState<User[]>([])
-  const [loading, setLoading] = useState(true)
+const ROLE_LABELS: Record<UserRole, string> = {
+  admin: 'Administrador',
+  gestor: 'Gestor',
+  triagem: 'Triagem',
+  vendedor: 'Vendedor',
+  revendedor: 'Revendedor',
+  suporte: 'Suporte',
+}
 
-  // Create User Modal
+const PERMISSION_LABELS: Record<string, string> = {
+  dashboard: 'Dashboard',
+  leads: 'Leads / Kanban',
+  clientes: 'Clientes',
+  revendas: 'Revendas',
+  suporte: 'Suporte',
+  relatorios: 'Relatórios',
+  configuracoes: 'Configurações administrativas',
+}
+
+const ROLE_DESCRIPTIONS: { role: UserRole; desc: string; color: string }[] = [
+  {
+    role: 'admin',
+    desc: 'Acesso irrestrito, relatórios gerenciais e administração do sistema.',
+    color: 'border-red-300 bg-red-50 text-red-800',
+  },
+  {
+    role: 'gestor',
+    desc: 'Acompanha carteiras e auditoria operacional, sem administração global.',
+    color: 'border-cyan-300 bg-cyan-50 text-cyan-800',
+  },
+  {
+    role: 'triagem',
+    desc: 'Recebe e organiza leads conforme as regras de carteira.',
+    color: 'border-amber-300 bg-amber-50 text-amber-800',
+  },
+  {
+    role: 'vendedor',
+    desc: 'Atua no Kanban, carteira de clientes e revendas autorizadas.',
+    color: 'border-emerald-300 bg-emerald-50 text-emerald-800',
+  },
+  {
+    role: 'revendedor',
+    desc: 'Acessa a carteira autorizada para atendimento comercial.',
+    color: 'border-purple-300 bg-purple-50 text-purple-800',
+  },
+  {
+    role: 'suporte',
+    desc: 'Atende clientes e gerencia chamados de suporte e pós-venda.',
+    color: 'border-blue-300 bg-blue-50 text-blue-800',
+  },
+]
+
+const DEFAULT_PERMISSIONS: Record<string, boolean> = {
+  dashboard: false,
+  leads: false,
+  clientes: false,
+  revendas: false,
+  suporte: false,
+  relatorios: false,
+  configuracoes: false,
+}
+
+function safePermissions(value?: Record<string, boolean>) {
+  return { ...DEFAULT_PERMISSIONS, ...(value || {}) }
+}
+
+function auditText(value: unknown) {
+  if (value === undefined || value === null || value === '') return '—'
+  if (typeof value === 'string') return value
+  try {
+    return JSON.stringify(value)
+  } catch {
+    return String(value)
+  }
+}
+
+export default function Configuracoes() {
+  const { user } = useAuth()
+  const [users, setUsers] = useState<User[]>([])
+  const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([])
+  const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<User | null>(null)
-
   const [formName, setFormName] = useState('')
   const [formEmail, setFormEmail] = useState('')
   const [formPassword, setFormPassword] = useState('')
   const [formRole, setFormRole] = useState<UserRole>('vendedor')
+  const [formCarteira, setFormCarteira] = useState('')
+  const [formAtivo, setFormAtivo] = useState(true)
+  const [formPermissions, setFormPermissions] = useState<Record<string, boolean>>(
+    DEFAULT_PERMISSIONS,
+  )
   const [submitting, setSubmitting] = useState(false)
+  const [auditSearch, setAuditSearch] = useState('')
 
-  const loadUsers = async () => {
+  const loadAdminData = async () => {
     try {
-      const list = await userService.getAll()
+      const [list, audit] = await Promise.all([userService.getAll(), userService.getAudit()])
       setUsers(list)
+      setAuditEntries(audit)
     } catch {
-      toast.error('Erro ao listar usuários.')
+      toast.error('Erro ao carregar o painel administrativo.')
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    loadUsers()
+    void loadAdminData()
   }, [])
+
+  const filteredAudit = useMemo(() => {
+    const query = auditSearch.trim().toLowerCase()
+    if (!query) return auditEntries
+    return auditEntries.filter((entry) =>
+      [entry.autor, entry.alvo, entry.acao, auditText(entry.depois)]
+        .join(' ')
+        .toLowerCase()
+        .includes(query),
+    )
+  }, [auditEntries, auditSearch])
 
   const handleOpenCreate = () => {
     setEditingUser(null)
@@ -70,366 +165,302 @@ export default function Configuracoes() {
     setFormEmail('')
     setFormPassword('')
     setFormRole('vendedor')
+    setFormCarteira('')
+    setFormAtivo(true)
+    setFormPermissions(DEFAULT_PERMISSIONS)
     setModalOpen(true)
   }
 
-  const handleOpenEdit = (u: User) => {
-    setEditingUser(u)
-    setFormName(u.name || '')
-    setFormEmail(u.email || '')
+  const handleOpenEdit = (item: User) => {
+    setEditingUser(item)
+    setFormName(item.name || '')
+    setFormEmail(item.email || '')
     setFormPassword('')
-    setFormRole(u.role || 'vendedor')
+    setFormRole(item.role || 'vendedor')
+    setFormCarteira(item.carteira || '')
+    setFormAtivo(item.ativo !== false)
+    setFormPermissions(safePermissions(item.permissoes))
     setModalOpen(true)
   }
 
-  const handleSaveUser = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!formEmail.trim()) {
-      toast.error('E-mail é obrigatório.')
+  const handleSaveUser = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (!formName.trim() || !formEmail.trim()) {
+      toast.error('Nome e e-mail são obrigatórios.')
       return
     }
-
+    if (!editingUser && formPassword.length < 8) {
+      toast.error('A senha deve ter no mínimo 8 caracteres.')
+      return
+    }
     setSubmitting(true)
     try {
       if (editingUser) {
-        const payload: Partial<User> = {
+        const before = {
+          name: editingUser.name,
+          role: editingUser.role,
+          carteira: editingUser.carteira || '',
+          ativo: editingUser.ativo,
+          permissoes: editingUser.permissoes || {},
+        }
+        const updated = await userService.update(editingUser.id, {
           name: formName.trim(),
           role: formRole,
-          ativo: editingUser.ativo,
-        }
-        const updated = await userService.update(editingUser.id, payload)
-        await userService.audit({
-          autor: 'sessão atual',
-          alvo: editingUser.id,
-          acao: 'alterar_acesso',
-          antes: { role: editingUser.role, ativo: editingUser.ativo },
-          depois: { role: formRole, ativo: editingUser.ativo },
+          carteira: formCarteira.trim(),
+          ativo: formAtivo,
+          permissoes: formPermissions,
         })
-        setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)))
+        await userService.audit({
+          autor: user?.id || 'sessão atual',
+          alvo: editingUser.id,
+          acao: 'alterar_usuario_e_permissoes',
+          antes: before,
+          depois: {
+            name: formName.trim(),
+            role: formRole,
+            carteira: formCarteira.trim(),
+            ativo: formAtivo,
+            permissoes: formPermissions,
+          },
+        })
+        setUsers((current) => current.map((item) => (item.id === updated.id ? updated : item)))
         toast.success('Usuário atualizado e auditado.')
       } else {
-        if (!formPassword || formPassword.length < 8) {
-          toast.error('A senha deve ter no mínimo 8 caracteres.')
-          setSubmitting(false)
-          return
-        }
         const created = await userService.create({
           name: formName.trim(),
           email: formEmail.trim(),
           password: formPassword,
           passwordConfirm: formPassword,
           role: formRole,
+          carteira: formCarteira.trim(),
+          ativo: true,
+          permissoes: formPermissions,
         })
-        setUsers((prev) => [...prev, created])
-        toast.success('Usuário criado com sucesso!')
+        await userService.audit({
+          autor: user?.id || 'sessão atual',
+          alvo: created.id,
+          acao: 'criar_usuario',
+          antes: null,
+          depois: { name: created.name, email: created.email, role: formRole },
+        })
+        setUsers((current) => [...current, created])
+        toast.success('Usuário criado e auditado.')
       }
       setModalOpen(false)
-    } catch {
-      toast.error('Erro ao salvar usuário.')
+      setAuditEntries(await userService.getAudit())
+    } catch (error) {
+      console.error(error)
+      toast.error('Erro ao salvar usuário. Verifique os dados e as permissões.')
     } finally {
       setSubmitting(false)
     }
   }
 
-  const handleDeleteUser = async (u: User) => {
-    if (u.email === 'elisandrodesousaharamaq@gmail.com') {
-      toast.error('O usuário administrador principal não pode ser removido.')
+  const toggleUser = async (item: User) => {
+    if (item.email === 'elisandrodesousaharamaq@gmail.com' && item.ativo !== false) {
+      toast.error('O administrador principal não pode ser desativado.')
       return
     }
-    if (!confirm(`Deseja desativar/remover o acesso de ${u.name || u.email}?`)) return
+    const nextActive = item.ativo === false
     try {
-      const updated = await userService.deactivate(u.id)
+      const updated = await userService.update(item.id, { ativo: nextActive })
       await userService.audit({
-        autor: 'sessão atual',
-        alvo: u.id,
-        acao: 'desativar_usuario',
-        antes: { ativo: u.ativo },
-        depois: { ativo: false },
+        autor: user?.id || 'sessão atual',
+        alvo: item.id,
+        acao: nextActive ? 'reativar_usuario' : 'desativar_usuario',
+        antes: { ativo: item.ativo !== false },
+        depois: { ativo: nextActive },
       })
-      setUsers((prev) => prev.map((item) => (item.id === updated.id ? updated : item)))
-      toast.success('Usuário desativado e auditado.')
+      setUsers((current) => current.map((entry) => (entry.id === updated.id ? updated : entry)))
+      setAuditEntries(await userService.getAudit())
+      toast.success(nextActive ? 'Usuário reativado.' : 'Usuário desativado.')
     } catch {
-      toast.error('Erro ao remover usuário.')
+      toast.error('Não foi possível alterar o status do usuário.')
     }
   }
 
-  const roleDescriptions: { role: UserRole; title: string; desc: string; color: string }[] = [
-    {
-      role: 'admin',
-      title: 'Administrador (Admin)',
-      desc: 'Acesso irrestrito a todos os módulos, relatórios gerenciais, gestão de revendas e administração de usuários.',
-      color: 'border-red-300 bg-red-50 text-red-800',
-    },
-    {
-      role: 'triagem',
-      title: 'Triagem',
-      desc: 'Recebe e organiza leads, sem acesso a configurações ou dados fora das regras de carteira.',
-      color: 'border-amber-300 bg-amber-50 text-amber-800',
-    },
-    {
-      role: 'vendedor',
-      title: 'Vendedor Comercial',
-      desc: 'Acesso ao Dashboard, Funil de Vendas (Kanban), carteira de Clientes e catálogo de Revendas credenciadas.',
-      color: 'border-emerald-300 bg-emerald-50 text-emerald-800',
-    },
-    {
-      role: 'revendedor',
-      title: 'Revendedor',
-      desc: 'Acesso somente à carteira autorizada para atendimento comercial.',
-      color: 'border-purple-300 bg-purple-50 text-purple-800',
-    },
-    {
-      role: 'gestor',
-      title: 'Gestor',
-      desc: 'Acompanha carteiras e auditoria operacional, sem administração global de sistema.',
-      color: 'border-cyan-300 bg-cyan-50 text-cyan-800',
-    },
-    {
-      role: 'suporte',
-      title: 'Suporte Técnico & Pós-Venda',
-      desc: 'Acesso ao Dashboard, lista de Clientes e gerenciamento completo dos chamados e tickets de suporte.',
-      color: 'border-blue-300 bg-blue-50 text-blue-800',
-    },
-  ]
-
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
+      <div className="flex min-h-[50vh] items-center justify-center">
         <div className="flex flex-col items-center gap-2">
-          <div className="w-8 h-8 border-4 border-[#1B4332] border-t-transparent rounded-full animate-spin" />
-          <p className="text-xs text-gray-500">Carregando configurações...</p>
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#D92323] border-t-transparent" />
+          <p className="text-xs text-gray-500">Carregando painel administrativo...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="w-full max-w-[1360px] mx-auto px-4 sm:px-6 lg:px-8 py-5 md:py-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div className="mx-auto w-full max-w-[1360px] space-y-6 px-4 py-5 sm:px-6 md:py-6 lg:px-8">
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-[#1E293B] tracking-tight">
-            Configurações e Níveis de Acesso
-          </h1>
-          <p className="text-xs sm:text-sm text-[#64748B] mt-0.5">
-            Gerenciamento de papéis de usuários (RBAC) e segurança da plataforma Haramaq
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold tracking-tight text-[#1E293B] sm:text-2xl">
+              Painel Administrativo
+            </h1>
+            <Badge className="gap-1 bg-red-50 text-[10px] text-red-700 hover:bg-red-50">
+              <Lock className="h-3 w-3" /> Admin
+            </Badge>
+          </div>
+          <p className="mt-0.5 text-xs text-[#64748B] sm:text-sm">
+            Usuários, carteiras, permissões adicionais e histórico de atividades.
           </p>
         </div>
-
         <Button
           onClick={handleOpenCreate}
-          className="bg-[#D92323] hover:bg-[#B91C1C] text-white font-semibold rounded-lg gap-2 shadow-xs transition-colors self-start sm:self-auto h-9 text-xs"
+          className="h-9 self-start gap-2 rounded-lg bg-[#D92323] text-xs font-semibold text-white hover:bg-[#B91C1C] sm:self-auto"
         >
-          <UserPlus className="w-4 h-4" />
-          Novo Usuário
+          <UserPlus className="h-4 w-4" /> Novo usuário
         </Button>
       </div>
 
-      {/* Role Definitions (Read-Only) */}
-      <Card className="rounded-xl border border-[#E2E8F0] shadow-xs bg-white">
-        <CardHeader className="pb-3 border-b border-[#F1F5F9]">
-          <CardTitle className="text-sm font-bold text-[#1E293B] flex items-center gap-2">
-            <Shield className="w-4 h-4 text-[#D92323]" />
-            Matriz de Permissões e Níveis de Acesso
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-4 grid grid-cols-1 md:grid-cols-3 gap-3.5">
-          {roleDescriptions.map((item) => (
-            <div
-              key={item.role}
-              className="p-3.5 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] space-y-2"
-            >
-              <Badge
-                variant="outline"
-                className={cn('text-[10px] font-bold uppercase', item.color)}
-              >
-                {item.title}
-              </Badge>
-              <p className="text-xs text-[#64748B] leading-relaxed">{item.desc}</p>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="usuarios" className="space-y-5">
+        <TabsList className="grid h-auto w-full grid-cols-3 bg-white p-1 shadow-xs sm:w-fit sm:flex">
+          <TabsTrigger value="usuarios" className="gap-2 text-xs">
+            <Users className="h-3.5 w-3.5" /> Usuários
+          </TabsTrigger>
+          <TabsTrigger value="perfis" className="gap-2 text-xs">
+            <Shield className="h-3.5 w-3.5" /> Perfis
+          </TabsTrigger>
+          <TabsTrigger value="auditoria" className="gap-2 text-xs">
+            <History className="h-3.5 w-3.5" /> Auditoria
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Users Table */}
-      <Card className="rounded-xl border border-[#E2E8F0] shadow-xs overflow-hidden bg-white">
-        <CardHeader className="pb-3 border-b border-[#F1F5F9] flex flex-row items-center justify-between">
-          <CardTitle className="text-sm font-bold text-[#1E293B] flex items-center gap-2">
-            <Users className="w-4 h-4 text-[#D92323]" />
-            Usuários Cadastrados ({users.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-[#F8FAF9] border-b border-[#E5E7EB] text-gray-500 uppercase tracking-wider font-semibold">
-                <tr>
-                  <th className="py-3 px-4">Nome</th>
-                  <th className="py-3 px-4">E-mail</th>
-                  <th className="py-3 px-4">Papel / Nível</th>
-                  <th className="py-3 px-4">Data Cadastro</th>
-                  <th className="py-3 px-4 text-right">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#E5E7EB]">
-                {users.map((u) => {
-                  const roleBadgeStyle: Record<string, string> = {
-                    admin: 'bg-red-50 text-red-700 border-red-200',
-                    vendedor: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-                    suporte: 'bg-blue-50 text-blue-700 border-blue-200',
-                  }
-
-                  return (
-                    <tr
-                      key={u.id}
-                      className={cn(
-                        'hover:bg-gray-50/70 transition-colors',
-                        u.ativo === false && 'opacity-60',
-                      )}
-                    >
-                      <td className="py-3.5 px-4 font-bold text-gray-900">
-                        {u.name || 'Sem nome'}
-                      </td>
-                      <td className="py-3.5 px-4 font-mono text-gray-600">{u.email}</td>
-                      <td className="py-3.5 px-4">
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            'text-[11px] font-semibold uppercase',
-                            roleBadgeStyle[u.role || 'vendedor'],
-                          )}
-                        >
-                          {u.role || 'vendedor'}
-                        </Badge>
-                      </td>
-                      <td className="py-3.5 px-4 text-gray-500">{formatDateBR(u.created)}</td>
-                      <td className="py-3.5 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleOpenEdit(u)}
-                            className="h-8 w-8 p-0 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
-                            title="Editar Papel"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </Button>
-
-                          {u.email !== 'elisandrodesousaharamaq@gmail.com' && u.ativo !== false && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteUser(u)}
-                              className="h-8 w-8 p-0 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
-                              title="Desativar Usuário"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </Button>
-                          )}
-                        </div>
-                      </td>
+        <TabsContent value="usuarios" className="space-y-5">
+          <Card className="overflow-hidden rounded-xl border-[#E2E8F0] bg-white shadow-xs">
+            <CardHeader className="border-b border-[#F1F5F9] pb-3">
+              <CardTitle className="flex items-center gap-2 text-sm font-bold text-[#1E293B]">
+                <Users className="h-4 w-4 text-[#D92323]" /> Usuários cadastrados ({users.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[850px] text-left text-xs">
+                  <thead className="border-b border-[#E5E7EB] bg-[#F8FAF9] text-gray-500">
+                    <tr>
+                      <th className="px-4 py-3">Usuário</th>
+                      <th className="px-4 py-3">Perfil</th>
+                      <th className="px-4 py-3">Carteira</th>
+                      <th className="px-4 py-3">Status</th>
+                      <th className="px-4 py-3">Cadastro</th>
+                      <th className="px-4 py-3 text-right">Ações</th>
                     </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+                  </thead>
+                  <tbody className="divide-y divide-[#E5E7EB]">
+                    {users.map((item) => (
+                      <tr key={item.id} className={cn('hover:bg-gray-50/70', item.ativo === false && 'opacity-60')}>
+                        <td className="px-4 py-3.5">
+                          <p className="font-bold text-gray-900">{item.name || 'Sem nome'}</p>
+                          <p className="font-mono text-[11px] text-gray-500">{item.email}</p>
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <Badge variant="outline" className="text-[10px] font-semibold uppercase">
+                            {ROLE_LABELS[item.role] || item.role}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3.5 text-gray-600">{item.carteira || 'Todas / não definida'}</td>
+                        <td className="px-4 py-3.5">
+                          <Badge
+                            variant="outline"
+                            className={item.ativo === false ? 'border-gray-200 bg-gray-50 text-gray-500' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}
+                          >
+                            {item.ativo === false ? 'Inativo' : 'Ativo'}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3.5 text-gray-500">{formatDateBR(item.created)}</td>
+                        <td className="px-4 py-3.5 text-right">
+                          <div className="flex justify-end gap-1.5">
+                            <Button variant="ghost" size="sm" onClick={() => handleOpenEdit(item)} className="h-8 w-8 p-0 text-gray-500 hover:bg-blue-50 hover:text-blue-600" title="Editar usuário">
+                              <Edit2 className="h-3.5 w-3.5" />
+                            </Button>
+                            {item.email !== 'elisandrodesousaharamaq@gmail.com' && (
+                              <Button variant="ghost" size="sm" onClick={() => void toggleUser(item)} className="h-8 w-8 p-0 text-gray-500 hover:bg-red-50 hover:text-red-600" title={item.ativo === false ? 'Reativar usuário' : 'Desativar usuário'}>
+                                {item.ativo === false ? <CheckCircle className="h-3.5 w-3.5" /> : <UserX className="h-3.5 w-3.5" />}
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      {/* Modal: New / Edit User */}
+        <TabsContent value="perfis">
+          <Card className="rounded-xl border-[#E2E8F0] bg-white shadow-xs">
+            <CardHeader className="border-b border-[#F1F5F9] pb-3">
+              <CardTitle className="flex items-center gap-2 text-sm font-bold text-[#1E293B]">
+                <Shield className="h-4 w-4 text-[#D92323]" /> Perfis existentes preservados
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 gap-3.5 p-4 md:grid-cols-3">
+              {ROLE_DESCRIPTIONS.map((item) => (
+                <div key={item.role} className="space-y-2 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-3.5">
+                  <Badge variant="outline" className={cn('text-[10px] font-bold uppercase', item.color)}>
+                    {ROLE_LABELS[item.role]}
+                  </Badge>
+                  <p className="text-xs leading-relaxed text-[#64748B]">{item.desc}</p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="auditoria" className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Input value={auditSearch} onChange={(event) => setAuditSearch(event.target.value)} placeholder="Filtrar por usuário, ação ou alvo..." className="h-9 max-w-md text-xs" />
+            <Badge variant="outline" className="text-xs">{filteredAudit.length} eventos</Badge>
+          </div>
+          <Card className="overflow-hidden rounded-xl border-[#E2E8F0] bg-white shadow-xs">
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[900px] text-left text-xs">
+                  <thead className="border-b border-[#E5E7EB] bg-[#F8FAF9] text-gray-500">
+                    <tr><th className="px-4 py-3">Data</th><th className="px-4 py-3">Autor</th><th className="px-4 py-3">Ação</th><th className="px-4 py-3">Alvo</th><th className="px-4 py-3">Alteração</th></tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#E5E7EB]">
+                    {filteredAudit.map((entry) => (
+                      <tr key={entry.id}>
+                        <td className="whitespace-nowrap px-4 py-3 text-gray-500">{formatDateBR(entry.created)}</td>
+                        <td className="px-4 py-3 font-mono text-gray-600">{entry.autor}</td>
+                        <td className="px-4 py-3 font-semibold text-gray-800">{entry.acao}</td>
+                        <td className="px-4 py-3 font-mono text-gray-600">{entry.alvo}</td>
+                        <td className="max-w-[420px] px-4 py-3 text-gray-500">{auditText(entry.depois)}</td>
+                      </tr>
+                    ))}
+                    {!filteredAudit.length && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">Nenhum evento de auditoria encontrado.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-md rounded-2xl">
+        <DialogContent className="max-h-[90vh] max-w-xl overflow-y-auto rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-base font-bold text-[#1B4332]">
-              {editingUser ? 'Editar Usuário e Papel' : 'Novo Usuário do Sistema'}
+              {editingUser ? 'Editar usuário, carteira e permissões' : 'Novo usuário do sistema'}
             </DialogTitle>
           </DialogHeader>
-
           <form onSubmit={handleSaveUser} className="space-y-4 pt-2 text-xs">
-            <div className="space-y-1">
-              <Label htmlFor="uName" className="font-semibold text-gray-700">
-                Nome Completo
-              </Label>
-              <Input
-                id="uName"
-                value={formName}
-                onChange={(e) => setFormName(e.target.value)}
-                placeholder="Ex: Roberto Vendas"
-                required
-                className="h-10 text-xs rounded-xl"
-              />
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-1"><Label htmlFor="uName">Nome completo</Label><Input id="uName" value={formName} onChange={(e) => setFormName(e.target.value)} required /></div>
+              <div className="space-y-1"><Label htmlFor="uEmail">E-mail corporativo</Label><Input id="uEmail" type="email" disabled={!!editingUser} value={formEmail} onChange={(e) => setFormEmail(e.target.value)} required /></div>
             </div>
-
-            <div className="space-y-1">
-              <Label htmlFor="uEmail" className="font-semibold text-gray-700">
-                E-mail Corporativo
-              </Label>
-              <Input
-                id="uEmail"
-                type="email"
-                disabled={!!editingUser}
-                value={formEmail}
-                onChange={(e) => setFormEmail(e.target.value)}
-                placeholder="nome@haramaq.com.br"
-                required
-                className="h-10 text-xs rounded-xl"
-              />
+            {!editingUser && <div className="space-y-1"><Label htmlFor="uPass">Senha provisória (mínimo 8 caracteres)</Label><Input id="uPass" type="password" value={formPassword} onChange={(e) => setFormPassword(e.target.value)} required /></div>}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-1"><Label>Perfil base</Label><Select value={formRole} onValueChange={(value) => setFormRole(value as UserRole)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{(Object.keys(ROLE_LABELS) as UserRole[]).map((role) => <SelectItem key={role} value={role}>{ROLE_LABELS[role]}</SelectItem>)}</SelectContent></Select></div>
+              <div className="space-y-1"><Label htmlFor="uWallet">Carteira / território</Label><Input id="uWallet" value={formCarteira} onChange={(e) => setFormCarteira(e.target.value)} placeholder="Ex.: Sul de MG" /></div>
             </div>
-
-            {!editingUser && (
-              <div className="space-y-1">
-                <Label htmlFor="uPass" className="font-semibold text-gray-700">
-                  Senha Provisória (mínimo 8 caracteres)
-                </Label>
-                <Input
-                  id="uPass"
-                  type="password"
-                  value={formPassword}
-                  onChange={(e) => setFormPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required
-                  className="h-10 text-xs rounded-xl"
-                />
-              </div>
-            )}
-
-            <div className="space-y-1">
-              <Label htmlFor="uRole" className="font-semibold text-gray-700">
-                Nível de Acesso (Papel)
-              </Label>
-              <Select value={formRole} onValueChange={(val) => setFormRole(val as UserRole)}>
-                <SelectTrigger id="uRole" className="h-10 text-xs rounded-xl">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin">Administrador (Acesso Geral)</SelectItem>
-                  <SelectItem value="gestor">Gestor (Carteiras e auditoria)</SelectItem>
-                  <SelectItem value="triagem">Triagem (Leads)</SelectItem>
-                  <SelectItem value="vendedor">Vendedor (Carteira comercial)</SelectItem>
-                  <SelectItem value="revendedor">Revendedor (Carteira autorizada)</SelectItem>
-                  <SelectItem value="suporte">Suporte (Chamados, Clientes)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <DialogFooter className="pt-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setModalOpen(false)}
-                className="rounded-xl text-xs"
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                disabled={submitting}
-                className="bg-[#DC2626] hover:bg-[#b91c1c] text-white rounded-xl text-xs font-semibold px-5"
-              >
-                {submitting ? 'Salvando...' : 'Salvar Usuário'}
-              </Button>
-            </DialogFooter>
+            {editingUser && <div className="flex items-center justify-between rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-3"><div><p className="font-semibold text-gray-800">Usuário ativo</p><p className="text-[11px] text-gray-500">Usuários inativos perdem acesso após a revalidação da sessão.</p></div><Switch checked={formAtivo} onCheckedChange={setFormAtivo} /></div>}
+            <div className="rounded-lg border border-[#E2E8F0] p-3"><p className="mb-2 font-semibold text-gray-800">Permissões adicionais registradas</p><p className="mb-3 text-[11px] text-gray-500">O perfil base continua preservado; estas marcações ficam registradas para controle administrativo.</p><div className="grid grid-cols-1 gap-2 sm:grid-cols-2">{Object.entries(PERMISSION_LABELS).map(([key, label]) => <label key={key} className="flex items-center gap-2 text-gray-700"><Switch checked={!!formPermissions[key]} onCheckedChange={(checked) => setFormPermissions((current) => ({ ...current, [key]: checked }))} /><span>{label}</span></label>)}</div></div>
+            <DialogFooter className="pt-3"><Button type="button" variant="outline" onClick={() => setModalOpen(false)}>Cancelar</Button><Button type="submit" disabled={submitting} className="bg-[#DC2626] text-white hover:bg-[#B91C1C]">{submitting ? 'Salvando...' : 'Salvar usuário'}</Button></DialogFooter>
           </form>
         </DialogContent>
       </Dialog>

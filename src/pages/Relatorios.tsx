@@ -144,7 +144,7 @@ export default function Relatorios() {
         }
       }
       map[vId].total += 1
-      if (v.etapa === 'fechamento') {
+      if (v.status_lead === 'convertido_pedido') {
         map[vId].fechados += 1
       }
     })
@@ -165,10 +165,17 @@ export default function Relatorios() {
   // Chart 4: Pipeline Total (Stacked Funnel Stage Values)
   const pipelineTotalData = useMemo(() => {
     const stages = [
-      { key: 'prospeccao', label: 'Prospecção', color: '#40916C' },
-      { key: 'orcamento', label: 'Orçamento', color: '#2D6A4F' },
-      { key: 'negociacao', label: 'Negociação', color: '#F59E0B' },
-      { key: 'fechamento', label: 'Fechamento', color: '#DC2626' },
+      { key: 'agendamento_primeiro_contato', label: 'Agendamento de 1º contato', color: '#2563EB' },
+      { key: 'em_contato', label: 'Em contato', color: '#0284C7' },
+      { key: 'revenda_contato', label: 'Revenda Contato', color: '#7C3AED' },
+      { key: 'orcamentacao', label: 'Orçamentação', color: '#F59E0B' },
+      { key: 'contato_futuro_agendado', label: 'Contato futuro (Agendado)', color: '#64748B' },
+      { key: 'arquivado_nao_retorna', label: 'Arquivado (não retorna)', color: '#94A3B8' },
+      { key: 'perdido_concorrencia', label: 'Perdido (comprou da concorrência)', color: '#E11D48' },
+      { key: 'convertido_pedido', label: 'Convertido para pedido', color: '#16A34A' },
+      { key: 'pecas_pos_vendas', label: 'Peças e Pós-vendas', color: '#9333EA' },
+      { key: 'financeiro_fiscal', label: 'Financeiro e Fiscal', color: '#0369A1' },
+      { key: 'fornecedores', label: 'Fornecedores', color: '#0F766E' },
     ]
 
     return stages.map((st) => {
