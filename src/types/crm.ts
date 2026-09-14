@@ -1,5 +1,14 @@
 export type UserRole = 'admin' | 'triagem' | 'vendedor' | 'revendedor' | 'gestor' | 'suporte'
 
+export type PermissionKey =
+  | 'dashboard'
+  | 'leads'
+  | 'clientes'
+  | 'revendas'
+  | 'suporte'
+  | 'relatorios'
+  | 'configuracoes'
+
 export interface User {
   id: string
   email: string
@@ -8,9 +17,17 @@ export interface User {
   role: UserRole
   ativo: boolean
   carteira?: string
+  perm_dashboard?: boolean
+  perm_leads?: boolean
+  perm_clientes?: boolean
+  perm_revendas?: boolean
+  perm_suporte?: boolean
+  perm_relatorios?: boolean
+  perm_configuracoes?: boolean
+  /** @deprecated Kept for backwards-compatible migration reads. */
+  permissoes?: Record<string, boolean>
   created: string
   updated: string
-  permissoes?: Record<string, boolean>
 }
 
 export type ClienteStatus = 'ativo' | 'inativo'
@@ -121,6 +138,7 @@ export interface Venda {
   id: string
   numero_lead?: string
   cliente: string
+  carteira?: string
   produto?: ProdutoModelo
   categoria_produto?: CategoriaProduto
   valor: number
