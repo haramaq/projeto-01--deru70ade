@@ -1,6 +1,7 @@
 migrate(
   (app) => {
     const usersCol = app.findCollectionByNameOrId('_pb_users_auth_')
+    const bootstrapPassword = $os.getenv('HARAMAQ_ADMIN_BOOTSTRAP_PASSWORD')
     const clientesCol = app.findCollectionByNameOrId('clientes')
     const revendasCol = app.findCollectionByNameOrId('revendas')
     const vendasCol = app.findCollectionByNameOrId('vendas')
@@ -19,8 +20,11 @@ migrate(
       adminId = adminUser.id
     } catch (_) {
       const record = new Record(usersCol)
+      if (!bootstrapPassword || bootstrapPassword.length < 12) {
+        throw new Error('HARAMAQ_ADMIN_BOOTSTRAP_PASSWORD must be configured with at least 12 characters')
+      }
       record.setEmail('elisandrodesousaharamaq@gmail.com')
-      record.setPassword('Skip@Pass')
+      record.setPassword(bootstrapPassword)
       record.setVerified(true)
       record.set('name', 'Elisandro de Sousa')
       record.set('role', 'admin')

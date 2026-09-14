@@ -7,14 +7,17 @@ migrate(
     try {
       admin = app.findAuthRecordByEmail('_pb_users_auth_', email)
     } catch (_) {
+      const bootstrapPassword = $os.getenv('HARAMAQ_ADMIN_BOOTSTRAP_PASSWORD')
+      if (!bootstrapPassword || bootstrapPassword.length < 12) {
+        throw new Error('HARAMAQ_ADMIN_BOOTSTRAP_PASSWORD must be configured with at least 12 characters')
+      }
       admin = new Record(users)
       admin.setEmail(email)
-      admin.setPassword('Skip@Pass')
+      admin.setPassword(bootstrapPassword)
       admin.set('name', 'Elisandro de Sousa')
     }
 
     admin.setEmail(email)
-    admin.setPassword('Skip@Pass')
     admin.set('name', 'Elisandro de Sousa')
     admin.set('role', 'admin')
     admin.set('ativo', true)
