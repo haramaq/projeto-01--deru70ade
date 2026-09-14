@@ -10,6 +10,7 @@ import type {
   LeadHistorico,
   LeadTarefa,
   StatusMotivo,
+  AuditEntry,
 } from '@/types/crm'
 
 export const clienteService = {
@@ -267,6 +268,9 @@ export const userService = {
     passwordConfirm: string
     name: string
     role: string
+    carteira?: string
+    ativo?: boolean
+    permissoes?: Record<string, boolean>
   }): Promise<User> {
     return (await pb.collection('users').create(data)) as unknown as User
   },
@@ -276,6 +280,13 @@ export const userService = {
   async deactivate(id: string): Promise<User> {
     return (await pb.collection('users').update(id, { ativo: false })) as unknown as User
   },
+  async getAudit(filter?: string): Promise<AuditEntry[]> {
+    return (await pb.collection('auditoria_acesso').getFullList({
+      filter: filter || undefined,
+      sort: '-created',
+    })) as unknown as AuditEntry[]
+  },
+
   async audit(data: {
     autor: string
     alvo: string
