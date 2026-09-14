@@ -88,7 +88,7 @@ export default function Dashboard() {
 
   // Calculations
   const stats = useMemo(() => {
-    const fechamentoVendas = vendas.filter((v) => v.etapa === 'fechamento')
+    const fechamentoVendas = vendas.filter((v) => v.status_lead === 'convertido_pedido')
     const totalVendasMes = fechamentoVendas.reduce((acc, curr) => acc + (curr.valor || 0), 0)
 
     const clientesAtivos = clientes.filter((c) => c.status === 'ativo').length
@@ -143,6 +143,7 @@ export default function Dashboard() {
       },
       { key: 'pecas_pos_vendas', label: 'Peças e Pós-vendas', color: '#9333EA', variant: 'info' },
       { key: 'financeiro_fiscal', label: 'Financeiro e Fiscal', color: '#0369A1', variant: 'info' },
+      { key: 'fornecedores', label: 'Fornecedores', color: '#0F766E', variant: 'info' },
     ]
 
     return stages.map((st, idx) => {
