@@ -60,6 +60,7 @@ const ETAPAS: { key: LeadEtapa; label: string; color: string }[] = [
   { key: 'convertido_pedido', label: 'Convertido para pedido', color: '#16A34A' },
   { key: 'pecas_pos_vendas', label: 'Peças e Pós-vendas', color: '#9333EA' },
   { key: 'financeiro_fiscal', label: 'Financeiro e Fiscal', color: '#0369A1' },
+  { key: 'fornecedores', label: 'Fornecedores', color: '#0F766E' },
 ]
 
 const CATEGORIAS: CategoriaProduto[] = [
@@ -160,6 +161,13 @@ export default function Vendas() {
   const [saving, setSaving] = useState(false)
 
   const [newCliente, setNewCliente] = useState('')
+  const [clientMode, setClientMode] = useState<'existing' | 'new'>('existing')
+  const [newClientNome, setNewClientNome] = useState('')
+  const [newClientEmpresa, setNewClientEmpresa] = useState('')
+  const [newClientTelefone, setNewClientTelefone] = useState('')
+  const [newClientEmail, setNewClientEmail] = useState('')
+  const [newClientCidade, setNewClientCidade] = useState('')
+  const [newClientEstado, setNewClientEstado] = useState('')
   const [newCategoria, setNewCategoria] = useState<CategoriaProduto>('Linha Prohmix')
   const [newOrigem, setNewOrigem] = useState('Site')
   const [newInterest, setNewInterest] = useState<NivelInteresse>(3)
@@ -173,7 +181,7 @@ export default function Vendas() {
       const [leadList, clientList, userList, motiveList] = await Promise.all([
         vendaService.getAll(),
         clienteService.getAll(),
-        userService.getAll(),
+        ['admin', 'gestor'].includes(role) ? userService.getAll() : Promise.resolve([]),
         vendaService.getMotivos(),
       ])
       setLeads(leadList)
@@ -292,16 +300,50 @@ export default function Vendas() {
     if (lead) requestMove(lead, etapa)
   }
 
+  const resetNewClient = () => {
+    setNewCliente('')
+    setClientMode('existing')
+    setNewClientNome('')
+    setNewClientEmpresa('')
+    setNewClientTelefone('')
+    setNewClientEmail('')
+    setNewClientCidade('')
+    setNewClientEstado('')
+  }
+
   const createLead = async (event: React.FormEvent) => {
     event.preventDefault()
-    if (!newCliente || !newCategoria || !newOrigem) {
-      toast.error('Cliente, categoria e origem são obrigatórios.')
+    if (clientMode === 'existing' && !newCliente) {
+      toast.error('Selecione um cliente existente ou cadastre um novo cliente.')
+      return
+    }
+    if (clientMode === 'new' && !newClientNome.trim()) {
+      toast.error('Informe o nome do contato principal.')
+      return
+    }
+    if (!newCategoria || !newOrigem) {
+      toast.error('Categoria e origem são obrigatórios.')
       return
     }
     setSaving(true)
     try {
+      let clienteId = newCliente
+      if (clientMode === 'new') {
+        const createdClient = await clienteService.create({
+          nome: newClientNome.trim(),
+          empresa: newClientEmpresa.trim(),
+          telefone: newClientTelefone.trim(),
+          email: newClientEmail.trim(),
+          cidade: newClientCidade.trim(),
+          estado: newClientEstado.trim().toUpperCase(),
+          status: 'ativo',
+          responsavel: user?.id,
+        })
+        clienteId = createdClient.id
+        setClientes((current) => [createdClient, ...current])
+      }
       const created = await vendaService.create({
-        cliente: newCliente,
+        cliente: clienteId,
         categoria_produto: newCategoria,
         origem_lead: newOrigem,
         nivel_interesse: newInterest,
@@ -313,10 +355,10 @@ export default function Vendas() {
       })
       setLeads((current) => [created, ...current])
       setCreateOpen(false)
-      setNewCliente('')
+      resetNewClient()
       setNewObservacoes('')
       setNewResponsavel('')
-      toast.success('Lead criado no Kanban.')
+      toast.success(clientMode === 'new' ? 'Cliente e lead cadastrados no Kanban.' : 'Lead criado no Kanban.')
     } catch (error) {
       console.error(error)
       toast.error('Não foi possível criar o lead.')
@@ -423,7 +465,7 @@ export default function Vendas() {
         )}
       </div>
 
-      <div className="grid min-w-[1280px] grid-cols-10 gap-2 overflow-x-auto pb-4">
+      <div className="grid min-w-[1280px] grid-cols-11 gap-2 overflow-x-auto pb-4">
         {ETAPAS.map((stage) => {
           const stageLeads = byStage[stage.key] || []
           return (
@@ -537,20 +579,112 @@ export default function Vendas() {
             <DialogTitle>Novo lead Haramaq</DialogTitle>
           </DialogHeader>
           <form onSubmit={createLead} className="grid grid-cols-1 gap-4 py-2 md:grid-cols-2">
-            <div className="space-y-1 md:col-span-2">
-              <Label>Cliente *</Label>
-              <Select value={newCliente} onValueChange={setNewCliente}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o cliente" />
-                </SelectTrigger>
-                <SelectContent>
-                  {clientes.map((client) => (
-                    <SelectItem key={client.id} value={client.id}>
-                      {client.empresa || client.nome} — {client.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="space-y-2 md:col-span-2">
+              <div className="flex items-center justify-between gap-2">
+                <Label>Cliente *</Label>
+                <div className="flex rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-0.5 text-[11px]">
+                  <button
+                    type="button"
+                    onClick={() => setClientMode('existing')}
+                    className={cn(
+                      'rounded-md px-2.5 py-1 font-semibold transition',
+                      clientMode === 'existing'
+                        ? 'bg-white text-[#D92323] shadow-xs'
+                        : 'text-[#64748B]',
+                    )}
+                  >
+                    Cliente existente
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setClientMode('new')
+                      setNewCliente('')
+                    }}
+                    className={cn(
+                      'rounded-md px-2.5 py-1 font-semibold transition',
+                      clientMode === 'new'
+                        ? 'bg-white text-[#D92323] shadow-xs'
+                        : 'text-[#64748B]',
+                    )}
+                  >
+                    Cadastrar novo
+                  </button>
+                </div>
+              </div>
+              {clientMode === 'existing' ? (
+                <Select value={newCliente} onValueChange={setNewCliente}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o cliente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clientes.map((client) => (
+                      <SelectItem key={client.id} value={client.id}>
+                        {client.empresa || client.nome} — {client.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="grid grid-cols-1 gap-3 rounded-lg border border-[#FCA5A5]/60 bg-[#FFF7F7] p-3 md:grid-cols-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="new-client-name">Nome do contato *</Label>
+                    <Input
+                      id="new-client-name"
+                      value={newClientNome}
+                      onChange={(event) => setNewClientNome(event.target.value)}
+                      placeholder="Nome completo"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="new-client-company">Empresa / propriedade</Label>
+                    <Input
+                      id="new-client-company"
+                      value={newClientEmpresa}
+                      onChange={(event) => setNewClientEmpresa(event.target.value)}
+                      placeholder="Empresa ou fazenda"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="new-client-phone">Telefone / WhatsApp</Label>
+                    <Input
+                      id="new-client-phone"
+                      value={newClientTelefone}
+                      onChange={(event) => setNewClientTelefone(event.target.value)}
+                      placeholder="(00) 00000-0000"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="new-client-email">E-mail</Label>
+                    <Input
+                      id="new-client-email"
+                      type="email"
+                      value={newClientEmail}
+                      onChange={(event) => setNewClientEmail(event.target.value)}
+                      placeholder="contato@empresa.com.br"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="new-client-city">Cidade</Label>
+                    <Input
+                      id="new-client-city"
+                      value={newClientCidade}
+                      onChange={(event) => setNewClientCidade(event.target.value)}
+                      placeholder="Cidade"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="new-client-state">UF</Label>
+                    <Input
+                      id="new-client-state"
+                      maxLength={2}
+                      value={newClientEstado}
+                      onChange={(event) => setNewClientEstado(event.target.value.toUpperCase())}
+                      placeholder="UF"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
             <div className="space-y-1">
               <Label>Categoria do produto *</Label>
