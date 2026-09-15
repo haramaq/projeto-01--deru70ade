@@ -201,7 +201,10 @@ export default function Configuracoes() {
       toast.error('A confirmação da senha não confere.')
       return
     }
-    if (!editingUser && users.some((item) => item.email.toLowerCase() === formEmail.trim().toLowerCase())) {
+    if (
+      !editingUser &&
+      users.some((item) => item.email.toLowerCase() === formEmail.trim().toLowerCase())
+    ) {
       toast.error('Já existe um usuário com este e-mail.')
       return
     }
@@ -277,7 +280,9 @@ export default function Configuracoes() {
       const details = Object.entries(fieldErrors)
         .map(([field, value]: [string, any]) => `${field}: ${value?.message || value}`)
         .join(' · ')
-      toast.error(details || error?.message || 'Erro ao salvar usuário. Verifique os dados e as permissões.')
+      toast.error(
+        details || error?.message || 'Erro ao salvar usuário. Verifique os dados e as permissões.',
+      )
     } finally {
       setSubmitting(false)
     }
@@ -555,26 +560,28 @@ export default function Configuracoes() {
               </div>
             </div>
             {!editingUser && (
-              <div className="space-y-1">
-                <Label htmlFor="uPass">Senha provisória (mínimo 8 caracteres)</Label>
-                <Input
-                  id="uPass"
-                  type="password"
-                  value={formPassword}
-                  onChange={(e) => setFormPassword(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="uPassConfirm">Confirmar senha provisória</Label>
-                <Input
-                  id="uPassConfirm"
-                  type="password"
-                  value={formPasswordConfirm}
-                  onChange={(e) => setFormPasswordConfirm(e.target.value)}
-                  required
-                />
-              </div>
+              <>
+                <div className="space-y-1">
+                  <Label htmlFor="uPass">Senha provisória (mínimo 8 caracteres)</Label>
+                  <Input
+                    id="uPass"
+                    type="password"
+                    value={formPassword}
+                    onChange={(e) => setFormPassword(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="uPassConfirm">Confirmar senha provisória</Label>
+                  <Input
+                    id="uPassConfirm"
+                    type="password"
+                    value={formPasswordConfirm}
+                    onChange={(e) => setFormPasswordConfirm(e.target.value)}
+                    required
+                  />
+                </div>
+              </>
             )}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1">
