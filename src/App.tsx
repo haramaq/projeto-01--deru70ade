@@ -39,30 +39,26 @@ const App = () => (
               </ProtectedRoute>
             }
           >
-            {/* Dashboard / - accessible by admin, vendedor, suporte */}
-            <Route index element={<Dashboard />} />
+            <Route index element={<ProtectedRoute requiredPermission="dashboard"><Dashboard /></ProtectedRoute>} />
 
             {/* Leads/Kanban - perfis operacionais */}
             <Route
               path="vendas"
               element={
-                <ProtectedRoute
-                  allowedRoles={['admin', 'gestor', 'triagem', 'vendedor', 'revendedor', 'suporte']}
-                >
+                <ProtectedRoute requiredPermission="leads">
                   <Vendas />
                 </ProtectedRoute>
               }
             />
 
-            {/* Clientes - admin, vendedor, suporte */}
-            <Route path="clientes" element={<Clientes />} />
-            <Route path="clientes/:id" element={<ClienteDetalhe />} />
+            <Route path="clientes" element={<ProtectedRoute requiredPermission="clientes"><Clientes /></ProtectedRoute>} />
+            <Route path="clientes/:id" element={<ProtectedRoute requiredPermission="clientes"><ClienteDetalhe /></ProtectedRoute>} />
 
             {/* Revendas - admin, vendedor */}
             <Route
               path="revendas"
               element={
-                <ProtectedRoute allowedRoles={['admin', 'vendedor']}>
+                <ProtectedRoute requiredPermission="revendas">
                   <Revendas />
                 </ProtectedRoute>
               }
@@ -70,7 +66,7 @@ const App = () => (
             <Route
               path="revendas/:id"
               element={
-                <ProtectedRoute allowedRoles={['admin', 'vendedor']}>
+                <ProtectedRoute requiredPermission="revendas">
                   <RevendaDetalhe />
                 </ProtectedRoute>
               }
@@ -80,7 +76,7 @@ const App = () => (
             <Route
               path="suporte"
               element={
-                <ProtectedRoute allowedRoles={['admin', 'suporte']}>
+                <ProtectedRoute requiredPermission="suporte">
                   <Suporte />
                 </ProtectedRoute>
               }
@@ -90,7 +86,7 @@ const App = () => (
             <Route
               path="relatorios"
               element={
-                <ProtectedRoute allowedRoles={['admin']}>
+                <ProtectedRoute requiredPermission="relatorios">
                   <Relatorios />
                 </ProtectedRoute>
               }
@@ -100,7 +96,7 @@ const App = () => (
             <Route
               path="configuracoes"
               element={
-                <ProtectedRoute allowedRoles={['admin']}>
+                <ProtectedRoute allowedRoles={['admin']} requiredPermission="configuracoes">
                   <Configuracoes />
                 </ProtectedRoute>
               }

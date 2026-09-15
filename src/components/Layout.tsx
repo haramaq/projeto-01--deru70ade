@@ -16,6 +16,7 @@ import {
   Shield,
   HelpCircle,
 } from 'lucide-react'
+import type { PermissionKey } from '@/types/crm'
 import { useAuth } from '@/contexts/AuthContext'
 import { ticketService } from '@/services/crmService'
 import useRealtime from '@/hooks/use-realtime'
@@ -32,7 +33,7 @@ import {
 import { cn } from '@/lib/utils'
 
 export default function Layout() {
-  const { user, role, logout } = useAuth()
+  const { user, role, can, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -65,55 +66,22 @@ export default function Layout() {
     setMobileOpen(false)
   }, [location.pathname])
 
-  // Navigation items based on role (PRESERVED RULES):
-  // Suporte: Dashboard, Clientes, Suporte
-  // Vendedor: Dashboard, Vendas, Clientes, Revendas
-  // Admin: All
-  const navItems = [
-    {
-      title: 'Dashboard',
-      path: '/',
-      icon: LayoutDashboard,
-      roles: ['admin', 'vendedor', 'suporte'],
-    },
-    {
-      title: 'Leads / Kanban',
-      path: '/vendas',
-      icon: TrendingUp,
-      roles: ['admin', 'gestor', 'triagem', 'vendedor', 'revendedor', 'suporte'],
-    },
-    {
-      title: 'Clientes',
-      path: '/clientes',
-      icon: Users,
-      roles: ['admin', 'vendedor', 'suporte'],
-    },
-    {
-      title: 'Revendas',
-      path: '/revendas',
-      icon: Building2,
-      roles: ['admin', 'vendedor'],
-    },
-    {
-      title: 'Suporte',
-      path: '/suporte',
-      icon: Headphones,
-      roles: ['admin', 'suporte'],
-      badgeCount: openTicketsCount,
-    },
-    {
-      title: 'Relatórios',
-      path: '/relatorios',
-      icon: BarChart3,
-      roles: ['admin'],
-    },
-    {
-      title: 'Configurações',
-      path: '/configuracoes',
-      icon: Settings,
-      roles: ['admin'],
-    },
-  ].filter((item) => item.roles.includes(role))
+  const visibleNavItems: {
+    title: string
+    path: string
+    icon: typeof LayoutDashboard
+    roles: string[]
+    permission: PermissionKey
+    badgeCount?: number
+  }[] = [
+    { title: 'Dashboard', path: '/', icon: LayoutDashboard, roles: ['admin', 'vendedor', 'suporte'], permission: 'dashboard' as PermissionKey },
+    { title: 'Leads / Kanban', path: '/vendas', icon: TrendingUp, roles: ['admin', 'gestor', 'triagem', 'vendedor', 'revendedor', 'suporte'], permission: 'leads' as PermissionKey },
+    { title: 'Clientes', path: '/clientes', icon: Users, roles: ['admin', 'vendedor', 'suporte'], permission: 'clientes' as PermissionKey },
+    { title: 'Revendas', path: '/revendas', icon: Building2, roles: ['admin', 'vendedor'], permission: 'revendas' as PermissionKey },
+    { title: 'Suporte', path: '/suporte', icon: Headphones, roles: ['admin', 'suporte'], permission: 'suporte' as PermissionKey, badgeCount: openTicketsCount },
+    { title: 'Relatórios', path: '/relatorios', icon: BarChart3, roles: ['admin'], permission: 'relatorios' as PermissionKey },
+    { title: 'Configurações', path: '/configuracoes', icon: Settings, roles: ['admin'], permission: 'configuracoes' as PermissionKey },
+  ].filter((item) => can(item.permission))
 
   const roleLabels: Record<string, string> = {
     admin: 'Administrador',
@@ -131,7 +99,7 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen bg-[#F1F3F5] flex flex-col text-[#1E293B]">
-      {/*
+      {/**
         1. RED INSTITUTIONAL HEADER (HARAMAQ)
         Matches reference screenshots:
         - Compact height (~52px)
@@ -268,7 +236,7 @@ export default function Layout() {
         </div>
       </header>
 
-      {/*
+      {/**
         2. HORIZONTAL MODULE TABS BAR (DESKTOP)
         Matches the reference screenshots ("Inspeções | Dashboard Gargalos | Pós-Venda"):
         - Positioned right below the red header
@@ -279,7 +247,7 @@ export default function Layout() {
       <nav className="hidden md:block bg-white border-b border-[#E2E8F0] shadow-2xs">
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6">
           <div className="flex items-center gap-1 py-1.5 overflow-x-auto no-scrollbar">
-            {navItems.map((item) => {
+            {visibleNavItems.map((item) => {
               const Icon = item.icon
               const isExact = item.path === '/'
               return (
@@ -347,7 +315,7 @@ export default function Layout() {
               <div className="text-[10px] font-bold uppercase tracking-wider text-[#94A3B8] px-3 py-1">
                 Módulos do Sistema
               </div>
-              {navItems.map((item) => {
+              {visibleNavItems.map((item) => {
                 const Icon = item.icon
                 const isExact = item.path === '/'
                 return (
@@ -392,7 +360,7 @@ export default function Layout() {
         </div>
       )}
 
-      {/*
+      {/**
         3. MAIN CONTROLLED CONTENT AREA
         - Light gray background (#F1F3F5)
         - Controlled max-width with side margins (not 100% fluid)
@@ -402,7 +370,7 @@ export default function Layout() {
         <Outlet />
       </main>
 
-      {/*
+      {/**
         4. HARAMAQ CLEAN FOOTER
       */}
       <footer className="mt-auto py-3 border-t border-[#E2E8F0] bg-white text-center text-xs text-[#64748B]">
