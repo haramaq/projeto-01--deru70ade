@@ -31,20 +31,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { PageContainer, PageHeader, HaramaqButton, StatusBadge } from '@/components/haramaq'
@@ -62,82 +50,15 @@ const ETAPAS: { key: LeadEtapa; label: string; color: string }[] = [
   { key: 'financeiro_fiscal', label: 'Financeiro e Fiscal', color: '#0369A1' },
   { key: 'fornecedores', label: 'Fornecedores', color: '#0F766E' },
 ]
-
-const CATEGORIAS: CategoriaProduto[] = [
-  'Linha Prohmix',
-  'Linha Supermix',
-  'Linha Tipper',
-  'Vagões Rodoviários',
-  'Colhedora de forragens',
-  'Homogeneizador de esterco',
-  'Revolvedor de cama',
-]
-
-const ORIGENS = [
-  'Campanhas',
-  'Eventos',
-  'Redes Sociais',
-  'Prospecção direta a campo',
-  'Google',
-  'Site',
-  'Ligação na empresa',
-  'Indicação de parceiros',
-  'Cliente antigo',
-  'Cliente de revenda',
-]
-
-const TERMINAIS: LeadEtapa[] = [
-  'arquivado_nao_retorna',
-  'perdido_concorrencia',
-  'convertido_pedido',
-]
-
-const ETAPAS_COM_PRAZO = new Set<LeadEtapa>([
-  'agendamento_primeiro_contato',
-  'em_contato',
-  'revenda_contato',
-  'orcamentacao',
-  'contato_futuro_agendado',
-])
-
-const stageLabels: Record<string, string> = Object.fromEntries(
-  ETAPAS.map((stage) => [stage.key, stage.label]),
-)
-
-function elapsedSince(value?: string) {
-  if (!value) return '—'
-  const timestamp = new Date(value).getTime()
-  if (Number.isNaN(timestamp)) return '—'
-  const minutes = Math.max(0, Math.floor((Date.now() - timestamp) / 60000))
-  if (minutes < 60) return `${minutes} min`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours} h`
-  const days = Math.floor(hours / 24)
-  return `${days} ${days === 1 ? 'dia' : 'dias'}`
-}
-
-function dateTime(value?: string) {
-  if (!value) return '—'
-  const date = new Date(value)
-  return Number.isNaN(date.getTime())
-    ? '—'
-    : date.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
-}
-
-function isOverdue(lead: Venda) {
-  return Boolean(
-    ETAPAS_COM_PRAZO.has(lead.etapa) &&
-    lead.prazo_etapa_em &&
-    new Date(lead.prazo_etapa_em).getTime() < Date.now(),
-  )
-}
-
-function statusVariant(lead: Venda): 'success' | 'danger' | 'neutral' | 'info' {
-  if (lead.status_lead === 'convertido_pedido') return 'success'
-  if (lead.status_lead === 'perdido') return 'danger'
-  if (lead.status_lead === 'arquivado') return 'neutral'
-  return 'info'
-}
+const CATEGORIAS: CategoriaProduto[] = ['Linha Prohmix', 'Linha Supermix', 'Linha Tipper', 'Vagões Rodoviários', 'Colhedora de forragens', 'Homogeneizador de esterco', 'Revolvedor de cama']
+const ORIGENS = ['Campanhas', 'Eventos', 'Redes Sociais', 'Prospecção direta a campo', 'Google', 'Site', 'Ligação na empresa', 'Indicação de parceiros', 'Cliente antigo', 'Cliente de revenda']
+const TERMINAIS: LeadEtapa[] = ['arquivado_nao_retorna', 'perdido_concorrencia', 'convertido_pedido']
+const ETAPAS_COM_PRAZO = new Set<LeadEtapa>(['agendamento_primeiro_contato', 'em_contato', 'revenda_contato', 'orcamentacao', 'contato_futuro_agendado'])
+const stageLabels: Record<string, string> = Object.fromEntries(ETAPAS.map((stage) => [stage.key, stage.label]))
+function elapsedSince(value?: string) { if (!value) return '—'; const timestamp = new Date(value).getTime(); if (Number.isNaN(timestamp)) return '—'; const minutes = Math.max(0, Math.floor((Date.now() - timestamp) / 60000)); if (minutes < 60) return `${minutes} min`; const hours = Math.floor(minutes / 60); if (hours < 24) return `${hours} h`; const days = Math.floor(hours / 24); return `${days} ${days === 1 ? 'dia' : 'dias'}` }
+function dateTime(value?: string) { if (!value) return '—'; const date = new Date(value); return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) }
+function isOverdue(lead: Venda) { return Boolean(ETAPAS_COM_PRAZO.has(lead.etapa) && lead.prazo_etapa_em && new Date(lead.prazo_etapa_em).getTime() < Date.now()) }
+function statusVariant(lead: Venda): 'success' | 'danger' | 'neutral' | 'info' { if (lead.status_lead === 'convertido_pedido') return 'success'; if (lead.status_lead === 'perdido') return 'danger'; if (lead.status_lead === 'arquivado') return 'neutral'; return 'info' }
 
 export default function Vendas() {
   const { user, role, can } = useAuth()
@@ -159,7 +80,6 @@ export default function Vendas() {
   const [selectedMotivo, setSelectedMotivo] = useState('')
   const [draggedId, setDraggedId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-
   const [newCliente, setNewCliente] = useState('')
   const [clientMode, setClientMode] = useState<'existing' | 'new'>('existing')
   const [newClientNome, setNewClientNome] = useState('')
@@ -173,301 +93,20 @@ export default function Vendas() {
   const [newInterest, setNewInterest] = useState<NivelInteresse>(3)
   const [newObservacoes, setNewObservacoes] = useState('')
   const [newResponsavel, setNewResponsavel] = useState('')
-
   const canCreate = can('leads')
 
-  const loadData = async () => {
-    try {
-      const [leadList, clientList, userList, motiveList] = await Promise.all([
-        vendaService.getAll(),
-        clienteService.getAll(),
-        ['admin', 'gestor'].includes(role) ? userService.getAll() : Promise.resolve([]),
-        vendaService.getMotivos(),
-      ])
-      setLeads(leadList)
-      setClientes(clientList)
-      setResponsaveis(userList)
-      setMotivos(motiveList)
-    } catch (error) {
-      console.error(error)
-      toast.error('Erro ao carregar os leads do Kanban.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    loadData()
-  }, [])
-
-  useEffect(() => {
-    if (searchParams.get('nova') === 'true') {
-      setCreateOpen(true)
-      searchParams.delete('nova')
-      searchParams.delete('clienteId')
-      setSearchParams(searchParams, { replace: true })
-    }
-  }, [searchParams, setSearchParams])
-
-  useRealtime('vendas', () => {
-    vendaService
-      .getAll()
-      .then(setLeads)
-      .catch(() => {})
-  })
-
-  const filteredLeads = useMemo(() => {
-    const query = search.trim().toLowerCase()
-    return leads.filter((lead) => {
-      const client = lead.expand?.cliente
-      const searchable = [
-        lead.numero_lead,
-        client?.nome,
-        client?.empresa,
-        lead.categoria_produto,
-        lead.origem_lead,
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase()
-      return (
-        (!query || searchable.includes(query)) &&
-        (originFilter === 'todos' || lead.origem_lead === originFilter) &&
-        (categoryFilter === 'todos' || lead.categoria_produto === categoryFilter) &&
-        (interestFilter === 'todos' || String(lead.nivel_interesse) === interestFilter)
-      )
-    })
-  }, [leads, search, originFilter, categoryFilter, interestFilter])
-
-  const byStage = useMemo(() => {
-    const result = {} as Record<LeadEtapa, Venda[]>
-    ETAPAS.forEach((stage) => {
-      result[stage.key] = filteredLeads.filter((lead) => lead.etapa === stage.key)
-    })
-    return result
-  }, [filteredLeads])
-
-  const openDetail = async (lead: Venda) => {
-    setDetailLead(lead)
-    try {
-      const [historyList, taskList] = await Promise.all([
-        vendaService.getHistorico(lead.id),
-        vendaService.getTarefas(lead.id),
-      ])
-      setHistory(historyList)
-      setTasks(taskList)
-    } catch {
-      setHistory([])
-      setTasks([])
-    }
-  }
-
-  const requestMove = (lead: Venda, etapa: LeadEtapa) => {
-    if (lead.etapa === etapa) return
-    if (TERMINAIS.includes(etapa)) {
-      setMoveLead({ lead, etapa })
-      setSelectedMotivo('')
-      setDetailLead(null)
-      return
-    }
-    void applyMove(lead, etapa)
-  }
-
-  const applyMove = async (lead: Venda, etapa: LeadEtapa, motivoCode?: string) => {
-    setSaving(true)
-    try {
-      const reason = motivos.find((item) => item.codigo === motivoCode)
-      const updated = await vendaService.updateEtapa(lead.id, etapa, reason)
-      setLeads((current) => current.map((item) => (item.id === updated.id ? updated : item)))
-      if (detailLead?.id === updated.id) {
-        setDetailLead(updated)
-        setHistory(await vendaService.getHistorico(updated.id))
-      }
-      setMoveLead(null)
-      toast.success(`Lead movido para ${stageLabels[etapa]}.`)
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Não foi possível mover o lead.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleDrop = (event: React.DragEvent, etapa: LeadEtapa) => {
-    event.preventDefault()
-    const id = event.dataTransfer.getData('text/plain') || draggedId
-    const lead = leads.find((item) => item.id === id)
-    setDraggedId(null)
-    if (lead) requestMove(lead, etapa)
-  }
-
-  const resetNewClient = () => {
-    setNewCliente('')
-    setClientMode('existing')
-    setNewClientNome('')
-    setNewClientEmpresa('')
-    setNewClientTelefone('')
-    setNewClientEmail('')
-    setNewClientCidade('')
-    setNewClientEstado('')
-  }
-
-  const createLead = async (event: React.FormEvent) => {
-    event.preventDefault()
-    if (clientMode === 'existing' && !newCliente) {
-      toast.error('Selecione um cliente existente ou cadastre um novo cliente.')
-      return
-    }
-    if (clientMode === 'new' && !newClientNome.trim()) {
-      toast.error('Informe o nome do contato principal.')
-      return
-    }
-    if (!newCategoria || !newOrigem) {
-      toast.error('Categoria e origem são obrigatórios.')
-      return
-    }
-    setSaving(true)
-    try {
-      let clienteId = newCliente
-      if (clientMode === 'new') {
-        const createdClient = await clienteService.create({
-          nome: newClientNome.trim(),
-          empresa: newClientEmpresa.trim(),
-          telefone: newClientTelefone.trim(),
-          email: newClientEmail.trim(),
-          cidade: newClientCidade.trim(),
-          estado: newClientEstado.trim().toUpperCase(),
-          status: 'ativo',
-          responsavel: user?.id,
-          carteira: user?.carteira || '',
-        })
-        clienteId = createdClient.id
-        setClientes((current) => [createdClient, ...current])
-      }
-      const created = await vendaService.create({
-        cliente: clienteId,
-        categoria_produto: newCategoria,
-        origem_lead: newOrigem,
-        nivel_interesse: newInterest,
-        observacoes_ia: newObservacoes.trim(),
-        vendedor: newResponsavel || user?.id,
-        carteira: user?.carteira || '',
-        etapa: 'agendamento_primeiro_contato',
-        produto: 'PROHMIX',
-        altforce_stage_name: 'Agendamento de 1º contato',
-      })
-      setLeads((current) => [created, ...current])
-      setCreateOpen(false)
-      resetNewClient()
-      setNewObservacoes('')
-      setNewResponsavel('')
-      toast.success(clientMode === 'new' ? 'Cliente e lead cadastrados no Kanban.' : 'Lead criado no Kanban.')
-    } catch (error) {
-      console.error(error)
-      toast.error('Não foi possível criar o lead.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <div className="flex flex-col items-center gap-2">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#D92323] border-t-transparent" />
-          <p className="text-xs text-[#64748B]">Carregando leads do Kanban...</p>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <PageContainer maxWidth="full">
-      <PageHeader
-        title="Gestão de Leads"
-        subtitle="Fluxo comercial Haramaq para pecuária de corte e leite"
-        badge={
-          <span className="rounded-md border border-[#FCA5A5]/60 bg-[#FEE2E2] px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-[#D92323]">
-            {filteredLeads.length} leads
-          </span>
-        }
-        actions={
-          canCreate ? (
-            <HaramaqButton icon={<Plus className="h-4 w-4" />} onClick={() => setCreateOpen(true)}>
-              Novo lead
-            </HaramaqButton>
-          ) : undefined
-        }
-      />
-
-      <div className="mb-5 grid grid-cols-1 gap-2 rounded-xl border border-[#E2E8F0] bg-white p-3 shadow-xs md:grid-cols-[1fr_190px_210px_140px_auto]">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94A3B8]" />
-          <Input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Buscar por ID, cliente, categoria ou origem..."
-            className="h-9 pl-9 text-xs"
-          />
-        </div>
-        <Select value={originFilter} onValueChange={setOriginFilter}>
-          <SelectTrigger className="h-9 text-xs">
-            <SelectValue placeholder="Origem" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todas as origens</SelectItem>
-            {ORIGENS.map((origin) => (
-              <SelectItem key={origin} value={origin}>
-                {origin}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="h-9 text-xs">
-            <SelectValue placeholder="Categoria" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todas as categorias</SelectItem>
-            {CATEGORIAS.map((category) => (
-              <SelectItem key={category} value={category}>
-                {category}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={interestFilter} onValueChange={setInterestFilter}>
-          <SelectTrigger className="h-9 text-xs">
-            <SelectValue placeholder="Interesse" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Interesse</SelectItem>
-            {[1, 2, 3, 4, 5].map((value) => (
-              <SelectItem key={value} value={String(value)}>
-                {value}/5
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {(search || originFilter !== 'todos' || categoryFilter !== 'todos' || interestFilter !== 'todos') && (
-          <Button variant="ghost" className="h-9 text-xs" onClick={() => { setSearch(''); setOriginFilter('todos'); setCategoryFilter('todos'); setInterestFilter('todos') }}>
-            <X className="mr-1 h-3.5 w-3.5" /> Limpar
-          </Button>
-        )}
-      </div>
-
-      <div className="grid min-w-[1280px] grid-cols-11 gap-2 overflow-x-auto pb-4">
-        {ETAPAS.map((stage) => {
-          const stageLeads = byStage[stage.key] || []
-          return (
-            <section key={stage.key} onDragOver={(event) => event.preventDefault()} onDrop={(event) => handleDrop(event, stage.key)} className="flex min-h-[620px] flex-col rounded-xl border border-[#E2E8F0] bg-[#F8FAFC]">
-              <header className="border-t-4 bg-white p-2.5" style={{ borderTopColor: stage.color }}><div className="flex items-start justify-between gap-1"><h2 className="text-[10px] font-bold uppercase leading-tight tracking-wide text-[#334155]">{stage.label}</h2><span className="rounded-full bg-[#F1F5F9] px-1.5 py-0.5 text-[10px] font-bold text-[#475569]">{stageLeads.length}</span></div></header>
-              <div className="flex-1 space-y-2 p-2">{stageLeads.map((lead) => { const overdue = isOverdue(lead); const client = lead.expand?.cliente; const responsible = lead.expand?.vendedor?.name || lead.expand?.vendedor?.email || 'Não atribuído'; return <article key={lead.id} draggable onDragStart={(event) => { event.dataTransfer.setData('text/plain', lead.id); setDraggedId(lead.id) }} onClick={() => openDetail(lead)} className={cn('cursor-pointer rounded-lg border bg-white p-2.5 shadow-2xs transition hover:-translate-y-0.5 hover:shadow-sm', overdue ? 'border-amber-400 ring-1 ring-amber-200' : 'border-[#E2E8F0]')}><div className="mb-2 flex items-start justify-between gap-1"><span className="font-mono text-[10px] font-bold text-[#D92323]">{lead.numero_lead || `#${lead.id}`}</span><GripVertical className="h-3.5 w-3.5 text-[#CBD5E1]" /></div><h3 className="line-clamp-2 text-xs font-bold text-[#1E293B]">{client?.empresa || client?.nome || 'Cliente não informado'}</h3><p className="mt-0.5 line-clamp-1 text-[10px] text-[#64748B]">{client?.nome || 'Sem contato'}</p><div className="mt-2 space-y-1.5 text-[10px] text-[#475569]"><div className="flex items-center gap-1"><UserRound className="h-3 w-3 text-[#94A3B8]" /><span className="line-clamp-1">{responsible}</span></div><div className="font-semibold text-[#1E293B]">{lead.categoria_produto || 'Categoria pendente'}</div><div className="flex items-center justify-between gap-1"><span className="line-clamp-1">{lead.origem_lead || 'Origem pendente'}</span><span className="font-bold text-[#B45309]">{lead.nivel_interesse || 0}/5</span></div></div><div className="mt-2 flex items-center justify-between border-t border-[#F1F5F9] pt-1.5 text-[10px]"><span className={cn('font-bold', overdue ? 'text-[#B45309]' : 'text-[#64748B]')}><Clock3 className="mr-0.5 inline h-3 w-3" />{elapsedSince(lead.etapa_atual_desde)}</span><span className="text-[#94A3B8]">{formatDateBR(lead.data_solicitacao || lead.created)}</span></div><div className="mt-1.5 flex items-center justify-between gap-1"><StatusBadge variant={statusVariant(lead)} size="sm" dot>{lead.status_motivo_codigo ? `${lead.status_motivo_codigo} · ${lead.status_motivo_descricao}` : lead.status_lead === 'em_andamento' ? 'Em andamento' : lead.status_lead || 'Em andamento'}</StatusBadge>{overdue && <span className="text-[9px] font-bold uppercase text-[#B45309]">Vencido</span>}</div></article> })}{stageLeads.length === 0 && <div className="rounded-lg border border-dashed border-[#CBD5E1] p-4 text-center text-[10px] text-[#94A3B8]">Arraste leads para cá</div>}</div>
-            </section>
-          )
-        })}
-      </div>
-
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}><DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto"><DialogHeader><DialogTitle>Novo lead Haramaq</DialogTitle></DialogHeader><form onSubmit={createLead} className="grid grid-cols-1 gap-4 py-2 md:grid-cols-2"><div className="space-y-2 md:col-span-2"><div className="flex items-center justify-between gap-2"><Label>Cliente *</Label><div className="flex rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-0.5 text-[11px]"><button type="button" onClick={() => setClientMode('existing')} className="rounded-md px-2.5 py-1 font-semibold">Cliente existente</button><button type="button" onClick={() => { setClientMode('new'); setNewCliente('') }} className="rounded-md px-2.5 py-1 font-semibold">Cadastrar novo</button></div></div>{clientMode === 'existing' ? <Select value={newCliente} onValueChange={setNewCliente}><SelectTrigger><SelectValue placeholder="Selecione o cliente" /></SelectTrigger><SelectContent>{clientes.map((client) => <SelectItem key={client.id} value={client.id}>{client.empresa || client.nome} — {client.nome}</SelectItem>)}</SelectContent></Select> : <div className="grid grid-cols-1 gap-3 rounded-lg border border-[#FCA5A5]/60 bg-[#FFF7F7] p-3 md:grid-cols-2"><div className="space-y-1"><Label htmlFor="new-client-name">Nome do contato *</Label><Input id="new-client-name" value={newClientNome} onChange={(event) => setNewClientNome(event.target.value)} /></div><div className="space-y-1"><Label htmlFor="new-client-company">Empresa / propriedade</Label><Input id="new-client-company" value={newClientEmpresa} onChange={(event) => setNewClientEmpresa(event.target.value)} /></div><div className="space-y-1"><Label htmlFor="new-client-phone">Telefone / WhatsApp</Label><Input id="new-client-phone" value={newClientTelefone} onChange={(event) => setNewClientTelefone(event.target.value)} /></div><div className="space-y-1"><Label htmlFor="new-client-email">E-mail</Label><Input id="new-client-email" type="email" value={newClientEmail} onChange={(event) => setNewClientEmail(event.target.value)} /></div><div className="space-y-1"><Label htmlFor="new-client-city">Cidade</Label><Input id="new-client-city" value={newClientCidade} onChange={(event) => setNewClientCidade(event.target.value)} /></div><div className="space-y-1"><Label htmlFor="new-client-state">UF</Label><Input id="new-client-state" maxLength={2} value={newClientEstado} onChange={(event) => setNewClientEstado(event.target.value.toUpperCase())} /></div></div>}</div><div><Label>Categoria do produto *</Label><Select value={newCategoria} onValueChange={(value) => setNewCategoria(value as CategoriaProduto)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{CATEGORIAS.map((category) => <SelectItem key={category} value={category}>{category}</SelectItem>)}</SelectContent></Select></div><div><Label>Origem do lead *</Label><Select value={newOrigem} onValueChange={setNewOrigem}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{ORIGENS.map((origin) => <SelectItem key={origin} value={origin}>{origin}</SelectItem>)}</SelectContent></Select></div><div className="space-y-1 md:col-span-2"><Label>Observações / resumo</Label><Textarea value={newObservacoes} onChange={(event) => setNewObservacoes(event.target.value)} rows={4} /></div><DialogFooter className="md:col-span-2"><Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button><Button type="submit" disabled={saving}>Criar lead</Button></DialogFooter></form></DialogContent></Dialog>
-    </PageContainer>
-  )
+  const loadData = async () => { try { const [leadList, clientList, userList, motiveList] = await Promise.all([vendaService.getAll(), clienteService.getAll(), ['admin', 'gestor'].includes(role) ? userService.getAll() : Promise.resolve([]), vendaService.getMotivos()]); setLeads(leadList); setClientes(clientList); setResponsaveis(userList); setMotivos(motiveList) } catch (error) { console.error(error); toast.error('Erro ao carregar os leads do Kanban.') } finally { setLoading(false) } }
+  useEffect(() => { loadData() }, [])
+  useEffect(() => { if (searchParams.get('nova') === 'true') { setCreateOpen(true); searchParams.delete('nova'); searchParams.delete('clienteId'); setSearchParams(searchParams, { replace: true }) } }, [searchParams, setSearchParams])
+  useRealtime('vendas', () => { vendaService.getAll().then(setLeads).catch(() => {}) })
+  const filteredLeads = useMemo(() => { const query = search.trim().toLowerCase(); return leads.filter((lead) => { const client = lead.expand?.cliente; const searchable = [lead.numero_lead, client?.nome, client?.empresa, lead.categoria_produto, lead.origem_lead].filter(Boolean).join(' ').toLowerCase(); return (!query || searchable.includes(query)) && (originFilter === 'todos' || lead.origem_lead === originFilter) && (categoryFilter === 'todos' || lead.categoria_produto === categoryFilter) && (interestFilter === 'todos' || String(lead.nivel_interesse) === interestFilter) }) }, [leads, search, originFilter, categoryFilter, interestFilter])
+  const byStage = useMemo(() => { const result = {} as Record<LeadEtapa, Venda[]>; ETAPAS.forEach((stage) => { result[stage.key] = filteredLeads.filter((lead) => lead.etapa === stage.key) }); return result }, [filteredLeads])
+  const openDetail = async (lead: Venda) => { setDetailLead(lead); try { const [historyList, taskList] = await Promise.all([vendaService.getHistorico(lead.id), vendaService.getTarefas(lead.id)]); setHistory(historyList); setTasks(taskList) } catch { setHistory([]); setTasks([]) } }
+  const requestMove = (lead: Venda, etapa: LeadEtapa) => { if (lead.etapa === etapa) return; if (TERMINAIS.includes(etapa)) { setMoveLead({ lead, etapa }); setSelectedMotivo(''); setDetailLead(null); return }; void applyMove(lead, etapa) }
+  const applyMove = async (lead: Venda, etapa: LeadEtapa, motivoCode?: string) => { setSaving(true); try { const reason = motivos.find((item) => item.codigo === motivoCode); const updated = await vendaService.updateEtapa(lead.id, etapa, reason); setLeads((current) => current.map((item) => (item.id === updated.id ? updated : item))); if (detailLead?.id === updated.id) { setDetailLead(updated); setHistory(await vendaService.getHistorico(updated.id)) } setMoveLead(null); toast.success(`Lead movido para ${stageLabels[etapa]}.`) } catch (error) { toast.error(error instanceof Error ? error.message : 'Não foi possível mover o lead.') } finally { setSaving(false) } }
+  const handleDrop = (event: React.DragEvent, etapa: LeadEtapa) => { event.preventDefault(); const id = event.dataTransfer.getData('text/plain') || draggedId; const lead = leads.find((item) => item.id === id); setDraggedId(null); if (lead) requestMove(lead, etapa) }
+  const resetNewClient = () => { setNewCliente(''); setClientMode('existing'); setNewClientNome(''); setNewClientEmpresa(''); setNewClientTelefone(''); setNewClientEmail(''); setNewClientCidade(''); setNewClientEstado('') }
+  const createLead = async (event: React.FormEvent) => { event.preventDefault(); if (clientMode === 'existing' && !newCliente) { toast.error('Selecione um cliente existente ou cadastre um novo cliente.'); return }; if (clientMode === 'new' && !newClientNome.trim()) { toast.error('Informe o nome do contato principal.'); return }; if (!newCategoria || !newOrigem) { toast.error('Categoria e origem são obrigatórios.'); return }; setSaving(true); try { let clienteId = newCliente; if (clientMode === 'new') { const createdClient = await clienteService.create({ nome: newClientNome.trim(), empresa: newClientEmpresa.trim(), telefone: newClientTelefone.trim(), email: newClientEmail.trim(), cidade: newClientCidade.trim(), estado: newClientEstado.trim().toUpperCase(), status: 'ativo', responsavel: user?.id, carteira: user?.carteira || '' }); clienteId = createdClient.id; setClientes((current) => [createdClient, ...current]) }; const created = await vendaService.create({ cliente: clienteId, categoria_produto: newCategoria, origem_lead: newOrigem, nivel_interesse: newInterest, observacoes_ia: newObservacoes.trim(), vendedor: newResponsavel || user?.id, carteira: user?.carteira || '', etapa: 'agendamento_primeiro_contato', produto: 'PROHMIX', altforce_stage_name: 'Agendamento de 1º contato' }); setLeads((current) => [created, ...current]); setCreateOpen(false); resetNewClient(); setNewObservacoes(''); setNewResponsavel(''); toast.success(clientMode === 'new' ? 'Cliente e lead cadastrados no Kanban.' : 'Lead criado no Kanban.') } catch (error) { console.error(error); toast.error('Não foi possível criar o lead.') } finally { setSaving(false) } }
+  if (loading) return <div className="flex min-h-[50vh] items-center justify-center"><div className="flex flex-col items-center gap-2"><div className="h-8 w-8 animate-spin rounded-full border-4 border-[#D92323] border-t-transparent" /><p className="text-xs text-[#64748B]">Carregando leads do Kanban...</p></div></div>
+  return <PageContainer maxWidth="full"><PageHeader title="Gestão de Leads" subtitle="Fluxo comercial Haramaq para pecuária de corte e leite" badge={<span className="rounded-md border border-[#FCA5A5]/60 bg-[#FEE2E2] px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-[#D92323]">{filteredLeads.length} leads</span>} actions={canCreate ? <HaramaqButton icon={<Plus className="h-4 w-4" />} onClick={() => setCreateOpen(true)}>Novo lead</HaramaqButton> : undefined} /><div className="mb-5 grid grid-cols-1 gap-2 rounded-xl border border-[#E2E8F0] bg-white p-3 shadow-xs md:grid-cols-[1fr_190px_210px_140px_auto]"><div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94A3B8]" /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por ID, cliente, categoria ou origem..." className="h-9 pl-9 text-xs" /></div><Select value={originFilter} onValueChange={setOriginFilter}><SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Origem" /></SelectTrigger><SelectContent><SelectItem value="todos">Todas as origens</SelectItem>{ORIGENS.map((origin) => <SelectItem key={origin} value={origin}>{origin}</SelectItem>)}</SelectContent></Select><Select value={categoryFilter} onValueChange={setCategoryFilter}><SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Categoria" /></SelectTrigger><SelectContent><SelectItem value="todos">Todas as categorias</SelectItem>{CATEGORIAS.map((category) => <SelectItem key={category} value={category}>{category}</SelectItem>)}</SelectContent></Select><Select value={interestFilter} onValueChange={setInterestFilter}><SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Interesse" /></SelectTrigger><SelectContent><SelectItem value="todos">Interesse</SelectItem>{[1,2,3,4,5].map((value) => <SelectItem key={value} value={String(value)}>{value}/5</SelectItem>)}</SelectContent></Select></div><div className="grid min-w-[1280px] grid-cols-11 gap-2 overflow-x-auto pb-4">{ETAPAS.map((stage) => { const stageLeads = byStage[stage.key] || []; return <section key={stage.key} onDragOver={(event) => event.preventDefault()} onDrop={(event) => handleDrop(event, stage.key)} className="flex min-h-[620px] flex-col rounded-xl border border-[#E2E8F0] bg-[#F8FAFC]"><header className="border-t-4 bg-white p-2.5" style={{ borderTopColor: stage.color }}><div className="flex items-start justify-between gap-1"><h2 className="text-[10px] font-bold uppercase leading-tight tracking-wide text-[#334155]">{stage.label}</h2><span className="rounded-full bg-[#F1F5F9] px-1.5 py-0.5 text-[10px] font-bold text-[#475569]">{stageLeads.length}</span></div></header><div className="flex-1 space-y-2 p-2">{stageLeads.map((lead) => { const overdue = isOverdue(lead); const client = lead.expand?.cliente; const responsible = lead.expand?.vendedor?.name || lead.expand?.vendedor?.email || 'Não atribuído'; return <article key={lead.id} draggable onDragStart={(event) => { event.dataTransfer.setData('text/plain', lead.id); setDraggedId(lead.id) }} onClick={() => openDetail(lead)} className={cn('cursor-pointer rounded-lg border bg-white p-2.5 shadow-2xs transition hover:-translate-y-0.5 hover:shadow-sm', overdue ? 'border-amber-400 ring-1 ring-amber-200' : 'border-[#E2E8F0]')}><div className="mb-2 flex items-start justify-between gap-1"><span className="font-mono text-[10px] font-bold text-[#D92323]">{lead.numero_lead || `#${lead.id}`}</span><GripVertical className="h-3.5 w-3.5 text-[#CBD5E1]" /></div><h3 className="line-clamp-2 text-xs font-bold text-[#1E293B]">{client?.empresa || client?.nome || 'Cliente não informado'}</h3><p className="mt-0.5 line-clamp-1 text-[10px] text-[#64748B]">{client?.nome || 'Sem contato'}</p><div className="mt-2 space-y-1.5 text-[10px] text-[#475569]"><div className="flex items-center gap-1"><UserRound className="h-3 w-3 text-[#94A3B8]" /><span className="line-clamp-1">{responsible}</span></div><div className="font-semibold text-[#1E293B]">{lead.categoria_produto || 'Categoria pendente'}</div><div className="flex items-center justify-between gap-1"><span className="line-clamp-1">{lead.origem_lead || 'Origem pendente'}</span><span className="font-bold text-[#B45309]">{lead.nivel_interesse || 0}/5</span></div></div><div className="mt-2 flex items-center justify-between border-t border-[#F1F5F9] pt-1.5 text-[10px]"><span className={cn('font-bold', overdue ? 'text-[#B45309]' : 'text-[#64748B]')}><Clock3 className="mr-0.5 inline h-3 w-3" />{elapsedSince(lead.etapa_atual_desde)}</span><span className="text-[#94A3B8]">{formatDateBR(lead.data_solicitacao || lead.created)}</span></div><div className="mt-1.5 flex items-center justify-between gap-1"><StatusBadge variant={statusVariant(lead)} size="sm" dot>{lead.status_motivo_codigo ? `${lead.status_motivo_codigo} · ${lead.status_motivo_descricao}` : lead.status_lead === 'em_andamento' ? 'Em andamento' : lead.status_lead || 'Em andamento'}</StatusBadge>{overdue && <span className="text-[9px] font-bold uppercase text-[#B45309]">Vencido</span>}</div></article> })}{stageLeads.length === 0 && <div className="rounded-lg border border-dashed border-[#CBD5E1] p-4 text-center text-[10px] text-[#94A3B8]">Arraste leads para cá</div>}</div></section> })}</div><Dialog open={createOpen} onOpenChange={setCreateOpen}><DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto"><DialogHeader><DialogTitle>Novo lead Haramaq</DialogTitle></DialogHeader><form onSubmit={createLead} className="grid grid-cols-1 gap-4 py-2 md:grid-cols-2"><div className="space-y-2 md:col-span-2"><div className="flex items-center justify-between gap-2"><Label>Cliente *</Label><div className="flex rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-0.5 text-[11px]"><button type="button" onClick={() => setClientMode('existing')} className="rounded-md px-2.5 py-1 font-semibold">Cliente existente</button><button type="button" onClick={() => { setClientMode('new'); setNewCliente('') }} className="rounded-md px-2.5 py-1 font-semibold">Cadastrar novo</button></div></div>{clientMode === 'existing' ? <Select value={newCliente} onValueChange={setNewCliente}><SelectTrigger><SelectValue placeholder="Selecione o cliente" /></SelectTrigger><SelectContent>{clientes.map((client) => <SelectItem key={client.id} value={client.id}>{client.empresa || client.nome} — {client.nome}</SelectItem>)}</SelectContent></Select> : <div className="grid grid-cols-1 gap-3 rounded-lg border border-[#FCA5A5]/60 bg-[#FFF7F7] p-3 md:grid-cols-2"><div><Label>Nome do contato *</Label><Input value={newClientNome} onChange={(event) => setNewClientNome(event.target.value)} /></div><div><Label>Empresa / propriedade</Label><Input value={newClientEmpresa} onChange={(event) => setNewClientEmpresa(event.target.value)} /></div><div><Label>Telefone / WhatsApp</Label><Input value={newClientTelefone} onChange={(event) => setNewClientTelefone(event.target.value)} /></div><div><Label>E-mail</Label><Input type="email" value={newClientEmail} onChange={(event) => setNewClientEmail(event.target.value)} /></div><div><Label>Cidade</Label><Input value={newClientCidade} onChange={(event) => setNewClientCidade(event.target.value)} /></div><div><Label>UF</Label><Input maxLength={2} value={newClientEstado} onChange={(event) => setNewClientEstado(event.target.value.toUpperCase())} /></div></div>}</div><div><Label>Categoria do produto *</Label><Select value={newCategoria} onValueChange={(value) => setNewCategoria(value as CategoriaProduto)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{CATEGORIAS.map((category) => <SelectItem key={category} value={category}>{category}</SelectItem>)}</SelectContent></Select></div><div><Label>Origem do lead *</Label><Select value={newOrigem} onValueChange={setNewOrigem}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{ORIGENS.map((origin) => <SelectItem key={origin} value={origin}>{origin}</SelectItem>)}</SelectContent></Select></div><div className="space-y-1 md:col-span-2"><Label>Observações / resumo</Label><Textarea value={newObservacoes} onChange={(event) => setNewObservacoes(event.target.value)} rows={4} /></div><DialogFooter className="md:col-span-2"><Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button><Button type="submit" disabled={saving}>Criar lead</Button></DialogFooter></form></DialogContent></Dialog></PageContainer>
 }
