@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useNavigate, Navigate } from 'react-router-dom'
-import { Eye, EyeOff, Lock, Mail, Loader2, AlertCircle, ShieldCheck } from 'lucide-react'
+import { Eye, EyeOff, Lock, Mail, Loader2, AlertCircle } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -12,8 +12,8 @@ export default function Login() {
   const { user, login } = useAuth()
   const navigate = useNavigate()
 
-  const [email, setEmail] = useState('elisandrodesousaharamaq@gmail.com')
-  const [password, setPassword] = useState('Skip@Pass')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(true)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
@@ -194,21 +194,6 @@ export default function Login() {
               )}
             </Button>
           </form>
-
-          {/* Quick credentials hint for demo */}
-          <div className="mt-8 pt-5 border-t border-[#E2E8F0] text-[11px] text-[#64748B] bg-[#F8FAFC] p-3.5 rounded-xl">
-            <div className="flex items-center gap-1.5 font-semibold text-[#1E293B] mb-1">
-              <ShieldCheck className="w-3.5 h-3.5 text-[#D92323]" />
-              <span>Acesso Administrador:</span>
-            </div>
-            <div className="truncate">
-              E-mail:{' '}
-              <code className="text-[#D92323] font-mono">elisandrodesousaharamaq@gmail.com</code>
-            </div>
-            <div className="mt-0.5">
-              Senha: <code className="text-[#D92323] font-mono">Skip@Pass</code>
-            </div>
-          </div>
         </div>
       </div>
     </div>
