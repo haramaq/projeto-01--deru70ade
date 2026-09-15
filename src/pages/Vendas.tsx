@@ -159,6 +159,27 @@ export default function Vendas() {
   const [selectedMotivo, setSelectedMotivo] = useState('')
   const [draggedId, setDraggedId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
+  const [editLead, setEditLead] = useState<Venda | null>(null)
+  const [editClientId, setEditClientId] = useState('')
+  const [editNome, setEditNome] = useState('')
+  const [editEmpresa, setEditEmpresa] = useState('')
+  const [editTelefone, setEditTelefone] = useState('')
+  const [editEmail, setEditEmail] = useState('')
+  const [editCidade, setEditCidade] = useState('')
+  const [editEstado, setEditEstado] = useState('')
+  const [editProduto, setEditProduto] = useState<'PROHMIX' | 'SUPERMIX'>('PROHMIX')
+  const [editValor, setEditValor] = useState('0')
+  const [editProbabilidade, setEditProbabilidade] = useState('0')
+  const [editDataPrevista, setEditDataPrevista] = useState('')
+  const [editCategoria, setEditCategoria] = useState<CategoriaProduto>('Linha Prohmix')
+  const [editOrigem, setEditOrigem] = useState('Site')
+  const [editInterest, setEditInterest] = useState<NivelInteresse>(3)
+  const [editObservacoes, setEditObservacoes] = useState('')
+  const [editResponsavel, setEditResponsavel] = useState('')
+  const [editEquipe, setEditEquipe] = useState('')
+  const [editResponsavelCargo, setEditResponsavelCargo] = useState('')
+  const [editProximaAcao, setEditProximaAcao] = useState('')
 
   const [newCliente, setNewCliente] = useState('')
   const [clientMode, setClientMode] = useState<'existing' | 'new'>('existing')
@@ -173,6 +194,7 @@ export default function Vendas() {
   const [newInterest, setNewInterest] = useState<NivelInteresse>(3)
   const [newObservacoes, setNewObservacoes] = useState('')
   const [newResponsavel, setNewResponsavel] = useState('')
+  const [newEtapa, setNewEtapa] = useState<LeadEtapa>('agendamento_primeiro_contato')
 
   const canCreate = can('leads')
 
@@ -246,6 +268,90 @@ export default function Vendas() {
     })
     return result
   }, [filteredLeads])
+
+  const openEdit = (lead: Venda) => {
+    const client = lead.expand?.cliente || clientes.find((item) => item.id === lead.cliente)
+    if (!client) {
+      toast.error('Não foi possível carregar os dados do cliente deste lead.')
+      return
+    }
+    setEditLead(lead)
+    setEditClientId(client.id)
+    setEditNome(client.nome || '')
+    setEditEmpresa(client.empresa || '')
+    setEditTelefone(client.telefone || '')
+    setEditEmail(client.email || '')
+    setEditCidade(client.cidade || '')
+    setEditEstado(client.estado || '')
+    setEditProduto(lead.produto || 'PROHMIX')
+    setEditValor(String(lead.valor ?? 0))
+    setEditProbabilidade(String(lead.probabilidade ?? 0))
+    setEditDataPrevista(lead.data_prevista_fechamento || '')
+    setEditCategoria(lead.categoria_produto || 'Linha Prohmix')
+    setEditOrigem(lead.origem_lead || 'Site')
+    setEditInterest(lead.nivel_interesse || 3)
+    setEditObservacoes(lead.observacoes_ia || '')
+    setEditResponsavel(lead.vendedor || user?.id || '')
+    setEditEquipe(lead.equipe || '')
+    setEditResponsavelCargo(lead.responsavel_cargo || '')
+    setEditProximaAcao(lead.proxima_acao || '')
+    setEditOpen(true)
+  }
+
+  const saveLeadEdits = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (!editLead || !editClientId || !editNome.trim()) {
+      toast.error('Informe ao menos o nome do contato principal.')
+      return
+    }
+    const probability = Number(editProbabilidade)
+    if (Number.isNaN(probability) || probability < 0 || probability > 100) {
+      toast.error('A probabilidade deve estar entre 0 e 100.')
+      return
+    }
+    setSaving(true)
+    try {
+      const updatedClient = await clienteService.update(editClientId, {
+        nome: editNome.trim(),
+        empresa: editEmpresa.trim(),
+        telefone: editTelefone.trim(),
+        email: editEmail.trim(),
+        cidade: editCidade.trim(),
+        estado: editEstado.trim().toUpperCase(),
+      })
+      const updatedLead = await vendaService.update(editLead.id, {
+        produto: editProduto,
+        valor: Number(editValor) || 0,
+        probabilidade: probability,
+        data_prevista_fechamento: editDataPrevista || '',
+        categoria_produto: editCategoria,
+        origem_lead: editOrigem,
+        nivel_interesse: editInterest,
+        observacoes_ia: editObservacoes.trim(),
+        vendedor: editResponsavel || editLead.vendedor,
+        equipe: editEquipe.trim(),
+        responsavel_cargo: editResponsavelCargo.trim(),
+        proxima_acao: editProximaAcao.trim(),
+      })
+      const merged = {
+        ...updatedLead,
+        expand: { ...updatedLead.expand, cliente: updatedClient },
+      }
+      setClientes((current) =>
+        current.map((item) => (item.id === updatedClient.id ? updatedClient : item)),
+      )
+      setLeads((current) => current.map((item) => (item.id === merged.id ? merged : item)))
+      setDetailLead(merged)
+      setEditLead(null)
+      setEditOpen(false)
+      toast.success('Lead atualizado com sucesso.')
+    } catch (error) {
+      console.error(error)
+      toast.error(error instanceof Error ? error.message : 'Não foi possível atualizar o lead.')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   const openDetail = async (lead: Venda) => {
     setDetailLead(lead)
@@ -351,15 +457,16 @@ export default function Vendas() {
         observacoes_ia: newObservacoes.trim(),
         vendedor: newResponsavel || user?.id,
         carteira: user?.carteira || '',
-        etapa: 'agendamento_primeiro_contato',
+        etapa: newEtapa,
         produto: 'PROHMIX',
-        altforce_stage_name: 'Agendamento de 1º contato',
+        altforce_stage_name: stageLabels[newEtapa],
       })
       setLeads((current) => [created, ...current])
       setCreateOpen(false)
       resetNewClient()
       setNewObservacoes('')
       setNewResponsavel('')
+      setNewEtapa('agendamento_primeiro_contato')
       toast.success(
         clientMode === 'new' ? 'Cliente e lead cadastrados no Kanban.' : 'Lead criado no Kanban.',
       )
@@ -767,6 +874,21 @@ export default function Vendas() {
                 rows={4}
               />
             </div>
+            <div className="space-y-1">
+              <Label>Etapa inicial</Label>
+              <Select value={newEtapa} onValueChange={(value) => setNewEtapa(value as LeadEtapa)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ETAPAS.filter((stage) => !TERMINAIS.includes(stage.key)).map((stage) => (
+                    <SelectItem key={stage.key} value={stage.key}>
+                      {stage.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <DialogFooter className="md:col-span-2">
               <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
                 Cancelar
@@ -776,6 +898,233 @@ export default function Vendas() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-h-[92vh] max-w-3xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar informações do lead</DialogTitle>
+          </DialogHeader>
+          {editLead && (
+            <form onSubmit={saveLeadEdits} className="grid grid-cols-1 gap-4 py-2 md:grid-cols-2">
+              <div className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-3 md:col-span-2">
+                <p className="font-semibold text-[#1E293B]">Etapa atual</p>
+                <p className="mt-1 text-xs text-[#64748B]">{stageLabels[editLead.etapa]}</p>
+                <p className="mt-1 text-[11px] text-[#64748B]">
+                  A mudança de etapa continua no bloco “Mover lead” da tela de detalhe.
+                </p>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="edit-client-name">Nome do contato *</Label>
+                <Input
+                  id="edit-client-name"
+                  value={editNome}
+                  onChange={(event) => setEditNome(event.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="edit-client-company">Empresa / propriedade</Label>
+                <Input
+                  id="edit-client-company"
+                  value={editEmpresa}
+                  onChange={(event) => setEditEmpresa(event.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="edit-client-phone">Telefone / WhatsApp</Label>
+                <Input
+                  id="edit-client-phone"
+                  value={editTelefone}
+                  onChange={(event) => setEditTelefone(event.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="edit-client-email">E-mail</Label>
+                <Input
+                  id="edit-client-email"
+                  type="email"
+                  value={editEmail}
+                  onChange={(event) => setEditEmail(event.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="edit-client-city">Cidade</Label>
+                <Input
+                  id="edit-client-city"
+                  value={editCidade}
+                  onChange={(event) => setEditCidade(event.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="edit-client-state">UF</Label>
+                <Input
+                  id="edit-client-state"
+                  maxLength={2}
+                  value={editEstado}
+                  onChange={(event) => setEditEstado(event.target.value.toUpperCase())}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Produto</Label>
+                <Select
+                  value={editProduto}
+                  onValueChange={(value) => setEditProduto(value as 'PROHMIX' | 'SUPERMIX')}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PROHMIX">PROHMIX</SelectItem>
+                    <SelectItem value="SUPERMIX">SUPERMIX</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="edit-value">Valor</Label>
+                <Input
+                  id="edit-value"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={editValor}
+                  onChange={(event) => setEditValor(event.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="edit-probability">Probabilidade (%)</Label>
+                <Input
+                  id="edit-probability"
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={editProbabilidade}
+                  onChange={(event) => setEditProbabilidade(event.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="edit-close-date">Previsão de fechamento</Label>
+                <Input
+                  id="edit-close-date"
+                  type="date"
+                  value={editDataPrevista}
+                  onChange={(event) => setEditDataPrevista(event.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Categoria do produto</Label>
+                <Select
+                  value={editCategoria}
+                  onValueChange={(value) => setEditCategoria(value as CategoriaProduto)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CATEGORIAS.map((category) => (
+                      <SelectItem key={category} value={category}>
+                        {category}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label>Origem do lead</Label>
+                <Select value={editOrigem} onValueChange={setEditOrigem}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ORIGENS.map((origin) => (
+                      <SelectItem key={origin} value={origin}>
+                        {origin}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label>Nível de interesse</Label>
+                <Select
+                  value={String(editInterest)}
+                  onValueChange={(value) => setEditInterest(Number(value) as NivelInteresse)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[1, 2, 3, 4, 5].map((value) => (
+                      <SelectItem key={value} value={String(value)}>
+                        {value}/5
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label>Responsável</Label>
+                <Select
+                  value={editResponsavel || 'automatico'}
+                  onValueChange={(value) => setEditResponsavel(value === 'automatico' ? '' : value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Responsável atual" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="automatico">Responsável atual</SelectItem>
+                    {responsaveis.map((person) => (
+                      <SelectItem key={person.id} value={person.id}>
+                        {person.name || person.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="edit-team">Equipe</Label>
+                <Input
+                  id="edit-team"
+                  value={editEquipe}
+                  onChange={(event) => setEditEquipe(event.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="edit-role-title">Cargo do responsável</Label>
+                <Input
+                  id="edit-role-title"
+                  value={editResponsavelCargo}
+                  onChange={(event) => setEditResponsavelCargo(event.target.value)}
+                />
+              </div>
+              <div className="space-y-1 md:col-span-2">
+                <Label htmlFor="edit-next-action">Próxima ação</Label>
+                <Input
+                  id="edit-next-action"
+                  value={editProximaAcao}
+                  onChange={(event) => setEditProximaAcao(event.target.value)}
+                />
+              </div>
+              <div className="space-y-1 md:col-span-2">
+                <Label htmlFor="edit-notes">Observações / resumo da conversa com a IA</Label>
+                <Textarea
+                  id="edit-notes"
+                  rows={4}
+                  value={editObservacoes}
+                  onChange={(event) => setEditObservacoes(event.target.value)}
+                />
+              </div>
+              <DialogFooter className="md:col-span-2">
+                <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={saving}>
+                  {saving ? 'Salvando...' : 'Salvar alterações'}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
 
@@ -790,9 +1139,16 @@ export default function Vendas() {
             <h2 className="text-lg font-bold text-[#1E293B]">
               Detalhe do lead {detailLead?.numero_lead || detailLead?.id}
             </h2>
-            <Button type="button" variant="outline" size="sm" onClick={() => setDetailLead(null)}>
-              Fechar
-            </Button>
+            <div className="flex items-center gap-2">
+              {detailLead && can('leads') && (
+                <Button type="button" size="sm" onClick={() => openEdit(detailLead)}>
+                  Editar informações
+                </Button>
+              )}
+              <Button type="button" variant="outline" size="sm" onClick={() => setDetailLead(null)}>
+                Fechar
+              </Button>
+            </div>
           </div>
           {detailLead && (
             <div className="space-y-5 text-xs">

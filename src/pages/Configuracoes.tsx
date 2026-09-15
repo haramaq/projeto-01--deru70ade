@@ -125,6 +125,7 @@ export default function Configuracoes() {
   const [formName, setFormName] = useState('')
   const [formEmail, setFormEmail] = useState('')
   const [formPassword, setFormPassword] = useState('')
+  const [formPasswordConfirm, setFormPasswordConfirm] = useState('')
   const [formRole, setFormRole] = useState<UserRole>('vendedor')
   const [formCarteira, setFormCarteira] = useState('')
   const [formAtivo, setFormAtivo] = useState(true)
@@ -165,6 +166,7 @@ export default function Configuracoes() {
     setFormName('')
     setFormEmail('')
     setFormPassword('')
+    setFormPasswordConfirm('')
     setFormRole('vendedor')
     setFormCarteira('')
     setFormAtivo(true)
@@ -177,6 +179,7 @@ export default function Configuracoes() {
     setFormName(item.name || '')
     setFormEmail(item.email || '')
     setFormPassword('')
+    setFormPasswordConfirm('')
     setFormRole(item.role || 'vendedor')
     setFormCarteira(item.carteira || '')
     setFormAtivo(item.ativo !== false)
@@ -192,6 +195,14 @@ export default function Configuracoes() {
     }
     if (!editingUser && formPassword.length < 8) {
       toast.error('A senha deve ter no mínimo 8 caracteres.')
+      return
+    }
+    if (!editingUser && formPassword !== formPasswordConfirm) {
+      toast.error('A confirmação da senha não confere.')
+      return
+    }
+    if (!editingUser && users.some((item) => item.email.toLowerCase() === formEmail.trim().toLowerCase())) {
+      toast.error('Já existe um usuário com este e-mail.')
       return
     }
     setSubmitting(true)
@@ -235,7 +246,7 @@ export default function Configuracoes() {
       } else {
         const created = await userService.create({
           name: formName.trim(),
-          email: formEmail.trim(),
+          email: formEmail.trim().toLowerCase(),
           password: formPassword,
           passwordConfirm: formPassword,
           role: formRole,
@@ -260,9 +271,13 @@ export default function Configuracoes() {
       }
       setModalOpen(false)
       setAuditEntries(await userService.getAudit())
-    } catch (error) {
+    } catch (error: any) {
       console.error(error)
-      toast.error('Erro ao salvar usuário. Verifique os dados e as permissões.')
+      const fieldErrors = error?.response?.data || error?.data || {}
+      const details = Object.entries(fieldErrors)
+        .map(([field, value]: [string, any]) => `${field}: ${value?.message || value}`)
+        .join(' · ')
+      toast.error(details || error?.message || 'Erro ao salvar usuário. Verifique os dados e as permissões.')
     } finally {
       setSubmitting(false)
     }
@@ -547,6 +562,16 @@ export default function Configuracoes() {
                   type="password"
                   value={formPassword}
                   onChange={(e) => setFormPassword(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="uPassConfirm">Confirmar senha provisória</Label>
+                <Input
+                  id="uPassConfirm"
+                  type="password"
+                  value={formPasswordConfirm}
+                  onChange={(e) => setFormPasswordConfirm(e.target.value)}
                   required
                 />
               </div>

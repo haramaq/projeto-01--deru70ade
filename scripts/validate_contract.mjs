@@ -19,6 +19,9 @@ assert(!login.includes('Skip@Pass'), 'default admin password must not be in the 
 assert(vendas.includes("'fornecedores'"), 'Kanban must contain Fornecedores')
 assert(vendas.includes("clientMode === 'new'"), 'new client flow required')
 assert(vendas.includes('carteira: user?.carteira'), 'new lead wallet required')
+assert(vendas.includes('const saveLeadEdits'), 'lead edit flow required')
+assert(vendas.includes('Editar informações'), 'lead edit action required')
+assert(vendas.includes('const [newEtapa'), 'initial lead stage selector required')
 assert(app.includes('requiredPermission="leads"'), 'lead route permission required')
 assert(layout.includes('visibleNavItems'), 'menu effective permissions required')
 assert(auth.includes('hasPermission'), 'auth effective permissions required')
@@ -52,4 +55,11 @@ assert(
   leads.fields.find((item) => item.name === 'etapa')?.selectValues?.includes('fornecedores'),
   'Fornecedores schema missing',
 )
+assert(
+  read('pocketbase/migrations/0012_enable_fornecedores_stage.js').includes("'fornecedores'"),
+  'Fornecedores migration missing',
+)
+const admin = read('src/pages/Configuracoes.tsx')
+assert(admin.includes('formPasswordConfirm'), 'user password confirmation required')
+assert(admin.includes('passwordConfirm: formPassword'), 'user auth payload confirmation required')
 console.log('CRM contract checks passed')
