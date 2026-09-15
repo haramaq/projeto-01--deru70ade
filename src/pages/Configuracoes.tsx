@@ -1,5 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Users, Shield, UserPlus, Edit2, UserX, History, CheckCircle, Lock } from 'lucide-react'
+import {
+  Users,
+  Shield,
+  UserPlus,
+  Edit2,
+  UserX,
+  Trash2,
+  History,
+  CheckCircle,
+  Lock,
+} from 'lucide-react'
 import { userService } from '@/services/crmService'
 import type { AuditEntry, PermissionKey, User, UserRole } from '@/types/crm'
 import { permissionFieldNames } from '@/lib/permissions'
@@ -17,6 +27,16 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import {
   Select,
   SelectContent,
@@ -132,6 +152,8 @@ export default function Configuracoes() {
   const [formPermissions, setFormPermissions] =
     useState<Record<string, boolean>>(DEFAULT_PERMISSIONS)
   const [submitting, setSubmitting] = useState(false)
+  const [removeTarget, setRemoveTarget] = useState<User | null>(null)
+  const [removing, setRemoving] = useState(false)
   const [auditSearch, setAuditSearch] = useState('')
 
   const loadAdminData = async () => {
@@ -149,6 +171,16 @@ export default function Configuracoes() {
   useEffect(() => {
     void loadAdminData()
   }, [])
+
+  const auditBestEffort = async (data: Parameters<typeof userService.audit>[0]) => {
+    try {
+      await userService.audit(data)
+      return true
+    } catch (error) {
+      console.warn('Usuário salvo, mas não foi possível registrar a auditoria.', error)
+      return false
+    }
+  }
 
   const filteredAudit = useMemo(() => {
     const query = auditSearch.trim().toLowerCase()
@@ -231,7 +263,7 @@ export default function Configuracoes() {
           ativo: formAtivo,
           ...permissionPayload,
         })
-        await userService.audit({
+        const audited = await auditBestEffort({
           autor: user?.id || 'sessão atual',
           alvo: editingUser.id,
           acao: 'alterar_usuario_e_permissoes',
@@ -244,8 +276,7 @@ export default function Configuracoes() {
             permissoes: formPermissions,
           },
         })
-        setUsers((current) => current.map((item) => (item.id === updated.id ? updated : item)))
-        toast.success('Usuário atualizado e auditado.')
+        toast.success(audited ? 'Usuário atualizado e auditado.' : 'Usuário atualizado.')
       } else {
         const created = await userService.create({
           name: formName.trim(),
@@ -262,18 +293,17 @@ export default function Configuracoes() {
             ]),
           ),
         })
-        await userService.audit({
+        const audited = await auditBestEffort({
           autor: user?.id || 'sessão atual',
           alvo: created.id,
           acao: 'criar_usuario',
           antes: null,
           depois: { name: created.name, email: created.email, role: formRole },
         })
-        setUsers((current) => [...current, created])
-        toast.success('Usuário criado e auditado.')
+        toast.success(audited ? 'Usuário criado e auditado.' : 'Usuário criado.')
       }
       setModalOpen(false)
-      setAuditEntries(await userService.getAudit())
+      await loadAdminData()
     } catch (error: any) {
       console.error(error)
       const fieldErrors = error?.response?.data || error?.data || {}
@@ -296,18 +326,60 @@ export default function Configuracoes() {
     const nextActive = item.ativo === false
     try {
       const updated = await userService.update(item.id, { ativo: nextActive })
-      await userService.audit({
+      const audited = await auditBestEffort({
         autor: user?.id || 'sessão atual',
         alvo: item.id,
         acao: nextActive ? 'reativar_usuario' : 'desativar_usuario',
         antes: { ativo: item.ativo !== false },
         depois: { ativo: nextActive },
       })
-      setUsers((current) => current.map((entry) => (entry.id === updated.id ? updated : entry)))
-      setAuditEntries(await userService.getAudit())
-      toast.success(nextActive ? 'Usuário reativado.' : 'Usuário desativado.')
+      await loadAdminData()
+      toast.success(
+        audited
+          ? nextActive
+            ? 'Usuário reativado e auditado.'
+            : 'Usuário desativado e auditado.'
+          : nextActive
+            ? 'Usuário reativado.'
+            : 'Usuário desativado.',
+      )
     } catch {
       toast.error('Não foi possível alterar o status do usuário.')
+    }
+  }
+
+  const removeUser = async () => {
+    if (!removeTarget) return
+    if (removeTarget.email === 'elisandrodesousaharamaq@gmail.com') {
+      toast.error('O administrador principal não pode ser removido.')
+      setRemoveTarget(null)
+      return
+    }
+    const target = removeTarget
+    setRemoving(true)
+    try {
+      await userService.delete(target.id)
+      const audited = await auditBestEffort({
+        autor: user?.id || 'sessão atual',
+        alvo: target.id,
+        acao: 'remover_usuario',
+        antes: {
+          name: target.name,
+          email: target.email,
+          role: target.role,
+          carteira: target.carteira || '',
+          ativo: target.ativo,
+        },
+        depois: null,
+      })
+      setRemoveTarget(null)
+      await loadAdminData()
+      toast.success(audited ? 'Usuário removido e auditado.' : 'Usuário removido.')
+    } catch (error) {
+      console.error(error)
+      toast.error(error instanceof Error ? error.message : 'Não foi possível remover o usuário.')
+    } finally {
+      setRemoving(false)
     }
   }
 
@@ -422,21 +494,33 @@ export default function Configuracoes() {
                               <Edit2 className="h-3.5 w-3.5" />
                             </Button>
                             {item.email !== 'elisandrodesousaharamaq@gmail.com' && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => void toggleUser(item)}
-                                className="h-8 w-8 p-0 text-gray-500 hover:bg-red-50 hover:text-red-600"
-                                title={
-                                  item.ativo === false ? 'Reativar usuário' : 'Desativar usuário'
-                                }
-                              >
-                                {item.ativo === false ? (
-                                  <CheckCircle className="h-3.5 w-3.5" />
-                                ) : (
-                                  <UserX className="h-3.5 w-3.5" />
-                                )}
-                              </Button>
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => void toggleUser(item)}
+                                  className="h-8 w-8 p-0 text-gray-500 hover:bg-red-50 hover:text-red-600"
+                                  title={
+                                    item.ativo === false ? 'Reativar usuário' : 'Desativar usuário'
+                                  }
+                                >
+                                  {item.ativo === false ? (
+                                    <CheckCircle className="h-3.5 w-3.5" />
+                                  ) : (
+                                    <UserX className="h-3.5 w-3.5" />
+                                  )}
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setRemoveTarget(item)}
+                                  className="h-8 w-8 p-0 text-gray-500 hover:bg-red-50 hover:text-red-700"
+                                  title="Remover usuário"
+                                  aria-label="Remover usuário"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </>
                             )}
                           </div>
                         </td>
@@ -655,6 +739,37 @@ export default function Configuracoes() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={Boolean(removeTarget)}
+        onOpenChange={(open) => {
+          if (!open && !removing) setRemoveTarget(null)
+        }}
+      >
+        <AlertDialogContent data-testid="remove-user-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover usuário?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação excluirá permanentemente o acesso de{' '}
+              <strong>{removeTarget?.name || removeTarget?.email}</strong> ({removeTarget?.email}).
+              A regra de remoção continua restrita a administradores.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={removing}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={removing}
+              onClick={(event) => {
+                event.preventDefault()
+                void removeUser()
+              }}
+              className="bg-red-600 text-white hover:bg-red-700"
+            >
+              {removing ? 'Removendo...' : 'Remover usuário'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

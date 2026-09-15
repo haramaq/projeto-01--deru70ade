@@ -902,7 +902,11 @@ export default function Vendas() {
       </Dialog>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-h-[92vh] max-w-3xl overflow-y-auto">
+        <DialogContent
+          data-testid="lead-edit-dialog"
+          overlayClassName="z-[70]"
+          className="z-[80] max-h-[92vh] max-w-3xl overflow-y-auto"
+        >
           <DialogHeader>
             <DialogTitle>Editar informações do lead</DialogTitle>
           </DialogHeader>

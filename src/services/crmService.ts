@@ -284,6 +284,9 @@ export const userService = {
   async update(id: string, data: Partial<User>): Promise<User> {
     return (await pb.collection('users').update(id, data)) as unknown as User
   },
+  async delete(id: string): Promise<boolean> {
+    return await pb.collection('users').delete(id)
+  },
   async deactivate(id: string): Promise<User> {
     return (await pb.collection('users').update(id, { ativo: false })) as unknown as User
   },

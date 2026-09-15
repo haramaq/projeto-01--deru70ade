@@ -12,6 +12,8 @@ const vendas = read('src/pages/Vendas.tsx')
 const app = read('src/App.tsx')
 const layout = read('src/components/Layout.tsx')
 const auth = read('src/contexts/AuthContext.tsx')
+const adminPage = read('src/pages/Configuracoes.tsx')
+const dialog = read('src/components/ui/dialog.tsx')
 const schema = JSON.parse(read('src/lib/pocketbase/schema.json'))
 const hardening = read('pocketbase/migrations/0010_security_permissions_and_lead_scope.js')
 
@@ -63,7 +65,21 @@ assert(
   read('pocketbase/migrations/0012_enable_fornecedores_stage.js').includes("'fornecedores'"),
   'Fornecedores migration missing',
 )
-const admin = read('src/pages/Configuracoes.tsx')
-assert(admin.includes('formPasswordConfirm'), 'user password confirmation required')
-assert(admin.includes('passwordConfirm: formPassword'), 'user auth payload confirmation required')
+assert(adminPage.includes('formPasswordConfirm'), 'user password confirmation required')
+assert(
+  adminPage.includes('passwordConfirm: formPassword'),
+  'user auth payload confirmation required',
+)
+assert(adminPage.includes('userService.delete'), 'user removal service required')
+assert(adminPage.includes('const removeUser'), 'user removal flow required')
+assert(adminPage.includes('remover_usuario'), 'user removal audit action required')
+assert(adminPage.includes('data-testid="remove-user-dialog"'), 'user removal confirmation required')
+assert(dialog.includes('overlayClassName'), 'dialog overlay customization required')
+assert(vendas.includes('data-testid="lead-edit-dialog"'), 'lead edit dialog test hook required')
+assert(vendas.includes('className="z-[80]'), 'lead edit dialog must be above lead detail')
+assert(vendas.includes('overlayClassName="z-[70]'), 'lead edit overlay must be above lead detail')
+assert(
+  users.apiRules?.delete === undefined || users.apiRules?.delete?.includes("role = 'admin'"),
+  'user delete must remain admin-only',
+)
 console.log('CRM contract checks passed')
