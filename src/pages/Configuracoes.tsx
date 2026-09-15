@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Users, Shield, UserPlus, Edit2, UserX, History, CheckCircle, Lock } from 'lucide-react'
 import { userService } from '@/services/crmService'
-import type { AuditEntry, User, UserRole } from '@/types/crm'
+import type { AuditEntry, PermissionKey, User, UserRole } from '@/types/crm'
+import { permissionFieldNames } from '@/lib/permissions'
 import { formatDateBR } from '@/lib/formatters'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
@@ -37,7 +38,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
   suporte: 'Suporte',
 }
 
-const PERMISSION_LABELS: Record<string, string> = {
+const PERMISSION_LABELS: Record<PermissionKey, string> = {
   dashboard: 'Dashboard',
   leads: 'Leads / Kanban',
   clientes: 'Clientes',
@@ -90,8 +91,18 @@ const DEFAULT_PERMISSIONS: Record<string, boolean> = {
   configuracoes: false,
 }
 
-function safePermissions(value?: Record<string, boolean>) {
-  return { ...DEFAULT_PERMISSIONS, ...(value || {}) }
+function safePermissions(value?: User) {
+  const legacy = value?.permissoes || {}
+  return {
+    ...DEFAULT_PERMISSIONS,
+    dashboard: value?.perm_dashboard ?? legacy.dashboard ?? false,
+    leads: value?.perm_leads ?? legacy.leads ?? false,
+    clientes: value?.perm_clientes ?? legacy.clientes ?? false,
+    revendas: value?.perm_revendas ?? legacy.revendas ?? false,
+    suporte: value?.perm_suporte ?? legacy.suporte ?? false,
+    relatorios: value?.perm_relatorios ?? legacy.relatorios ?? false,
+    configuracoes: value?.perm_configuracoes ?? legacy.configuracoes ?? false,
+  }
 }
 
 function auditText(value: unknown) {
@@ -169,7 +180,7 @@ export default function Configuracoes() {
     setFormRole(item.role || 'vendedor')
     setFormCarteira(item.carteira || '')
     setFormAtivo(item.ativo !== false)
-    setFormPermissions(safePermissions(item.permissoes))
+    setFormPermissions(safePermissions(item))
     setModalOpen(true)
   }
 
@@ -193,12 +204,18 @@ export default function Configuracoes() {
           ativo: editingUser.ativo,
           permissoes: editingUser.permissoes || {},
         }
+        const permissionPayload = Object.fromEntries(
+          (Object.keys(permissionFieldNames) as PermissionKey[]).map((key) => [
+            permissionFieldNames[key],
+            formPermissions[key],
+          ]),
+        )
         const updated = await userService.update(editingUser.id, {
           name: formName.trim(),
           role: formRole,
           carteira: formCarteira.trim(),
           ativo: formAtivo,
-          permissoes: formPermissions,
+          ...permissionPayload,
         })
         await userService.audit({
           autor: user?.id || 'sessão atual',
@@ -224,7 +241,12 @@ export default function Configuracoes() {
           role: formRole,
           carteira: formCarteira.trim(),
           ativo: true,
-          permissoes: formPermissions,
+          ...Object.fromEntries(
+            (Object.keys(permissionFieldNames) as PermissionKey[]).map((key) => [
+              permissionFieldNames[key],
+              formPermissions[key],
+            ]),
+          ),
         })
         await userService.audit({
           autor: user?.id || 'sessão atual',

@@ -1,12 +1,14 @@
-import React, { createContext, useContext, useEffect, useState, useMemo } from 'react'
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import pb from '@/lib/pocketbase/client'
-import type { User, UserRole } from '@/types/crm'
+import type { PermissionKey, User, UserRole } from '@/types/crm'
+import { hasPermission } from '@/lib/permissions'
 
 interface AuthContextType {
   user: User | null
   token: string | null
   role: UserRole
   isLoading: boolean
+  can: (permission: PermissionKey) => boolean
   login: (email: string, pass: string) => Promise<void>
   logout: () => void
   refreshUser: () => Promise<void>
@@ -14,24 +16,34 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+function toUser(record: Record<string, any>): User {
+  return {
+    id: record.id,
+    email: record.email,
+    name: record.name || record.email.split('@')[0],
+    avatar: record.avatar,
+    role: (record.role as UserRole) || 'vendedor',
+    ativo: record.ativo !== false,
+    carteira: record.carteira || '',
+    perm_dashboard: record.perm_dashboard === true,
+    perm_leads: record.perm_leads === true,
+    perm_clientes: record.perm_clientes === true,
+    perm_revendas: record.perm_revendas === true,
+    perm_suporte: record.perm_suporte === true,
+    perm_relatorios: record.perm_relatorios === true,
+    perm_configuracoes: record.perm_configuracoes === true,
+    permissoes: record.permissoes || {},
+    created: record.created,
+    updated: record.updated,
+  }
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(() => {
-    if (pb.authStore.isValid && pb.authStore.record) {
-      const rec = pb.authStore.record
-      return {
-        id: rec.id,
-        email: rec.email,
-        name: rec.name || rec.email.split('@')[0],
-        avatar: rec.avatar,
-        role: (rec.role as UserRole) || 'vendedor',
-        ativo: rec.ativo !== false,
-        carteira: rec.carteira || '',
-        created: rec.created,
-        updated: rec.updated,
-      }
-    }
-    return null
-  })
+  const [user, setUser] = useState<User | null>(() =>
+    pb.authStore.isValid && pb.authStore.record
+      ? toUser(pb.authStore.record as Record<string, any>)
+      : null,
+  )
   const [isLoading, setIsLoading] = useState<boolean>(true)
 
   const refreshUser = async () => {
@@ -43,17 +55,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(null)
           return
         }
-        setUser({
-          id: fresh.id,
-          email: fresh.email,
-          name: fresh.name || fresh.email.split('@')[0],
-          avatar: fresh.avatar,
-          role: (fresh.role as UserRole) || 'vendedor',
-          ativo: fresh.ativo !== false,
-          carteira: fresh.carteira || '',
-          created: fresh.created,
-          updated: fresh.updated,
-        })
+        setUser(toUser(fresh as Record<string, any>))
       } else {
         setUser(null)
       }
@@ -66,21 +68,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const unsub = pb.authStore.onChange((token, model) => {
-      if (token && model) {
-        setUser({
-          id: model.id,
-          email: model.email,
-          name: model.name || model.email.split('@')[0],
-          avatar: model.avatar,
-          role: (model.role as UserRole) || 'vendedor',
-          ativo: model.ativo !== false,
-          carteira: model.carteira || '',
-          created: model.created,
-          updated: model.updated,
-        })
-      } else {
-        setUser(null)
-      }
+      if (token && model) setUser(toUser(model as Record<string, any>))
+      else setUser(null)
     })
 
     refreshUser().finally(() => {
@@ -99,17 +88,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, pass: string) => {
     const authData = await pb.collection('users').authWithPassword(email, pass)
-    setUser({
-      id: authData.record.id,
-      email: authData.record.email,
-      name: authData.record.name || authData.record.email.split('@')[0],
-      avatar: authData.record.avatar,
-      role: (authData.record.role as UserRole) || 'vendedor',
-      ativo: authData.record.ativo !== false,
-      carteira: authData.record.carteira || '',
-      created: authData.record.created,
-      updated: authData.record.updated,
-    })
+    setUser(toUser(authData.record as Record<string, any>))
   }
 
   const logout = () => {
@@ -118,6 +97,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   const role: UserRole = user?.role || 'vendedor'
+  const can = (permission: PermissionKey) => hasPermission(user, permission)
 
   const value = useMemo(
     () => ({
@@ -125,6 +105,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       token: pb.authStore.token,
       role,
       isLoading,
+      can,
       login,
       logout,
       refreshUser,

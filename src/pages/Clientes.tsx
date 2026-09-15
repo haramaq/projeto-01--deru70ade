@@ -50,7 +50,7 @@ import { toast } from 'sonner'
 import { useAuth } from '@/contexts/AuthContext'
 
 export default function Clientes() {
-  const { role } = useAuth()
+  const { user, can } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
 
   const [clientes, setClientes] = useState<Cliente[]>([])
@@ -80,7 +80,7 @@ export default function Clientes() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [clientToDelete, setClientToDelete] = useState<Cliente | null>(null)
 
-  const canEdit = role === 'admin' || role === 'vendedor'
+  const canEdit = can('clientes')
 
   const loadClientes = async () => {
     try {
@@ -180,6 +180,7 @@ export default function Clientes() {
         estado: formEstado.trim().toUpperCase(),
         status: formStatus,
         observacoes: formObservacoes.trim(),
+        ...(!editingClient ? { responsavel: user?.id, carteira: user?.carteira || '' } : {}),
       }
 
       if (editingClient) {

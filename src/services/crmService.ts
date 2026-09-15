@@ -270,6 +270,13 @@ export const userService = {
     role: string
     carteira?: string
     ativo?: boolean
+    perm_dashboard?: boolean
+    perm_leads?: boolean
+    perm_clientes?: boolean
+    perm_revendas?: boolean
+    perm_suporte?: boolean
+    perm_relatorios?: boolean
+    perm_configuracoes?: boolean
     permissoes?: Record<string, boolean>
   }): Promise<User> {
     return (await pb.collection('users').create(data)) as unknown as User

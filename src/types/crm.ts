@@ -1,5 +1,14 @@
 export type UserRole = 'admin' | 'triagem' | 'vendedor' | 'revendedor' | 'gestor' | 'suporte'
 
+export type PermissionKey =
+  | 'dashboard'
+  | 'leads'
+  | 'clientes'
+  | 'revendas'
+  | 'suporte'
+  | 'relatorios'
+  | 'configuracoes'
+
 export interface User {
   id: string
   email: string
@@ -8,9 +17,16 @@ export interface User {
   role: UserRole
   ativo: boolean
   carteira?: string
+  perm_dashboard?: boolean
+  perm_leads?: boolean
+  perm_clientes?: boolean
+  perm_revendas?: boolean
+  perm_suporte?: boolean
+  perm_relatorios?: boolean
+  perm_configuracoes?: boolean
+  permissoes?: Record<string, boolean>
   created: string
   updated: string
-  permissoes?: Record<string, boolean>
 }
 
 export type ClienteStatus = 'ativo' | 'inativo'

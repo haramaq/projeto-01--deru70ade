@@ -140,7 +140,7 @@ function statusVariant(lead: Venda): 'success' | 'danger' | 'neutral' | 'info' {
 }
 
 export default function Vendas() {
-  const { user, role } = useAuth()
+  const { user, role, can } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const [leads, setLeads] = useState<Venda[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
@@ -174,7 +174,7 @@ export default function Vendas() {
   const [newObservacoes, setNewObservacoes] = useState('')
   const [newResponsavel, setNewResponsavel] = useState('')
 
-  const canCreate = ['admin', 'gestor', 'triagem', 'vendedor', 'revendedor'].includes(role)
+  const canCreate = can('leads')
 
   const loadData = async () => {
     try {
@@ -338,6 +338,7 @@ export default function Vendas() {
           estado: newClientEstado.trim().toUpperCase(),
           status: 'ativo',
           responsavel: user?.id,
+          carteira: user?.carteira || '',
         })
         clienteId = createdClient.id
         setClientes((current) => [createdClient, ...current])
@@ -349,6 +350,7 @@ export default function Vendas() {
         nivel_interesse: newInterest,
         observacoes_ia: newObservacoes.trim(),
         vendedor: newResponsavel || user?.id,
+        carteira: user?.carteira || '',
         etapa: 'agendamento_primeiro_contato',
         produto: 'PROHMIX',
         altforce_stage_name: 'Agendamento de 1º contato',

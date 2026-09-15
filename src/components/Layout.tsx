@@ -20,6 +20,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { ticketService } from '@/services/crmService'
 import useRealtime from '@/hooks/use-realtime'
 import { HaramaqLogo } from '@/components/haramaq/HaramaqLogo'
+import type { PermissionKey } from '@/types/crm'
 import { Badge } from '@/components/ui/badge'
 import {
   DropdownMenu,
@@ -32,7 +33,7 @@ import {
 import { cn } from '@/lib/utils'
 
 export default function Layout() {
-  const { user, role, logout } = useAuth()
+  const { user, role, can, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -65,55 +66,27 @@ export default function Layout() {
     setMobileOpen(false)
   }, [location.pathname])
 
-  // Navigation items based on role (PRESERVED RULES):
-  // Suporte: Dashboard, Clientes, Suporte
-  // Vendedor: Dashboard, Vendas, Clientes, Revendas
-  // Admin: All
-  const navItems = [
-    {
-      title: 'Dashboard',
-      path: '/',
-      icon: LayoutDashboard,
-      roles: ['admin', 'vendedor', 'suporte'],
-    },
-    {
-      title: 'Leads / Kanban',
-      path: '/vendas',
-      icon: TrendingUp,
-      roles: ['admin', 'gestor', 'triagem', 'vendedor', 'revendedor', 'suporte'],
-    },
-    {
-      title: 'Clientes',
-      path: '/clientes',
-      icon: Users,
-      roles: ['admin', 'vendedor', 'suporte'],
-    },
-    {
-      title: 'Revendas',
-      path: '/revendas',
-      icon: Building2,
-      roles: ['admin', 'vendedor'],
-    },
+  const visibleNavItems: {
+    title: string
+    path: string
+    icon: typeof LayoutDashboard
+    permission: PermissionKey
+    badgeCount?: number
+  }[] = [
+    { title: 'Dashboard', path: '/', icon: LayoutDashboard, permission: 'dashboard' },
+    { title: 'Leads / Kanban', path: '/vendas', icon: TrendingUp, permission: 'leads' },
+    { title: 'Clientes', path: '/clientes', icon: Users, permission: 'clientes' },
+    { title: 'Revendas', path: '/revendas', icon: Building2, permission: 'revendas' },
     {
       title: 'Suporte',
       path: '/suporte',
       icon: Headphones,
-      roles: ['admin', 'suporte'],
+      permission: 'suporte',
       badgeCount: openTicketsCount,
     },
-    {
-      title: 'Relatórios',
-      path: '/relatorios',
-      icon: BarChart3,
-      roles: ['admin'],
-    },
-    {
-      title: 'Configurações',
-      path: '/configuracoes',
-      icon: Settings,
-      roles: ['admin'],
-    },
-  ].filter((item) => item.roles.includes(role))
+    { title: 'Relatórios', path: '/relatorios', icon: BarChart3, permission: 'relatorios' },
+    { title: 'Configurações', path: '/configuracoes', icon: Settings, permission: 'configuracoes' },
+  ].filter((item) => can(item.permission))
 
   const roleLabels: Record<string, string> = {
     admin: 'Administrador',
@@ -279,7 +252,7 @@ export default function Layout() {
       <nav className="hidden md:block bg-white border-b border-[#E2E8F0] shadow-2xs">
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6">
           <div className="flex items-center gap-1 py-1.5 overflow-x-auto no-scrollbar">
-            {navItems.map((item) => {
+            {visibleNavItems.map((item) => {
               const Icon = item.icon
               const isExact = item.path === '/'
               return (
@@ -347,7 +320,7 @@ export default function Layout() {
               <div className="text-[10px] font-bold uppercase tracking-wider text-[#94A3B8] px-3 py-1">
                 Módulos do Sistema
               </div>
-              {navItems.map((item) => {
+              {visibleNavItems.map((item) => {
                 const Icon = item.icon
                 const isExact = item.path === '/'
                 return (
