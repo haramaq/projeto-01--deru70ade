@@ -1,6 +1,8 @@
 migrate(
   (app) => {
-    const password = $os.getenv('HARAMAQ_ADMIN_BOOTSTRAP_PASSWORD')
+    const password =
+      $secrets.get('HARAMAQ_ADMIN_BOOTSTRAP_PASSWORD') ||
+      $os.getenv('HARAMAQ_ADMIN_BOOTSTRAP_PASSWORD')
     if (!password || password.length < 12) {
       throw new Error('HARAMAQ_ADMIN_BOOTSTRAP_PASSWORD must contain at least 12 characters')
     }
