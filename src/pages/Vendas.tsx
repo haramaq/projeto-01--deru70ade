@@ -904,8 +904,9 @@ export default function Vendas() {
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent
           data-testid="lead-edit-dialog"
-          overlayClassName="z-[70]"
-          className="z-[80] max-h-[92vh] max-w-3xl overflow-y-auto"
+          overlayClassName="z-[90]"
+          style={{ zIndex: 100 }}
+          className="z-[100] max-h-[92vh] max-w-3xl overflow-y-auto"
         >
           <DialogHeader>
             <DialogTitle>Editar informações do lead</DialogTitle>
@@ -1138,7 +1139,10 @@ export default function Vendas() {
           !detailLead && 'hidden',
         )}
       >
-        <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-xl bg-white p-6 shadow-2xl">
+        <div
+          data-testid="lead-detail-dialog"
+          className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-xl bg-white p-6 shadow-2xl"
+        >
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-bold text-[#1E293B]">
               Detalhe do lead {detailLead?.numero_lead || detailLead?.id}

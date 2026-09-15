@@ -157,12 +157,19 @@ export default function Configuracoes() {
   const [auditSearch, setAuditSearch] = useState('')
 
   const loadAdminData = async () => {
+    let listLoaded = false
     try {
-      const [list, audit] = await Promise.all([userService.getAll(), userService.getAudit()])
+      const list = await userService.getAll()
       setUsers(list)
-      setAuditEntries(audit)
+      listLoaded = true
     } catch {
-      toast.error('Erro ao carregar o painel administrativo.')
+      toast.error('Erro ao carregar os usuários do painel administrativo.')
+    }
+    try {
+      setAuditEntries(await userService.getAudit())
+    } catch {
+      // A auditoria não pode ocultar usuários já carregados ou impedir mutações.
+      if (!listLoaded) toast.error('Erro ao carregar o painel administrativo.')
     } finally {
       setLoading(false)
     }
@@ -278,20 +285,21 @@ export default function Configuracoes() {
         })
         toast.success(audited ? 'Usuário atualizado e auditado.' : 'Usuário atualizado.')
       } else {
+        const permissionPayload = Object.fromEntries(
+          (Object.keys(permissionFieldNames) as PermissionKey[]).map((key) => [
+            permissionFieldNames[key],
+            formPermissions[key] === true,
+          ]),
+        )
         const created = await userService.create({
           name: formName.trim(),
           email: formEmail.trim().toLowerCase(),
           password: formPassword,
-          passwordConfirm: formPassword,
+          passwordConfirm: formPasswordConfirm,
           role: formRole,
           carteira: formCarteira.trim(),
           ativo: true,
-          ...Object.fromEntries(
-            (Object.keys(permissionFieldNames) as PermissionKey[]).map((key) => [
-              permissionFieldNames[key],
-              formPermissions[key],
-            ]),
-          ),
+          ...permissionPayload,
         })
         const audited = await auditBestEffort({
           autor: user?.id || 'sessão atual',
@@ -300,6 +308,11 @@ export default function Configuracoes() {
           antes: null,
           depois: { name: created.name, email: created.email, role: formRole },
         })
+        setUsers((current) =>
+          [...current.filter((item) => item.id !== created.id), created].sort((a, b) =>
+            (a.name || '').localeCompare(b.name || ''),
+          ),
+        )
         toast.success(audited ? 'Usuário criado e auditado.' : 'Usuário criado.')
       }
       setModalOpen(false)
@@ -411,6 +424,8 @@ export default function Configuracoes() {
           </p>
         </div>
         <Button
+          type="button"
+          data-testid="new-user-button"
           onClick={handleOpenCreate}
           className="h-9 self-start gap-2 rounded-lg bg-[#D92323] text-xs font-semibold text-white hover:bg-[#B91C1C] sm:self-auto"
         >
@@ -620,7 +635,11 @@ export default function Configuracoes() {
               {editingUser ? 'Editar usuário, carteira e permissões' : 'Novo usuário do sistema'}
             </DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSaveUser} className="space-y-4 pt-2 text-xs">
+          <form
+            data-testid="user-form"
+            onSubmit={handleSaveUser}
+            className="space-y-4 pt-2 text-xs"
+          >
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1">
                 <Label htmlFor="uName">Nome completo</Label>
@@ -730,6 +749,7 @@ export default function Configuracoes() {
               </Button>
               <Button
                 type="submit"
+                data-testid="save-user-button"
                 disabled={submitting}
                 className="bg-[#DC2626] text-white hover:bg-[#B91C1C]"
               >

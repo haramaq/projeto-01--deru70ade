@@ -70,14 +70,28 @@ assert(
   adminPage.includes('passwordConfirm: formPassword'),
   'user auth payload confirmation required',
 )
+assert(adminPage.includes('userService.create'), 'user creation service required')
+assert(
+  adminPage.includes('passwordConfirm: formPasswordConfirm'),
+  'user creation must send confirmed password',
+)
+assert(
+  adminPage.includes('setUsers((current) =>'),
+  'user creation must update the list immediately',
+)
+assert(adminPage.includes('userService.update'), 'user edit service required')
 assert(adminPage.includes('userService.delete'), 'user removal service required')
 assert(adminPage.includes('const removeUser'), 'user removal flow required')
 assert(adminPage.includes('remover_usuario'), 'user removal audit action required')
+assert(adminPage.includes('data-testid="new-user-button"'), 'user addition test hook required')
+assert(adminPage.includes('data-testid="user-form"'), 'user form test hook required')
+assert(adminPage.includes('data-testid="save-user-button"'), 'user save test hook required')
 assert(adminPage.includes('data-testid="remove-user-dialog"'), 'user removal confirmation required')
 assert(dialog.includes('overlayClassName'), 'dialog overlay customization required')
 assert(vendas.includes('data-testid="lead-edit-dialog"'), 'lead edit dialog test hook required')
-assert(vendas.includes('className="z-[80]'), 'lead edit dialog must be above lead detail')
-assert(vendas.includes('overlayClassName="z-[70]'), 'lead edit overlay must be above lead detail')
+assert(vendas.includes('data-testid="lead-detail-dialog"'), 'lead detail dialog test hook required')
+assert(vendas.includes('className="z-[100]'), 'lead edit dialog must be above lead detail')
+assert(vendas.includes('overlayClassName="z-[90]'), 'lead edit overlay must be above lead detail')
 assert(
   users.apiRules?.delete === undefined || users.apiRules?.delete?.includes("role = 'admin'"),
   'user delete must remain admin-only',
