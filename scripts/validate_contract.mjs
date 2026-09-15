@@ -20,6 +20,10 @@ assert(vendas.includes("'fornecedores'"), 'Kanban must contain Fornecedores')
 assert(vendas.includes("clientMode === 'new'"), 'new client flow required')
 assert(vendas.includes('carteira: user?.carteira'), 'new lead wallet required')
 assert(vendas.includes('const saveLeadEdits'), 'lead edit flow required')
+assert(
+  !vendas.includes('data_prevista_fechamento: editDataPrevista ||'),
+  'empty lead date must not be sent',
+)
 assert(vendas.includes('Editar informações'), 'lead edit action required')
 assert(vendas.includes('const [newEtapa'), 'initial lead stage selector required')
 assert(app.includes('requiredPermission="leads"'), 'lead route permission required')

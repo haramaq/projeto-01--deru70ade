@@ -1,3 +1,4 @@
+// Retry-safe schema sync for the existing Fornecedores stage.
 migrate(
   (app) => {
     const vendas = app.findCollectionByNameOrId('vendas')

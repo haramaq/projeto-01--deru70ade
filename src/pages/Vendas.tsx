@@ -323,7 +323,7 @@ export default function Vendas() {
         produto: editProduto,
         valor: Number(editValor) || 0,
         probabilidade: probability,
-        data_prevista_fechamento: editDataPrevista || '',
+        ...(editDataPrevista ? { data_prevista_fechamento: editDataPrevista } : {}),
         categoria_produto: editCategoria,
         origem_lead: editOrigem,
         nivel_interesse: editInterest,
