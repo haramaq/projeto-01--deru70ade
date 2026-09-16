@@ -386,7 +386,15 @@ export const vendaService = {
   },
 
   async createTarefa(data: Partial<LeadTarefa>): Promise<LeadTarefa> {
-    return (await pb.collection('lead_tarefas').create(data)) as unknown as LeadTarefa
+    const created = (await pb.collection('lead_tarefas').create(data)) as unknown as LeadTarefa
+    await auditService.record({
+      autor: pb.authStore.record?.id || 'sessão atual',
+      alvo: created.id,
+      acao: 'criar_tarefa_lead',
+      antes: null,
+      depois: created,
+    })
+    return created
   },
 
   async getMotivos(): Promise<StatusMotivo[]> {
@@ -416,27 +424,52 @@ export const ticketService = {
       .getOne(id, { expand: 'cliente,atribuido_a' })) as unknown as Ticket
   },
   async create(data: Partial<Ticket>): Promise<Ticket> {
-    return (await pb
+    const created = (await pb
       .collection('tickets')
       .create(
         { ...data, status: data.status || 'aberto', respostas: data.respostas || [] },
         { expand: 'cliente,atribuido_a' },
       )) as unknown as Ticket
+    await auditService.record({
+      autor: pb.authStore.record?.id || 'sessão atual',
+      alvo: created.id,
+      acao: 'criar_ticket',
+      antes: null,
+      depois: created,
+    })
+    return created
   },
   async update(id: string, data: Partial<Ticket>): Promise<Ticket> {
-    return (await pb
+    const before = await this.getById(id)
+    const updated = (await pb
       .collection('tickets')
       .update(id, data, { expand: 'cliente,atribuido_a' })) as unknown as Ticket
+    await auditService.record({
+      autor: pb.authStore.record?.id || 'sessão atual',
+      alvo: id,
+      acao: 'editar_ticket',
+      antes: before,
+      depois: updated,
+    })
+    return updated
   },
   async addResposta(id: string, resposta: TicketResposta): Promise<Ticket> {
     const ticket = await this.getById(id)
-    return (await pb
+    const updated = (await pb
       .collection('tickets')
       .update(
         id,
         { respostas: [...(ticket.respostas || []), resposta] },
         { expand: 'cliente,atribuido_a' },
       )) as unknown as Ticket
+    await auditService.record({
+      autor: pb.authStore.record?.id || 'sessão atual',
+      alvo: id,
+      acao: 'responder_ticket',
+      antes: { respostas: ticket.respostas || [] },
+      depois: { respostas: updated.respostas || [] },
+    })
+    return updated
   },
   async toggleStatus(id: string, currentStatus: Ticket['status']): Promise<Ticket> {
     const nextStatus = currentStatus === 'aberto' ? 'finalizado' : 'aberto'

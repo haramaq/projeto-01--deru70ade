@@ -99,6 +99,19 @@ assert(vendas.includes('data-testid="lead-detail-dialog"'), 'lead detail dialog 
 assert(vendas.includes('className="z-[100]'), 'lead edit dialog must be above lead detail')
 assert(vendas.includes('overlayClassName="z-[90]'), 'lead edit overlay must be above lead detail')
 assert(
+  read('pocketbase/migrations/0014_visibility_transfer_cadastros.js').includes('tipo_cadastro'),
+  'cadastro type migration required',
+)
+assert(
+  read('pocketbase/migrations/0015_preserve_revenda_access.js').includes('perm_revendas'),
+  'legacy reseller access must be preserved',
+)
+assert(read('src/services/crmService.ts').includes("acao: 'criar_ticket'"), 'ticket audit required')
+assert(
+  read('src/services/crmService.ts').includes("acao: 'criar_tarefa_lead'"),
+  'task audit required',
+)
+assert(
   users.apiRules?.delete === undefined || users.apiRules?.delete?.includes("role = 'admin'"),
   'user delete must remain admin-only',
 )

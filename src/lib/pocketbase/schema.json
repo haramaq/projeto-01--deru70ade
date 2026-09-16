@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-16T14:50:10.785Z",
+  "generatedAt": "2026-09-16T14:52:20.058Z",
   "collections": [
     {
       "name": "users",
@@ -333,10 +333,10 @@
       "name": "revendas",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'triagem' || @request.auth.role = 'vendedor' || @request.auth.role = 'revendedor' || @request.auth.role = 'suporte' || @request.auth.perm_clientes = true) && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || responsavel = @request.auth.id || responsavel_usuario = @request.auth.id || (@request.auth.carteira != '' && carteira = @request.auth.carteira) || (responsavel = '' && carteira = ''))",
-        "view": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'triagem' || @request.auth.role = 'vendedor' || @request.auth.role = 'revendedor' || @request.auth.role = 'suporte' || @request.auth.perm_clientes = true) && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || responsavel = @request.auth.id || responsavel_usuario = @request.auth.id || (@request.auth.carteira != '' && carteira = @request.auth.carteira) || (responsavel = '' && carteira = ''))",
-        "create": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'triagem' || @request.auth.role = 'vendedor' || @request.auth.role = 'revendedor' || @request.auth.role = 'suporte' || @request.auth.perm_clientes = true)",
-        "update": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'triagem' || @request.auth.role = 'vendedor' || @request.auth.role = 'revendedor' || @request.auth.role = 'suporte' || @request.auth.perm_clientes = true) && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || responsavel = @request.auth.id || responsavel_usuario = @request.auth.id || (@request.auth.carteira != '' && carteira = @request.auth.carteira) || (responsavel = '' && carteira = ''))",
+        "list": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'vendedor' || @request.auth.perm_revendas = true) && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || responsavel = @request.auth.id || responsavel_usuario = @request.auth.id || (@request.auth.carteira != '' && carteira = @request.auth.carteira) || (responsavel = '' && carteira = ''))",
+        "view": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'vendedor' || @request.auth.perm_revendas = true) && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || responsavel = @request.auth.id || responsavel_usuario = @request.auth.id || (@request.auth.carteira != '' && carteira = @request.auth.carteira) || (responsavel = '' && carteira = ''))",
+        "create": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.perm_revendas = true)",
+        "update": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.perm_revendas = true) && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || responsavel = @request.auth.id || responsavel_usuario = @request.auth.id || (@request.auth.carteira != '' && carteira = @request.auth.carteira) || (responsavel = '' && carteira = ''))",
         "delete": "@request.auth.id != '' && @request.auth.role = 'admin'"
       },
       "fields": [
