@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-09-15T14:25:53.026Z",
+  "generatedAt": "2026-09-16T14:50:10.785Z",
   "collections": [
     {
       "name": "users",
       "type": "auth",
       "apiRules": {
-        "list": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor')",
-        "view": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || id = @request.auth.id)",
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
         "create": "@request.auth.id != '' && @request.auth.role = 'admin'",
         "update": "@request.auth.id != '' && @request.auth.role = 'admin'",
         "delete": "@request.auth.id != '' && @request.auth.role = 'admin'"
@@ -29,21 +29,33 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "role",
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["admin", "triagem", "vendedor", "revendedor", "gestor", "suporte"]
+          "selectValues": [
+            "admin",
+            "triagem",
+            "vendedor",
+            "revendedor",
+            "gestor",
+            "suporte"
+          ]
         },
         {
           "name": "ativo",
@@ -116,10 +128,10 @@
       "name": "clientes",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != '' && ((@request.auth.role = 'admin' || @request.auth.role = 'gestor') || ((@request.auth.role = 'triagem' || @request.auth.role = 'vendedor' || @request.auth.role = 'revendedor' || @request.auth.role = 'suporte' || @request.auth.perm_clientes = true) && (responsavel = @request.auth.id || (@request.auth.carteira != '' && carteira = @request.auth.carteira))))",
-        "view": "@request.auth.id != '' && ((@request.auth.role = 'admin' || @request.auth.role = 'gestor') || ((@request.auth.role = 'triagem' || @request.auth.role = 'vendedor' || @request.auth.role = 'revendedor' || @request.auth.role = 'suporte' || @request.auth.perm_clientes = true) && (responsavel = @request.auth.id || (@request.auth.carteira != '' && carteira = @request.auth.carteira))))",
-        "create": "@request.auth.id != '' && ((@request.auth.role = 'admin' || @request.auth.role = 'gestor') || @request.auth.role = 'triagem' || @request.auth.role = 'vendedor' || @request.auth.role = 'revendedor' || @request.auth.perm_clientes = true)",
-        "update": "@request.auth.id != '' && ((@request.auth.role = 'admin' || @request.auth.role = 'gestor') || ((@request.auth.role = 'triagem' || @request.auth.role = 'vendedor' || @request.auth.role = 'revendedor' || @request.auth.role = 'suporte' || @request.auth.perm_clientes = true) && (responsavel = @request.auth.id || (@request.auth.carteira != '' && carteira = @request.auth.carteira))))",
+        "list": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'triagem' || @request.auth.role = 'vendedor' || @request.auth.role = 'revendedor' || @request.auth.role = 'suporte' || @request.auth.perm_clientes = true) && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || responsavel = @request.auth.id || responsavel_usuario = @request.auth.id || (@request.auth.carteira != '' && carteira = @request.auth.carteira))",
+        "view": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'triagem' || @request.auth.role = 'vendedor' || @request.auth.role = 'revendedor' || @request.auth.role = 'suporte' || @request.auth.perm_clientes = true) && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || responsavel = @request.auth.id || responsavel_usuario = @request.auth.id || (@request.auth.carteira != '' && carteira = @request.auth.carteira))",
+        "create": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'triagem' || @request.auth.role = 'vendedor' || @request.auth.role = 'revendedor' || @request.auth.role = 'suporte' || @request.auth.perm_clientes = true)",
+        "update": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'triagem' || @request.auth.role = 'vendedor' || @request.auth.role = 'revendedor' || @request.auth.role = 'suporte' || @request.auth.perm_clientes = true) && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || responsavel = @request.auth.id || responsavel_usuario = @request.auth.id || (@request.auth.carteira != '' && carteira = @request.auth.carteira))",
         "delete": "@request.auth.id != '' && @request.auth.role = 'admin'"
       },
       "fields": [
@@ -170,7 +182,10 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["ativo", "inativo"]
+          "selectValues": [
+            "ativo",
+            "inativo"
+          ]
         },
         {
           "name": "observacoes",
@@ -183,14 +198,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "responsavel",
@@ -215,6 +235,93 @@
           "type": "text",
           "required": false,
           "system": false
+        },
+        {
+          "name": "tipo_cadastro",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": [
+            "cliente_final",
+            "revenda"
+          ]
+        },
+        {
+          "name": "external_id",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "razao_social",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "nome_fantasia",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "documento",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "documento_tipo",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": [
+            "cpf",
+            "cnpj"
+          ]
+        },
+        {
+          "name": "inscricao_estadual",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "pais",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "cep",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "bairro",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "rua",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "numero",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "responsavel_usuario",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
         }
       ],
       "indexes": [
@@ -226,10 +333,10 @@
       "name": "revendas",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'vendedor' || @request.auth.perm_revendas = true)",
-        "view": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'vendedor' || @request.auth.perm_revendas = true)",
-        "create": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.perm_revendas = true)",
-        "update": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.perm_revendas = true)",
+        "list": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'triagem' || @request.auth.role = 'vendedor' || @request.auth.role = 'revendedor' || @request.auth.role = 'suporte' || @request.auth.perm_clientes = true) && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || responsavel = @request.auth.id || responsavel_usuario = @request.auth.id || (@request.auth.carteira != '' && carteira = @request.auth.carteira) || (responsavel = '' && carteira = ''))",
+        "view": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'triagem' || @request.auth.role = 'vendedor' || @request.auth.role = 'revendedor' || @request.auth.role = 'suporte' || @request.auth.perm_clientes = true) && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || responsavel = @request.auth.id || responsavel_usuario = @request.auth.id || (@request.auth.carteira != '' && carteira = @request.auth.carteira) || (responsavel = '' && carteira = ''))",
+        "create": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'triagem' || @request.auth.role = 'vendedor' || @request.auth.role = 'revendedor' || @request.auth.role = 'suporte' || @request.auth.perm_clientes = true)",
+        "update": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'triagem' || @request.auth.role = 'vendedor' || @request.auth.role = 'revendedor' || @request.auth.role = 'suporte' || @request.auth.perm_clientes = true) && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || responsavel = @request.auth.id || responsavel_usuario = @request.auth.id || (@request.auth.carteira != '' && carteira = @request.auth.carteira) || (responsavel = '' && carteira = ''))",
         "delete": "@request.auth.id != '' && @request.auth.role = 'admin'"
       },
       "fields": [
@@ -280,14 +387,20 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["PROHMIX", "SUPERMIX"]
+          "selectValues": [
+            "PROHMIX",
+            "SUPERMIX"
+          ]
         },
         {
           "name": "status",
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["autorizada", "pendente"]
+          "selectValues": [
+            "autorizada",
+            "pendente"
+          ]
         },
         {
           "name": "observacoes",
@@ -300,14 +413,116 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
+        },
+        {
+          "name": "external_id",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "tipo_cadastro",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": [
+            "revenda"
+          ]
+        },
+        {
+          "name": "razao_social",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "nome_fantasia",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "documento",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "documento_tipo",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": [
+            "cnpj"
+          ]
+        },
+        {
+          "name": "inscricao_estadual",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "pais",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "cep",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "bairro",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "rua",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "numero",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "responsavel",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "carteira",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "responsavel_usuario",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
         }
       ],
       "indexes": []
@@ -316,10 +531,10 @@
       "name": "vendas",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'triagem' || @request.auth.role = 'vendedor' || @request.auth.role = 'revendedor' || @request.auth.role = 'suporte' || @request.auth.perm_leads = true) && ((@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'suporte') || vendedor = @request.auth.id || (@request.auth.carteira != '' && carteira = @request.auth.carteira))",
-        "view": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'triagem' || @request.auth.role = 'vendedor' || @request.auth.role = 'revendedor' || @request.auth.role = 'suporte' || @request.auth.perm_leads = true) && ((@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'suporte') || vendedor = @request.auth.id || (@request.auth.carteira != '' && carteira = @request.auth.carteira))",
-        "create": "@request.auth.id != '' && ((@request.auth.role = 'admin' || @request.auth.role = 'gestor') || @request.auth.role = 'triagem' || @request.auth.role = 'vendedor' || @request.auth.role = 'revendedor' || @request.auth.perm_leads = true) && ((@request.auth.role = 'admin' || @request.auth.role = 'gestor') || @request.body.vendedor = @request.auth.id || (@request.auth.carteira != '' && @request.body.carteira = @request.auth.carteira))",
-        "update": "@request.auth.id != '' && ((@request.auth.role = 'admin' || @request.auth.role = 'gestor') || @request.auth.perm_leads = true || @request.auth.role = 'triagem' || @request.auth.role = 'vendedor' || @request.auth.role = 'revendedor') && ((@request.auth.role = 'admin' || @request.auth.role = 'gestor') || vendedor = @request.auth.id || (@request.auth.carteira != '' && carteira = @request.auth.carteira))",
+        "list": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'triagem' || @request.auth.role = 'vendedor' || @request.auth.role = 'revendedor' || @request.auth.role = 'suporte' || @request.auth.perm_leads = true) && ((@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'suporte') || vendedor = @request.auth.id || (@request.auth.carteira != '' && carteira = @request.auth.carteira)) && ((@request.auth.role = 'admin' || @request.auth.role = 'triagem' || @request.auth.role = 'suporte') || (etapa != 'pecas_pos_vendas' && etapa != 'financeiro_fiscal' && etapa != 'fornecedores'))",
+        "view": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'triagem' || @request.auth.role = 'vendedor' || @request.auth.role = 'revendedor' || @request.auth.role = 'suporte' || @request.auth.perm_leads = true) && ((@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'suporte') || vendedor = @request.auth.id || (@request.auth.carteira != '' && carteira = @request.auth.carteira)) && ((@request.auth.role = 'admin' || @request.auth.role = 'triagem' || @request.auth.role = 'suporte') || (etapa != 'pecas_pos_vendas' && etapa != 'financeiro_fiscal' && etapa != 'fornecedores'))",
+        "create": "@request.auth.id != '' && ((@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'triagem' || @request.auth.role = 'vendedor' || @request.auth.role = 'revendedor' || @request.auth.role = 'suporte' || @request.auth.perm_leads = true)) && ((@request.auth.role = 'admin' || @request.auth.role = 'triagem' || @request.auth.role = 'suporte') || (@request.body.etapa != 'pecas_pos_vendas' && @request.body.etapa != 'financeiro_fiscal' && @request.body.etapa != 'fornecedores')) && ((@request.auth.role = 'admin' || @request.auth.role = 'gestor') || @request.body.vendedor = @request.auth.id || (@request.auth.carteira != '' && @request.body.carteira = @request.auth.carteira))",
+        "update": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'triagem' || @request.auth.role = 'vendedor' || @request.auth.role = 'revendedor' || @request.auth.role = 'suporte' || @request.auth.perm_leads = true) && ((@request.auth.role = 'admin' || @request.auth.role = 'triagem' || @request.auth.role = 'suporte') || ((etapa != 'pecas_pos_vendas' && etapa != 'financeiro_fiscal' && etapa != 'fornecedores') && (@request.body.etapa != 'pecas_pos_vendas' && @request.body.etapa != 'financeiro_fiscal' && @request.body.etapa != 'fornecedores'))) && ((@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'suporte') || vendedor = @request.auth.id || (@request.auth.carteira != '' && carteira = @request.auth.carteira))",
         "delete": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor')"
       },
       "fields": [
@@ -335,7 +550,10 @@
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": ["PROHMIX", "SUPERMIX"]
+          "selectValues": [
+            "PROHMIX",
+            "SUPERMIX"
+          ]
         },
         {
           "name": "valor",
@@ -392,14 +610,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "origem",
@@ -493,7 +716,12 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["em_andamento", "arquivado", "perdido", "convertido_pedido"]
+          "selectValues": [
+            "em_andamento",
+            "arquivado",
+            "perdido",
+            "convertido_pedido"
+          ]
         },
         {
           "name": "status_motivo_codigo",
@@ -608,14 +836,22 @@
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": ["baixa", "media", "alta"]
+          "selectValues": [
+            "baixa",
+            "media",
+            "alta"
+          ]
         },
         {
           "name": "status",
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": ["aberto", "finalizado", "fechado"]
+          "selectValues": [
+            "aberto",
+            "finalizado",
+            "fechado"
+          ]
         },
         {
           "name": "atribuido_a",
@@ -635,17 +871,24 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
-      "indexes": ["CREATE INDEX idx_tickets_status ON tickets (status)"]
+      "indexes": [
+        "CREATE INDEX idx_tickets_status ON tickets (status)"
+      ]
     },
     {
       "name": "auditoria_acesso",
@@ -653,7 +896,7 @@
       "apiRules": {
         "list": "@request.auth.id != '' && @request.auth.role = 'admin'",
         "view": "@request.auth.id != '' && @request.auth.role = 'admin'",
-        "create": "@request.auth.id != '' && @request.auth.role = 'admin'",
+        "create": "@request.auth.id != ''",
         "update": "",
         "delete": ""
       },
@@ -693,7 +936,9 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         }
       ],
       "indexes": []
@@ -762,25 +1007,32 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
-      "indexes": ["CREATE UNIQUE INDEX idx_kanban_etapas_chave ON kanban_etapas (chave)"]
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_kanban_etapas_chave ON kanban_etapas (chave)"
+      ]
     },
     {
       "name": "lead_historico",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != '' && ((@request.auth.role = 'admin' || @request.auth.role = 'gestor') || lead_id.vendedor = @request.auth.id || (@request.auth.carteira != '' && lead_id.carteira = @request.auth.carteira))",
-        "view": "@request.auth.id != '' && ((@request.auth.role = 'admin' || @request.auth.role = 'gestor') || lead_id.vendedor = @request.auth.id || (@request.auth.carteira != '' && lead_id.carteira = @request.auth.carteira))",
-        "create": "@request.auth.id != '' && ((@request.auth.role = 'admin' || @request.auth.role = 'gestor') || lead_id.vendedor = @request.auth.id || (@request.auth.carteira != '' && lead_id.carteira = @request.auth.carteira))",
+        "list": "@request.auth.id != '' && ((@request.auth.role = 'admin' || @request.auth.role = 'gestor') || (@request.auth.role = 'triagem' || @request.auth.role = 'suporte') || (lead_id.vendedor = @request.auth.id || (@request.auth.carteira != '' && lead_id.carteira = @request.auth.carteira))) && ((@request.auth.role = 'admin' || @request.auth.role = 'triagem' || @request.auth.role = 'suporte') || (lead_id.etapa != 'pecas_pos_vendas' && lead_id.etapa != 'financeiro_fiscal' && lead_id.etapa != 'fornecedores'))",
+        "view": "@request.auth.id != '' && ((@request.auth.role = 'admin' || @request.auth.role = 'gestor') || (@request.auth.role = 'triagem' || @request.auth.role = 'suporte') || (lead_id.vendedor = @request.auth.id || (@request.auth.carteira != '' && lead_id.carteira = @request.auth.carteira))) && ((@request.auth.role = 'admin' || @request.auth.role = 'triagem' || @request.auth.role = 'suporte') || (lead_id.etapa != 'pecas_pos_vendas' && lead_id.etapa != 'financeiro_fiscal' && lead_id.etapa != 'fornecedores'))",
+        "create": "@request.auth.id != '' && (((@request.auth.role = 'admin' || @request.auth.role = 'gestor') || (@request.auth.role = 'triagem' || @request.auth.role = 'suporte') || (lead_id.vendedor = @request.auth.id || (@request.auth.carteira != '' && lead_id.carteira = @request.auth.carteira))) || (@request.body.tipo_evento = 'transferencia' && @request.body.usuario_origem = @request.auth.id))",
         "update": "",
         "delete": ""
       },
@@ -839,14 +1091,39 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
+        },
+        {
+          "name": "tipo_evento",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "usuario_origem",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "usuario_destino",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
         }
       ],
       "indexes": [
@@ -895,7 +1172,12 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["pendente", "em_andamento", "concluida", "cancelada"]
+          "selectValues": [
+            "pendente",
+            "em_andamento",
+            "concluida",
+            "cancelada"
+          ]
         },
         {
           "name": "prazo",
@@ -914,17 +1196,24 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
-      "indexes": ["CREATE INDEX idx_lead_tarefas_lead ON lead_tarefas (lead_id)"]
+      "indexes": [
+        "CREATE INDEX idx_lead_tarefas_lead ON lead_tarefas (lead_id)"
+      ]
     },
     {
       "name": "lead_motivos_status",
@@ -978,17 +1267,24 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
-      "indexes": ["CREATE UNIQUE INDEX idx_lead_motivos_codigo ON lead_motivos_status (codigo)"]
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_lead_motivos_codigo ON lead_motivos_status (codigo)"
+      ]
     }
   ]
 }

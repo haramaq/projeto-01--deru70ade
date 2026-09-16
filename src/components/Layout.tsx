@@ -4,7 +4,6 @@ import {
   LayoutDashboard,
   TrendingUp,
   Users,
-  Building2,
   Headphones,
   BarChart3,
   Settings,
@@ -76,7 +75,6 @@ export default function Layout() {
     { title: 'Dashboard', path: '/', icon: LayoutDashboard, permission: 'dashboard' },
     { title: 'Leads / Kanban', path: '/vendas', icon: TrendingUp, permission: 'leads' },
     { title: 'Clientes', path: '/clientes', icon: Users, permission: 'clientes' },
-    { title: 'Revendas', path: '/revendas', icon: Building2, permission: 'revendas' },
     {
       title: 'Suporte',
       path: '/suporte',

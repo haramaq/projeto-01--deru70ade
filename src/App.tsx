@@ -11,7 +11,7 @@ import Dashboard from '@/pages/Index'
 import Vendas from '@/pages/Vendas'
 import Clientes from '@/pages/Clientes'
 import ClienteDetalhe from '@/pages/ClienteDetalhe'
-import Revendas from '@/pages/Revendas'
+import ClientesUnificados from '@/pages/ClientesUnificados'
 import RevendaDetalhe from '@/pages/RevendaDetalhe'
 import Suporte from '@/pages/Suporte'
 import Relatorios from '@/pages/Relatorios'
@@ -54,7 +54,7 @@ const App = () => (
               path="clientes"
               element={
                 <ProtectedRoute requiredPermission="clientes">
-                  <Clientes />
+                  <ClientesUnificados />
                 </ProtectedRoute>
               }
             />
@@ -66,14 +66,7 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="revendas"
-              element={
-                <ProtectedRoute requiredPermission="revendas">
-                  <Revendas />
-                </ProtectedRoute>
-              }
-            />
+            <Route path="revendas" element={<Navigate to="/clientes?tipo=revenda" replace />} />
             <Route
               path="revendas/:id"
               element={

@@ -31,8 +31,26 @@ export interface User {
 
 export type ClienteStatus = 'ativo' | 'inativo'
 export type SyncStatus = 'pending' | 'not_connected' | 'synced' | 'error'
+export type CadastroTipo = 'cliente_final' | 'revenda'
+export type DocumentoTipo = 'cpf' | 'cnpj'
 
-export interface Cliente {
+export interface CadastroFields {
+  tipo_cadastro?: CadastroTipo
+  external_id?: string
+  razao_social?: string
+  nome_fantasia?: string
+  documento?: string
+  documento_tipo?: DocumentoTipo
+  inscricao_estadual?: string
+  pais?: string
+  cep?: string
+  bairro?: string
+  rua?: string
+  numero?: string
+  responsavel_usuario?: string
+}
+
+export interface Cliente extends CadastroFields {
   id: string
   nome: string
   empresa?: string
@@ -67,7 +85,7 @@ export type CategoriaProduto =
   | 'Homogeneizador de esterco'
   | 'Revolvedor de cama'
 
-export interface Revenda {
+export interface Revenda extends CadastroFields {
   id: string
   nome: string
   cnpj?: string
@@ -79,6 +97,8 @@ export interface Revenda {
   modelos: ProdutoModelo[]
   status: RevendaStatus
   observacoes?: string
+  carteira?: string
+  responsavel?: string
   created: string
   updated: string
 }
@@ -116,6 +136,9 @@ export interface LeadHistorico {
   motivo_codigo?: string
   motivo_descricao?: string
   responsavel?: string
+  tipo_evento?: string
+  usuario_origem?: string
+  usuario_destino?: string
   data_hora: string
   observacao?: string
   created?: string

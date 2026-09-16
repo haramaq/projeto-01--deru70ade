@@ -36,3 +36,13 @@ export function permissionsForRole(role: UserRole): Record<PermissionKey, boolea
 }
 
 export const permissionFieldNames = PERMISSION_FIELDS
+
+export const restrictedLeadStages = [
+  'pecas_pos_vendas',
+  'financeiro_fiscal',
+  'fornecedores',
+] as const
+
+export function canAccessRestrictedLeadStages(user: User | null) {
+  return Boolean(user && ['admin', 'triagem', 'suporte'].includes(user.role))
+}

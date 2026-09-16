@@ -19,6 +19,12 @@ const hardening = read('pocketbase/migrations/0010_security_permissions_and_lead
 
 assert(!login.includes('Skip@Pass'), 'default admin password must not be in the login UI')
 assert(vendas.includes("'fornecedores'"), 'Kanban must contain Fornecedores')
+assert(
+  vendas.includes('canAccessRestrictedLeadStages'),
+  'restricted lead stages frontend permission required',
+)
+assert(vendas.includes('Transferir responsável'), 'lead transfer action required')
+assert(vendas.includes('vendaService.transfer'), 'lead transfer service required')
 assert(vendas.includes("clientMode === 'new'"), 'new client flow required')
 assert(vendas.includes('carteira: user?.carteira'), 'new lead wallet required')
 assert(vendas.includes('const saveLeadEdits'), 'lead edit flow required')

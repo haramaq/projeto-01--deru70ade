@@ -12,6 +12,7 @@ import {
   X,
 } from 'lucide-react'
 import { vendaService, clienteService, userService } from '@/services/crmService'
+import { canAccessRestrictedLeadStages, restrictedLeadStages } from '@/lib/permissions'
 import type {
   CategoriaProduto,
   Cliente,
@@ -159,6 +160,10 @@ export default function Vendas() {
   const [selectedMotivo, setSelectedMotivo] = useState('')
   const [draggedId, setDraggedId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [transferOpen, setTransferOpen] = useState(false)
+  const [transferLead, setTransferLead] = useState<Venda | null>(null)
+  const [transferTargets, setTransferTargets] = useState<User[]>([])
+  const [transferTargetId, setTransferTargetId] = useState('')
   const [editOpen, setEditOpen] = useState(false)
   const [editLead, setEditLead] = useState<Venda | null>(null)
   const [editClientId, setEditClientId] = useState('')
@@ -197,13 +202,21 @@ export default function Vendas() {
   const [newEtapa, setNewEtapa] = useState<LeadEtapa>('agendamento_primeiro_contato')
 
   const canCreate = can('leads')
+  const canSeeRestrictedStages = canAccessRestrictedLeadStages(user)
+  const visibleStages = useMemo(
+    () =>
+      ETAPAS.filter(
+        (stage) => canSeeRestrictedStages || !restrictedLeadStages.includes(stage.key as never),
+      ),
+    [canSeeRestrictedStages],
+  )
 
   const loadData = async () => {
     try {
       const [leadList, clientList, userList, motiveList] = await Promise.all([
         vendaService.getAll(),
         clienteService.getAll(),
-        ['admin', 'gestor'].includes(role) ? userService.getAll() : Promise.resolve([]),
+        userService.getTransferTargets(),
         vendaService.getMotivos(),
       ])
       setLeads(leadList)
@@ -263,11 +276,11 @@ export default function Vendas() {
 
   const byStage = useMemo(() => {
     const result = {} as Record<LeadEtapa, Venda[]>
-    ETAPAS.forEach((stage) => {
+    visibleStages.forEach((stage) => {
       result[stage.key] = filteredLeads.filter((lead) => lead.etapa === stage.key)
     })
     return result
-  }, [filteredLeads])
+  }, [filteredLeads, visibleStages])
 
   const openEdit = (lead: Venda) => {
     const client = lead.expand?.cliente || clientes.find((item) => item.id === lead.cliente)
@@ -368,7 +381,36 @@ export default function Vendas() {
     }
   }
 
+  const openTransfer = (lead: Venda) => {
+    setTransferLead(lead)
+    setTransferTargetId(lead.vendedor || '')
+    setTransferOpen(true)
+  }
+
+  const saveTransfer = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (!transferLead || !transferTargetId) return
+    const target = transferTargets.find((item) => item.id === transferTargetId)
+    if (!target) return
+    setSaving(true)
+    try {
+      const updated = await vendaService.transfer(transferLead.id, target)
+      setLeads((current) => current.map((item) => (item.id === updated.id ? updated : item)))
+      setDetailLead((current) => (current?.id === updated.id ? updated : current))
+      setTransferOpen(false)
+      toast.success(`Lead transferido para ${target.name || target.email}.`)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Não foi possível transferir o lead.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const requestMove = (lead: Venda, etapa: LeadEtapa) => {
+    if (!visibleStages.some((item) => item.key === etapa)) {
+      toast.error('Seu perfil não possui acesso a esta etapa.')
+      return
+    }
     if (lead.etapa === etapa) return
     if (TERMINAIS.includes(etapa)) {
       setMoveLead({ lead, etapa })
@@ -577,7 +619,7 @@ export default function Vendas() {
       </div>
 
       <div className="grid min-w-[1280px] grid-cols-11 gap-2 overflow-x-auto pb-4">
-        {ETAPAS.map((stage) => {
+        {visibleStages.map((stage) => {
           const stageLeads = byStage[stage.key] || []
           return (
             <section
@@ -1279,19 +1321,33 @@ export default function Vendas() {
                 </div>
               </div>
               <div className="rounded-xl border border-[#E2E8F0] p-4">
-                <h3 className="mb-3 font-bold">Mover lead</h3>
-                <div className="flex flex-wrap gap-2">
-                  {ETAPAS.filter((stage) => stage.key !== detailLead.etapa).map((stage) => (
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <h3 className="font-bold">Mover lead</h3>
+                  {detailLead && user && (
                     <Button
-                      key={stage.key}
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => requestMove(detailLead, stage.key)}
+                      onClick={() => openTransfer(detailLead)}
                     >
-                      {stage.label}
+                      Transferir responsável
                     </Button>
-                  ))}
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {visibleStages
+                    .filter((stage) => stage.key !== detailLead.etapa)
+                    .map((stage) => (
+                      <Button
+                        key={stage.key}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => requestMove(detailLead, stage.key)}
+                      >
+                        {stage.label}
+                      </Button>
+                    ))}
                 </div>
                 {moveLead?.lead.id === detailLead.id && (
                   <div className="mt-4 space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
@@ -1350,6 +1406,42 @@ export default function Vendas() {
           )}
         </div>
       </div>
+
+      <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
+        <DialogContent className="z-[90] max-w-md">
+          <DialogHeader>
+            <DialogTitle>Transferir lead para outro usuário</DialogTitle>
+          </DialogHeader>
+          {transferLead && (
+            <form onSubmit={saveTransfer} className="space-y-4">
+              <p className="text-xs text-[#64748B]">
+                A transferência altera o responsável e a carteira do lead e registra o evento no
+                histórico.
+              </p>
+              <Select value={transferTargetId} onValueChange={setTransferTargetId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o usuário de destino" />
+                </SelectTrigger>
+                <SelectContent>
+                  {transferTargets.map((target) => (
+                    <SelectItem key={target.id} value={target.id}>
+                      {target.name || target.email} — {target.carteira || 'Sem carteira'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setTransferOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={saving || !transferTargetId}>
+                  Confirmar transferência
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {moveLead && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4">
