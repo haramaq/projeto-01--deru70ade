@@ -154,21 +154,24 @@ export default function ClientesUnificados() {
   const [deleteRow, setDeleteRow] = useState<CadastroRow | null>(null)
 
   const canCreateClient = can('clientes')
-  const canCreateRevenda = can('revendas')
+  const canCreateRevenda = role === 'admin' || user?.perm_revendas === true
   const canEditClient = can('clientes')
-  const canEditRevenda = can('revendas')
+  const canEditRevenda = role === 'admin' || user?.perm_revendas === true
   const isAdmin = role === 'admin'
 
   const loadData = async () => {
     try {
-      const [clientList, revendaList, targetUsers] = await Promise.all([
-        clienteService.getAll(),
-        revendaService.getAll(),
+      const [clientResult, revendaResult, targetResult] = await Promise.allSettled([
+        can('clientes') ? clienteService.getAll() : Promise.resolve([]),
+        can('revendas') ? revendaService.getAll() : Promise.resolve([]),
         userService.getTransferTargets(),
       ])
-      setClientes(clientList)
-      setRevendas(revendaList)
-      setUsers(targetUsers)
+      if (clientResult.status === 'fulfilled') setClientes(clientResult.value)
+      if (revendaResult.status === 'fulfilled') setRevendas(revendaResult.value)
+      if (targetResult.status === 'fulfilled') setUsers(targetResult.value)
+      if (clientResult.status === 'rejected' && revendaResult.status === 'rejected') {
+        throw clientResult.reason
+      }
     } catch (error) {
       console.error(error)
       toast.error('Erro ao carregar os cadastros.')

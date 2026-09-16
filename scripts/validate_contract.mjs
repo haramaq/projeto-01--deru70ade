@@ -24,6 +24,10 @@ assert(
   'restricted lead stages frontend permission required',
 )
 assert(vendas.includes('Transferir responsável'), 'lead transfer action required')
+assert(
+  vendas.includes('visibleStages.filter((stage) => !TERMINAIS.includes(stage.key))'),
+  'restricted stages must be absent from create selector',
+)
 assert(vendas.includes('vendaService.transfer'), 'lead transfer service required')
 assert(vendas.includes("clientMode === 'new'"), 'new client flow required')
 assert(vendas.includes('carteira: user?.carteira'), 'new lead wallet required')

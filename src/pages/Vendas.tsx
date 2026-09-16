@@ -923,11 +923,13 @@ export default function Vendas() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {ETAPAS.filter((stage) => !TERMINAIS.includes(stage.key)).map((stage) => (
-                    <SelectItem key={stage.key} value={stage.key}>
-                      {stage.label}
-                    </SelectItem>
-                  ))}
+                  {visibleStages
+                    .filter((stage) => !TERMINAIS.includes(stage.key))
+                    .map((stage) => (
+                      <SelectItem key={stage.key} value={stage.key}>
+                        {stage.label}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
