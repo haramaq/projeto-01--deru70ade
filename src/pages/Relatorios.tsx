@@ -503,7 +503,7 @@ export default function Relatorios() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="todos">Todas as linhas</SelectItem>
+                  <SelectItem value="todos">Todos os modelos</SelectItem>
                   {optionValues.products.map((product) => (
                     <SelectItem key={product} value={product}>
                       {product}
