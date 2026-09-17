@@ -63,9 +63,14 @@ const CATEGORY_OPTIONS: CategoriaProduto[] = [
   'Revolvedor de cama',
 ]
 
-const PRODUCT_COLORS: Record<string, string> = {
-  PROHMIX: '#1B4332',
-  SUPERMIX: '#DC2626',
+const EQUIPMENT_LINE_COLORS: Record<string, string> = {
+  'Linha Prohmix': '#1B4332',
+  'Linha Supermix': '#DC2626',
+  'Linha Tipper': '#2563EB',
+  'Vagões Rodoviários': '#7C3AED',
+  'Colhedora de forragens': '#0F766E',
+  'Homogeneizador de esterco': '#EA580C',
+  'Revolvedor de cama': '#CA8A04',
   'Não informada': '#94A3B8',
 }
 
@@ -90,6 +95,10 @@ function displayOrigin(lead: Venda) {
 
 function displayProduct(lead: Venda) {
   return lead.produto || 'Não informada'
+}
+
+function displayEquipmentLine(lead: Venda) {
+  return lead.categoria_produto || 'Não informada'
 }
 
 function displayStatus(lead: Venda) {
@@ -169,7 +178,15 @@ export default function Relatorios() {
     const products = Array.from(new Set(leads.map(displayProduct))).sort((a, b) =>
       a.localeCompare(b),
     )
-    return { origins, regions, products }
+    const equipmentLines = Array.from(
+      new Set([
+        ...CATEGORY_OPTIONS,
+        ...leads
+          .map((lead) => lead.categoria_produto)
+          .filter((value): value is string => Boolean(value)),
+      ]),
+    ).sort((a, b) => a.localeCompare(b))
+    return { origins, regions, products, equipmentLines }
   }, [leads, clientById, userById])
 
   const filteredLeads = useMemo(() => {
@@ -261,15 +278,15 @@ export default function Relatorios() {
       .map(([regiao, leads]) => ({ regiao, leads }))
   }, [filteredLeads, clientById, userById])
 
-  const productData = useMemo(() => {
+  const equipmentLineData = useMemo(() => {
     const map = new Map<string, number>()
     filteredLeads.forEach((lead) =>
-      map.set(displayProduct(lead), (map.get(displayProduct(lead)) || 0) + 1),
+      map.set(displayEquipmentLine(lead), (map.get(displayEquipmentLine(lead)) || 0) + 1),
     )
     return Array.from(map.entries()).map(([name, value]) => ({
       name,
       value,
-      color: PRODUCT_COLORS[name] || '#64748B',
+      color: EQUIPMENT_LINE_COLORS[name] || '#64748B',
     }))
   }, [filteredLeads])
 
@@ -314,8 +331,8 @@ export default function Relatorios() {
       'ID do lead',
       'Número do lead',
       'Cliente',
-      'Linha de produto',
-      'Categoria',
+      'Modelo do equipamento',
+      'Linha de equipamento',
       'Etapa',
       'Status',
       'Origem',
@@ -331,7 +348,7 @@ export default function Relatorios() {
       lead.numero_lead || '',
       leadClient(lead)?.razao_social || leadClient(lead)?.empresa || leadClient(lead)?.nome || '',
       displayProduct(lead),
-      lead.categoria_produto || 'Não informada',
+      displayEquipmentLine(lead),
       stageLabel(lead.etapa),
       displayStatus(lead),
       displayOrigin(lead),
@@ -480,7 +497,7 @@ export default function Relatorios() {
               </Select>
             </div>
             <div className="space-y-1">
-              <Label className="text-[11px]">Linha de produto</Label>
+              <Label className="text-[11px]">Modelo do equipamento</Label>
               <Select value={filtroProduto} onValueChange={setFiltroProduto}>
                 <SelectTrigger className="h-9 text-xs">
                   <SelectValue />
@@ -496,16 +513,16 @@ export default function Relatorios() {
               </Select>
             </div>
             <div className="space-y-1">
-              <Label className="text-[11px]">Categoria do produto</Label>
+              <Label className="text-[11px]">Linha de equipamento</Label>
               <Select value={filtroCategoria} onValueChange={setFiltroCategoria}>
                 <SelectTrigger className="h-9 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="todas">Todas as categorias</SelectItem>
-                  {CATEGORY_OPTIONS.map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category}
+                  <SelectItem value="todas">Todas as linhas</SelectItem>
+                  {optionValues.equipmentLines.map((line) => (
+                    <SelectItem key={line} value={line}>
+                      {line}
                     </SelectItem>
                   ))}
                   <SelectItem value="Não informada">Não informada</SelectItem>
@@ -735,16 +752,16 @@ export default function Relatorios() {
         <Card className="rounded-xl border border-[#E2E8F0] bg-white shadow-xs">
           <CardHeader className="border-b border-[#F1F5F9] pb-2">
             <CardTitle className="flex items-center gap-2 text-sm font-bold text-[#1E293B]">
-              <PieIcon className="h-4 w-4 text-[#D92323]" /> Distribuição por linha de produto
+              <PieIcon className="h-4 w-4 text-[#D92323]" /> Distribuição por linha de equipamento
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4">
             <div className="h-80 w-full">
-              {productData.length ? (
+              {equipmentLineData.length ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={productData}
+                      data={equipmentLineData}
                       cx="50%"
                       cy="45%"
                       innerRadius={65}
@@ -753,7 +770,7 @@ export default function Relatorios() {
                       dataKey="value"
                       nameKey="name"
                     >
-                      {productData.map((entry) => (
+                      {equipmentLineData.map((entry) => (
                         <Cell key={entry.name} fill={entry.color} />
                       ))}
                     </Pie>
@@ -835,7 +852,8 @@ export default function Relatorios() {
                   <th className="px-4 py-3">Responsável</th>
                   <th className="px-4 py-3">Origem</th>
                   <th className="px-4 py-3">Região</th>
-                  <th className="px-4 py-3">Linha</th>
+                  <th className="px-4 py-3">Modelo</th>
+                  <th className="px-4 py-3">Linha de equipamento</th>
                   <th className="px-4 py-3">Valor potencial</th>
                   <th className="px-4 py-3">Data</th>
                 </tr>
@@ -862,6 +880,7 @@ export default function Relatorios() {
                     <td className="px-4 py-3 text-[#475569]">{displayOrigin(lead)}</td>
                     <td className="px-4 py-3 text-[#475569]">{leadRegion(lead)}</td>
                     <td className="px-4 py-3 text-[#475569]">{displayProduct(lead)}</td>
+                    <td className="px-4 py-3 text-[#475569]">{displayEquipmentLine(lead)}</td>
                     <td className="px-4 py-3 font-semibold text-[#1E293B]">
                       {formatCurrencyBRL(lead.valor || 0)}
                       <p className="text-[10px] font-normal text-[#64748B]">
@@ -873,7 +892,7 @@ export default function Relatorios() {
                 ))}
                 {!filteredLeads.length && (
                   <tr>
-                    <td colSpan={8} className="px-4 py-10 text-center text-sm text-[#94A3B8]">
+                    <td colSpan={9} className="px-4 py-10 text-center text-sm text-[#94A3B8]">
                       Nenhum lead encontrado com os filtros selecionados.
                     </td>
                   </tr>
