@@ -394,11 +394,16 @@ export default function Feiras() {
   }, [filteredCustos])
 
   const fairMetrics = useMemo(() => {
-    const annualRealized = custos
-      .filter(
-        (item) => feiras.find((feira) => feira.id === item.feira)?.ano === new Date().getFullYear(),
-      )
-      .reduce((sum, item) => sum + (item.valor_realizado || 0), 0)
+    const annualRealizedByYear = new Map<number, number>()
+    custos.forEach((item) => {
+      const year = feiras.find((feira) => feira.id === item.feira)?.ano
+      if (year) {
+        annualRealizedByYear.set(
+          year,
+          (annualRealizedByYear.get(year) || 0) + (item.valor_realizado || 0),
+        )
+      }
+    })
     return dashboardFeiras
       .map((feira) => {
         const fairCosts = custos.filter((item) => item.feira === feira.id)
