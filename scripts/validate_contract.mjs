@@ -97,6 +97,9 @@ assert(adminPage.includes('data-testid="new-user-button"'), 'user addition test 
 assert(adminPage.includes('data-testid="user-form"'), 'user form test hook required')
 assert(adminPage.includes('data-testid="save-user-button"'), 'user save test hook required')
 assert(adminPage.includes('data-testid="remove-user-dialog"'), 'user removal confirmation required')
+assert(adminPage.includes('auditChangeSummary'), 'audit readable change summary required')
+assert(adminPage.includes('auditUserLabel'), 'audit author names required')
+assert(adminPage.includes('selectedAudit'), 'audit full detail dialog required')
 assert(dialog.includes('overlayClassName'), 'dialog overlay customization required')
 assert(vendas.includes('data-testid="lead-edit-dialog"'), 'lead edit dialog test hook required')
 assert(vendas.includes('data-testid="lead-detail-dialog"'), 'lead detail dialog test hook required')
@@ -111,6 +114,36 @@ assert(
   'legacy reseller access must be preserved',
 )
 assert(read('src/services/crmService.ts').includes("acao: 'criar_ticket'"), 'ticket audit required')
+assert(
+  read('src/pages/Relatorios.tsx').includes('Relatórios de Leads'),
+  'lead reports page required',
+)
+assert(read('src/pages/Relatorios.tsx').includes('filtroEtapa'), 'lead stage filter required')
+assert(read('src/pages/Relatorios.tsx').includes('filtroOrigem'), 'lead origin filter required')
+assert(read('src/pages/Relatorios.tsx').includes('filtroRegiao'), 'lead region filter required')
+assert(read('src/pages/Relatorios.tsx').includes('filtroProduto'), 'lead product filter required')
+assert(
+  read('src/pages/ClientesUnificados.tsx').includes(
+    "canEditRevenda = role === 'admin' || role === 'vendedor'",
+  ),
+  'seller reseller edit UI permission required',
+)
+assert(
+  !read('src/pages/ClientesUnificados.tsx').includes('Modelos comercializados'),
+  'reseller models section must be removed',
+)
+assert(
+  !read('src/pages/RevendaDetalhe.tsx').includes('Modelos Homologados'),
+  'reseller models detail section must be removed',
+)
+assert(
+  !read('src/pages/Revendas.tsx').includes('Modelos Comercializados'),
+  'legacy reseller models section must be removed',
+)
+assert(
+  read('pocketbase/migrations/0016_revenda_edit_own_wallet.js').includes('ownScope'),
+  'reseller own-wallet update rule required',
+)
 assert(
   read('src/services/crmService.ts').includes("acao: 'criar_tarefa_lead'"),
   'task audit required',

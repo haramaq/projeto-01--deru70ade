@@ -94,7 +94,8 @@ export interface Revenda extends CadastroFields {
   telefone?: string
   contato_principal?: string
   email?: string
-  modelos: ProdutoModelo[]
+  /** @deprecated Legacy field retained for historical compatibility; no longer shown or edited. */
+  modelos?: ProdutoModelo[]
   status: RevendaStatus
   observacoes?: string
   carteira?: string
@@ -180,6 +181,7 @@ export interface Venda {
   vendedor?: string
   proxima_acao?: string
   probabilidade: number
+  carteira?: string
   origem?: string
   altforce_id?: string
   altforce_stage_id?: string

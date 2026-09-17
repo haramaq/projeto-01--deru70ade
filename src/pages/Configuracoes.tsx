@@ -9,6 +9,7 @@ import {
   History,
   CheckCircle,
   Lock,
+  Eye,
 } from 'lucide-react'
 import { userService } from '@/services/crmService'
 import type { AuditEntry, PermissionKey, User, UserRole } from '@/types/crm'
@@ -125,8 +126,48 @@ function safePermissions(value?: User) {
   }
 }
 
+const AUDIT_FIELD_LABELS: Record<string, string> = {
+  name: 'Nome',
+  nome: 'Nome',
+  email: 'E-mail',
+  role: 'Perfil',
+  carteira: 'Carteira',
+  ativo: 'Status',
+  permissoes: 'Permissões',
+  etapa: 'Etapa',
+  etapa_anterior: 'Etapa anterior',
+  etapa_nova: 'Nova etapa',
+  produto: 'Linha de produto',
+  categoria_produto: 'Categoria',
+  origem: 'Origem',
+  origem_lead: 'Origem do lead',
+  probabilidade: 'Probabilidade',
+  valor: 'Valor potencial',
+  razao_social: 'Razão social',
+  nome_fantasia: 'Nome fantasia',
+  documento: 'Documento',
+  documento_tipo: 'Tipo de documento',
+  cidade: 'Cidade',
+  estado: 'Estado',
+  telefone: 'Telefone',
+  responsavel: 'Responsável',
+  responsavel_usuario: 'Responsável',
+  vendedor: 'Responsável',
+  usuario_origem: 'Usuário de origem',
+  usuario_destino: 'Usuário de destino',
+  status: 'Status',
+  status_lead: 'Status do lead',
+  status_motivo_codigo: 'Motivo',
+  proxima_acao: 'Próxima ação',
+}
+
+function isAuditRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
 function auditText(value: unknown) {
-  if (value === undefined || value === null || value === '') return '—'
+  if (value === undefined || value === null || value === '') return 'vazio'
+  if (typeof value === 'boolean') return value ? 'Ativo' : 'Inativo'
   if (typeof value === 'string') return value
   try {
     return JSON.stringify(value)
@@ -134,6 +175,90 @@ function auditText(value: unknown) {
     return String(value)
   }
 }
+
+function auditFieldLabel(key: string) {
+  return AUDIT_FIELD_LABELS[key] || key.replace(/_/g, ' ').replace(/^./, (char) => char.toUpperCase())
+}
+
+function auditUserLabel(value: unknown, usersById: Map<string, User>) {
+  if (value === undefined || value === null || value === '') return 'vazio'
+  if (typeof value !== 'string') return auditText(value)
+  if (value === 'sessão atual') return 'Sessão atual'
+  const user = usersById.get(value)
+  if (user) return user.name || user.email
+  if (/^[a-z0-9]{15}$/.test(value)) return 'Usuário não localizado'
+  return value
+}
+
+function auditValueLabel(value: unknown, key: string, usersById: Map<string, User>) {
+  if (['autor', 'vendedor', 'responsavel', 'responsavel_usuario', 'usuario_origem', 'usuario_destino'].includes(key)) {
+    return auditUserLabel(value, usersById)
+  }
+  return auditText(value)
+}
+
+function auditTargetLabel(value: string, usersById: Map<string, User>) {
+  const user = usersById.get(value)
+  if (user) return user.name || user.email
+  if (!value) return 'Não informado'
+  if (/^[a-z0-9]{15}$/.test(value)) return `Registro afetado (${value.slice(0, 6)}…)`
+  return value
+}
+
+function auditRecordSummary(value: Record<string, unknown>, usersById: Map<string, User>) {
+  const preferredKeys = [
+    'name',
+    'nome',
+    'razao_social',
+    'nome_fantasia',
+    'email',
+    'role',
+    'carteira',
+    'etapa',
+    'produto',
+    'status',
+  ]
+  return preferredKeys
+    .filter((key) => value[key] !== undefined && value[key] !== null && value[key] !== '')
+    .slice(0, 3)
+    .map((key) => `${auditFieldLabel(key)}: ${auditValueLabel(value[key], key, usersById)}`)
+    .join(' · ')
+}
+
+function auditChangeSummary(entry: AuditEntry, usersById: Map<string, User>) {
+  const before = isAuditRecord(entry.antes) ? entry.antes : null
+  const after = isAuditRecord(entry.depois) ? entry.depois : null
+  if (before && after) {
+    const keys = Array.from(new Set([...Object.keys(before), ...Object.keys(after)])).filter(
+      (key) => !['id', 'created', 'updated', 'expand'].includes(key),
+    )
+    const changes = keys
+      .filter((key) => JSON.stringify(before[key]) !== JSON.stringify(after[key]))
+      .map(
+        (key) =>
+          `${auditFieldLabel(key)} alterado de “${auditValueLabel(before[key], key, usersById)}” para “${auditValueLabel(after[key], key, usersById)}”`,
+      )
+    return changes.length ? changes.slice(0, 4).join('; ') : 'Nenhuma alteração de campo registrada.'
+  }
+  if (before && entry.depois === null) {
+    const summary = auditRecordSummary(before, usersById)
+    return summary ? `Registro removido — ${summary}` : 'Registro removido.'
+  }
+  if (after && (entry.antes === null || entry.antes === undefined)) {
+    const summary = auditRecordSummary(after, usersById)
+    return summary ? `Registro criado — ${summary}` : 'Registro criado.'
+  }
+  if (entry.antes !== undefined || entry.depois !== undefined) {
+    return `Alterado de “${auditText(entry.antes)}” para “${auditText(entry.depois)}”`
+  }
+  return 'Evento registrado.'
+}
+=======
+<<<<<<< SEARCH
+  const [auditSearch, setAuditSearch] = useState('')
+=======
+  const [auditSearch, setAuditSearch] = useState('')
+  const [selectedAudit, setSelectedAudit] = useState<AuditEntry | null>(null)
 
 export default function Configuracoes() {
   const { user } = useAuth()
@@ -189,16 +314,25 @@ export default function Configuracoes() {
     }
   }
 
+  const usersById = useMemo(() => new Map(users.map((item) => [item.id, item])), [users])
+
   const filteredAudit = useMemo(() => {
     const query = auditSearch.trim().toLowerCase()
     if (!query) return auditEntries
     return auditEntries.filter((entry) =>
-      [entry.autor, entry.alvo, entry.acao, auditText(entry.depois)]
+      [
+        auditUserLabel(entry.autor, usersById),
+        auditTargetLabel(entry.alvo, usersById),
+        entry.acao,
+        auditChangeSummary(entry, usersById),
+        auditText(entry.antes),
+        auditText(entry.depois),
+      ]
         .join(' ')
         .toLowerCase()
         .includes(query),
     )
-  }, [auditEntries, auditSearch])
+  }, [auditEntries, auditSearch, usersById])
 
   const handleOpenCreate = () => {
     setEditingUser(null)
@@ -605,11 +739,27 @@ export default function Configuracoes() {
                         <td className="whitespace-nowrap px-4 py-3 text-gray-500">
                           {formatDateBR(entry.created)}
                         </td>
-                        <td className="px-4 py-3 font-mono text-gray-600">{entry.autor}</td>
+                        <td className="px-4 py-3 font-semibold text-gray-800">
+                          {auditUserLabel(entry.autor, usersById)}
+                        </td>
                         <td className="px-4 py-3 font-semibold text-gray-800">{entry.acao}</td>
-                        <td className="px-4 py-3 font-mono text-gray-600">{entry.alvo}</td>
-                        <td className="max-w-[420px] px-4 py-3 text-gray-500">
-                          {auditText(entry.depois)}
+                        <td className="px-4 py-3 text-gray-600">
+                          {auditTargetLabel(entry.alvo, usersById)}
+                        </td>
+                        <td className="max-w-[520px] px-4 py-3 text-gray-600">
+                          <div className="flex items-start gap-2">
+                            <span className="line-clamp-3 flex-1">{auditChangeSummary(entry, usersById)}</span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 shrink-0 gap-1 px-2 text-[10px] text-[#D92323]"
+                              onClick={() => setSelectedAudit(entry)}
+                              title="Ver registro completo"
+                            >
+                              <Eye className="h-3 w-3" /> Detalhes
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -627,6 +777,29 @@ export default function Configuracoes() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={Boolean(selectedAudit)} onOpenChange={(open) => !open && setSelectedAudit(null)}>
+        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Detalhes completos da auditoria</DialogTitle>
+          </DialogHeader>
+          {selectedAudit && (
+            <div className="space-y-4 text-xs">
+              <div className="grid grid-cols-1 gap-3 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-3 sm:grid-cols-2">
+                <div><span className="font-semibold text-gray-500">Autor</span><p className="font-bold text-gray-900">{auditUserLabel(selectedAudit.autor, usersById)}</p></div>
+                <div><span className="font-semibold text-gray-500">Data</span><p className="font-bold text-gray-900">{formatDateBR(selectedAudit.created)}</p></div>
+                <div><span className="font-semibold text-gray-500">Ação</span><p className="font-bold text-gray-900">{selectedAudit.acao}</p></div>
+                <div><span className="font-semibold text-gray-500">Registro afetado</span><p className="font-bold text-gray-900">{auditTargetLabel(selectedAudit.alvo, usersById)}</p></div>
+              </div>
+              <div className="rounded-lg border border-blue-100 bg-blue-50/50 p-3"><p className="font-semibold text-blue-900">Resumo legível</p><p className="mt-1 leading-relaxed text-blue-800">{auditChangeSummary(selectedAudit, usersById)}</p></div>
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                <div><p className="mb-1 font-semibold text-gray-700">Antes — registro completo</p><pre className="max-h-64 overflow-auto rounded-lg bg-slate-950 p-3 text-[10px] leading-relaxed text-slate-100">{JSON.stringify(selectedAudit.antes, null, 2) || 'null'}</pre></div>
+                <div><p className="mb-1 font-semibold text-gray-700">Depois — registro completo</p><pre className="max-h-64 overflow-auto rounded-lg bg-slate-950 p-3 text-[10px] leading-relaxed text-slate-100">{JSON.stringify(selectedAudit.depois, null, 2) || 'null'}</pre></div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="max-h-[90vh] max-w-xl overflow-y-auto rounded-2xl">

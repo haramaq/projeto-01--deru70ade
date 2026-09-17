@@ -165,23 +165,6 @@ export default function RevendaDetalhe() {
               </p>
             </div>
 
-            <div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
-                Modelos Homologados
-              </span>
-              <div className="flex flex-wrap gap-1.5 mt-1">
-                {(revenda.modelos || []).map((m) => (
-                  <Badge
-                    key={m}
-                    variant="outline"
-                    className="border-emerald-300 bg-emerald-50 text-[#1B4332] font-semibold text-[10px]"
-                  >
-                    {m}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-
             {revenda.observacoes && (
               <div className="pt-2 border-t border-gray-100">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">

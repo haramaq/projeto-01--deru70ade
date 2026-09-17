@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Building2, Edit2, Eye, MapPin, Plus, Search, Trash2, UserRound, X } from 'lucide-react'
+import { Edit2, Eye, MapPin, Plus, Search, Trash2, UserRound, X } from 'lucide-react'
 import { clienteService, revendaService, userService } from '@/services/crmService'
 import type { CadastroTipo, Cliente, Revenda, User } from '@/types/crm'
 import { maskCNPJ, maskPhone, validateCNPJ } from '@/lib/formatters'
@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
-import { Checkbox } from '@/components/ui/checkbox'
+
 import {
   Dialog,
   DialogContent,
@@ -36,7 +36,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { toast } from 'sonner'
-import { cn } from '@/lib/utils'
 
 function maskCPF(value: string) {
   const digits = value.replace(/\D/g, '').slice(0, 11)
@@ -78,7 +77,6 @@ type FormState = {
   numero: string
   responsavel: string
   observacoes: string
-  modelos: Array<'PROHMIX' | 'SUPERMIX'>
   status: 'autorizada' | 'pendente'
 }
 
@@ -101,7 +99,6 @@ const emptyForm: FormState = {
   numero: '',
   responsavel: '',
   observacoes: '',
-  modelos: ['PROHMIX', 'SUPERMIX'],
   status: 'autorizada',
 }
 
@@ -155,9 +152,21 @@ export default function ClientesUnificados() {
 
   const canCreateClient = can('clientes')
   const canCreateRevenda = role === 'admin' || user?.perm_revendas === true
+  const canCreateCadastro =
+    filterType === 'revenda' ? canCreateRevenda : canCreateClient || canCreateRevenda
   const canEditClient = can('clientes')
-  const canEditRevenda = role === 'admin' || user?.perm_revendas === true
+  const canEditRevenda = role === 'admin' || role === 'vendedor' || user?.perm_revendas === true
   const isAdmin = role === 'admin'
+  const canEditCadastroRow = (row: CadastroRow) => {
+    if (isClienteRow(row)) return canEditClient
+    return (
+      canEditRevenda &&
+      (isAdmin ||
+        row.data.responsavel === user?.id ||
+        row.data.responsavel_usuario === user?.id ||
+        Boolean(user?.carteira && row.data.carteira === user.carteira))
+    )
+  }
 
   const loadData = async () => {
     try {
@@ -247,7 +256,6 @@ export default function ClientesUnificados() {
       numero: data.numero || '',
       responsavel: data.responsavel_usuario || data.responsavel || '',
       observacoes: data.observacoes || '',
-      modelos: row.kind === 'revenda' ? data.modelos || ['PROHMIX'] : ['PROHMIX', 'SUPERMIX'],
       status: row.kind === 'revenda' ? data.status || 'autorizada' : 'autorizada',
     })
     setModalOpen(true)
@@ -273,8 +281,6 @@ export default function ClientesUnificados() {
       next.documento = 'CNPJ inválido.'
     }
     if (form.email && !/\S+@\S+\.\S+/.test(form.email)) next.email = 'E-mail inválido.'
-    if (form.tipo === 'revenda' && form.modelos.length === 0)
-      next.modelos = 'Selecione ao menos um modelo.'
     setErrors(next)
     return Object.keys(next).length === 0
   }
@@ -344,7 +350,6 @@ export default function ClientesUnificados() {
           responsavel: target?.id || form.responsavel,
           responsavel_usuario: target?.id || form.responsavel,
           carteira: target?.carteira || user?.carteira || '',
-          modelos: form.modelos,
           status: form.status,
           observacoes: form.observacoes.trim(),
         }
@@ -450,7 +455,7 @@ export default function ClientesUnificados() {
             Clientes finais e revendas na mesma base de cadastros.
           </p>
         </div>
-        {(canCreateClient || canCreateRevenda) && (
+        {canCreateCadastro && (
           <Button
             type="button"
             onClick={() => openCreate()}
@@ -514,7 +519,7 @@ export default function ClientesUnificados() {
           <tbody className="divide-y divide-[#E2E8F0]">
             {rows.map((row) => {
               const data = row.data
-              const canEditRow = isClienteRow(row) ? canEditClient : canEditRevenda
+              const canEditRow = canEditCadastroRow(row)
               return (
                 <tr key={`${row.kind}-${data.id}`} className="hover:bg-[#F8FAFC]">
                   <td className="px-4 py-3">{typeBadge(row)}</td>
@@ -609,7 +614,7 @@ export default function ClientesUnificados() {
       <div className="space-y-3 md:hidden">
         {rows.map((row) => {
           const data = row.data
-          const canEditRow = isClienteRow(row) ? canEditClient : canEditRevenda
+          const canEditRow = canEditCadastroRow(row)
           return (
             <div
               key={`${row.kind}-${data.id}`}
@@ -670,9 +675,11 @@ export default function ClientesUnificados() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="cliente_final">Cliente Final</SelectItem>
-                    <SelectItem value="revenda">Revenda</SelectItem>
-                  </SelectContent>
+                    {canCreateClient && (
+                      <SelectItem value="cliente_final">Cliente Final</SelectItem>
+                    )}
+                    {canCreateRevenda && <SelectItem value="revenda">Revenda</SelectItem>}
+                  </SelectContent>{' '}
                 </Select>
               </div>
             )}
@@ -802,56 +809,20 @@ export default function ClientesUnificados() {
               </div>
             </div>
             {form.tipo === 'revenda' && (
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Modelos comercializados *</Label>
-                  <div className="flex gap-4">
-                    <label className="flex items-center gap-2">
-                      <Checkbox
-                        checked={form.modelos.includes('PROHMIX')}
-                        onCheckedChange={() =>
-                          setField(
-                            'modelos',
-                            form.modelos.includes('PROHMIX')
-                              ? form.modelos.filter((item) => item !== 'PROHMIX')
-                              : [...form.modelos, 'PROHMIX'],
-                          )
-                        }
-                      />
-                      PROHMIX
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <Checkbox
-                        checked={form.modelos.includes('SUPERMIX')}
-                        onCheckedChange={() =>
-                          setField(
-                            'modelos',
-                            form.modelos.includes('SUPERMIX')
-                              ? form.modelos.filter((item) => item !== 'SUPERMIX')
-                              : [...form.modelos, 'SUPERMIX'],
-                          )
-                        }
-                      />
-                      SUPERMIX
-                    </label>
-                  </div>
-                  {errors.modelos && <p className="text-red-600">{errors.modelos}</p>}
-                </div>
-                <div className="space-y-1">
-                  <Label>Status</Label>
-                  <Select
-                    value={form.status}
-                    onValueChange={(value) => setField('status', value as FormState['status'])}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="autorizada">Autorizada</SelectItem>
-                      <SelectItem value="pendente">Pendente</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="space-y-1">
+                <Label>Status</Label>
+                <Select
+                  value={form.status}
+                  onValueChange={(value) => setField('status', value as FormState['status'])}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="autorizada">Autorizada</SelectItem>
+                    <SelectItem value="pendente">Pendente</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             )}
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">

@@ -14,14 +14,14 @@ import {
   Trash2,
 } from 'lucide-react'
 import { revendaService } from '@/services/crmService'
-import type { Revenda, RevendaStatus, ProdutoModelo } from '@/types/crm'
+import type { Revenda, RevendaStatus } from '@/types/crm'
 import { maskCNPJ, maskPhone } from '@/lib/formatters'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
-import { Checkbox } from '@/components/ui/checkbox'
+
 import {
   Dialog,
   DialogContent,
@@ -57,7 +57,6 @@ export default function Revendas() {
   const [telefone, setTelefone] = useState('')
   const [contatoPrincipal, setContatoPrincipal] = useState('')
   const [email, setEmail] = useState('')
-  const [modelos, setModelos] = useState<ProdutoModelo[]>(['PROHMIX'])
   const [status, setStatus] = useState<RevendaStatus>('autorizada')
   const [observacoes, setObservacoes] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -100,7 +99,6 @@ export default function Revendas() {
     setTelefone('')
     setContatoPrincipal('')
     setEmail('')
-    setModelos(['PROHMIX', 'SUPERMIX'])
     setStatus('autorizada')
     setObservacoes('')
     setModalOpen(true)
@@ -115,24 +113,15 @@ export default function Revendas() {
     setTelefone(r.telefone || '')
     setContatoPrincipal(r.contato_principal || '')
     setEmail(r.email || '')
-    setModelos(r.modelos || ['PROHMIX'])
     setStatus(r.status || 'autorizada')
     setObservacoes(r.observacoes || '')
     setModalOpen(true)
-  }
-
-  const toggleModelo = (mod: ProdutoModelo) => {
-    setModelos((prev) => (prev.includes(mod) ? prev.filter((m) => m !== mod) : [...prev, mod]))
   }
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!nome.trim()) {
       toast.error('O nome da revenda é obrigatório.')
-      return
-    }
-    if (modelos.length === 0) {
-      toast.error('Selecione pelo menos um modelo comercializado.')
       return
     }
 
@@ -146,7 +135,6 @@ export default function Revendas() {
         telefone: telefone.trim(),
         contato_principal: contatoPrincipal.trim(),
         email: email.trim(),
-        modelos,
         status,
         observacoes: observacoes.trim(),
       }
@@ -264,31 +252,6 @@ export default function Revendas() {
                 >
                   {rev.status === 'autorizada' ? 'Autorizada' : 'Pendente'}
                 </Badge>
-              </div>
-
-              {/* Models Handled (chips) */}
-              <div className="space-y-1.5 mb-4">
-                <span className="text-[10px] uppercase font-bold tracking-wider text-gray-400">
-                  Modelos Comercializados:
-                </span>
-                <div className="flex flex-wrap gap-1.5">
-                  {(rev.modelos || []).map((m) => (
-                    <Badge
-                      key={m}
-                      variant="outline"
-                      className={
-                        m === 'SUPERMIX'
-                          ? 'border-red-200 bg-red-50 text-[#DC2626] font-bold text-[10px]'
-                          : 'border-emerald-200 bg-emerald-50 text-[#1B4332] font-bold text-[10px]'
-                      }
-                    >
-                      {m}
-                    </Badge>
-                  ))}
-                  {(!rev.modelos || rev.modelos.length === 0) && (
-                    <span className="text-xs text-gray-400">Nenhum modelo cadastrado</span>
-                  )}
-                </div>
               </div>
 
               {/* Contact Info */}
@@ -458,35 +421,7 @@ export default function Revendas() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-              <div className="space-y-2">
-                <Label className="font-semibold text-gray-700 block">
-                  Modelos Comercializados *
-                </Label>
-                <div className="flex items-center gap-4 pt-1">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="modProhmix"
-                      checked={modelos.includes('PROHMIX')}
-                      onCheckedChange={() => toggleModelo('PROHMIX')}
-                    />
-                    <Label htmlFor="modProhmix" className="text-xs font-semibold cursor-pointer">
-                      PROHMIX
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="modSupermix"
-                      checked={modelos.includes('SUPERMIX')}
-                      onCheckedChange={() => toggleModelo('SUPERMIX')}
-                    />
-                    <Label htmlFor="modSupermix" className="text-xs font-semibold cursor-pointer">
-                      SUPERMIX
-                    </Label>
-                  </div>
-                </div>
-              </div>
-
+            <div className="space-y-1 pt-1">
               <div className="space-y-1">
                 <Label htmlFor="rStatus" className="font-semibold text-gray-700">
                   Status de Credenciamento
