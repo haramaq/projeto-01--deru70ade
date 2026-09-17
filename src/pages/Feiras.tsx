@@ -1458,7 +1458,9 @@ export default function Feiras() {
               <Label>Nome da feira/evento *</Label>
               <Input
                 value={feiraForm.nome}
-                onChange={(event) => setFeiraForm({ ...feiraForm, nome: event.target.value })}
+                onChange={(event) =>
+                  setFeiraForm((current) => ({ ...current, nome: event.target.value }))
+                }
                 placeholder="Ex.: Expointer"
               />
             </div>
@@ -1466,7 +1468,9 @@ export default function Feiras() {
               <Label>Edição</Label>
               <Input
                 value={feiraForm.edicao}
-                onChange={(event) => setFeiraForm({ ...feiraForm, edicao: event.target.value })}
+                onChange={(event) =>
+                  setFeiraForm((current) => ({ ...current, edicao: event.target.value }))
+                }
                 placeholder="Ex.: 2026"
               />
             </div>
@@ -1475,7 +1479,7 @@ export default function Feiras() {
               <Input
                 value={feiraForm.organizador}
                 onChange={(event) =>
-                  setFeiraForm({ ...feiraForm, organizador: event.target.value })
+                  setFeiraForm((current) => ({ ...current, organizador: event.target.value }))
                 }
               />
             </div>
@@ -1483,7 +1487,9 @@ export default function Feiras() {
               <Label>Cidade</Label>
               <Input
                 value={feiraForm.cidade}
-                onChange={(event) => setFeiraForm({ ...feiraForm, cidade: event.target.value })}
+                onChange={(event) =>
+                  setFeiraForm((current) => ({ ...current, cidade: event.target.value }))
+                }
               />
             </div>
             <div className="space-y-1">
@@ -1492,7 +1498,10 @@ export default function Feiras() {
                 maxLength={2}
                 value={feiraForm.estado}
                 onChange={(event) =>
-                  setFeiraForm({ ...feiraForm, estado: event.target.value.toUpperCase() })
+                  setFeiraForm((current) => ({
+                    ...current,
+                    estado: event.target.value.toUpperCase(),
+                  }))
                 }
               />
             </div>
@@ -1500,7 +1509,9 @@ export default function Feiras() {
               <Label>Local</Label>
               <Input
                 value={feiraForm.local}
-                onChange={(event) => setFeiraForm({ ...feiraForm, local: event.target.value })}
+                onChange={(event) =>
+                  setFeiraForm((current) => ({ ...current, local: event.target.value }))
+                }
               />
             </div>
             <div className="space-y-1">
@@ -1509,7 +1520,7 @@ export default function Feiras() {
                 type="date"
                 value={feiraForm.data_inicio}
                 onChange={(event) =>
-                  setFeiraForm({ ...feiraForm, data_inicio: event.target.value })
+                  setFeiraForm((current) => ({ ...current, data_inicio: event.target.value }))
                 }
               />
             </div>
@@ -1518,7 +1529,9 @@ export default function Feiras() {
               <Input
                 type="date"
                 value={feiraForm.data_fim}
-                onChange={(event) => setFeiraForm({ ...feiraForm, data_fim: event.target.value })}
+                onChange={(event) =>
+                  setFeiraForm((current) => ({ ...current, data_fim: event.target.value }))
+                }
               />
             </div>
             <div className="space-y-1">
@@ -1528,7 +1541,9 @@ export default function Feiras() {
                 min={2000}
                 max={2200}
                 value={feiraForm.ano}
-                onChange={(event) => setFeiraForm({ ...feiraForm, ano: event.target.value })}
+                onChange={(event) =>
+                  setFeiraForm((current) => ({ ...current, ano: event.target.value }))
+                }
               />
             </div>
             <div className="space-y-1">
@@ -1536,7 +1551,7 @@ export default function Feiras() {
               <Select
                 value={feiraForm.status}
                 onValueChange={(value) =>
-                  setFeiraForm({ ...feiraForm, status: value as Feira['status'] })
+                  setFeiraForm((current) => ({ ...current, status: value as Feira['status'] }))
                 }
               >
                 <SelectTrigger>
@@ -1555,7 +1570,9 @@ export default function Feiras() {
               <Label>Descrição</Label>
               <Textarea
                 value={feiraForm.descricao}
-                onChange={(event) => setFeiraForm({ ...feiraForm, descricao: event.target.value })}
+                onChange={(event) =>
+                  setFeiraForm((current) => ({ ...current, descricao: event.target.value }))
+                }
               />
             </div>
             <div className="space-y-1 sm:col-span-2">
