@@ -177,7 +177,9 @@ function auditText(value: unknown) {
 }
 
 function auditFieldLabel(key: string) {
-  return AUDIT_FIELD_LABELS[key] || key.replace(/_/g, ' ').replace(/^./, (char) => char.toUpperCase())
+  return (
+    AUDIT_FIELD_LABELS[key] || key.replace(/_/g, ' ').replace(/^./, (char) => char.toUpperCase())
+  )
 }
 
 function auditUserLabel(value: unknown, usersById: Map<string, User>) {
@@ -191,10 +193,16 @@ function auditUserLabel(value: unknown, usersById: Map<string, User>) {
 }
 
 function auditValueLabel(value: unknown, key: string, usersById: Map<string, User>) {
-  if (['autor', 'vendedor', 'responsavel', 'responsavel_usuario', 'usuario_origem', 'usuario_destino'].includes(key)) {
-    return auditUserLabel(value, usersById)
-  }
-  return auditText(value)
+  return [
+    'autor',
+    'vendedor',
+    'responsavel',
+    'responsavel_usuario',
+    'usuario_origem',
+    'usuario_destino',
+  ].includes(key)
+    ? auditUserLabel(value, usersById)
+    : auditText(value)
 }
 
 function auditTargetLabel(value: string, usersById: Map<string, User>) {
@@ -238,27 +246,22 @@ function auditChangeSummary(entry: AuditEntry, usersById: Map<string, User>) {
         (key) =>
           `${auditFieldLabel(key)} alterado de “${auditValueLabel(before[key], key, usersById)}” para “${auditValueLabel(after[key], key, usersById)}”`,
       )
-    return changes.length ? changes.slice(0, 4).join('; ') : 'Nenhuma alteração de campo registrada.'
+    return changes.length
+      ? changes.slice(0, 4).join('; ')
+      : 'Nenhuma alteração de campo registrada.'
   }
-  if (before && entry.depois === null) {
-    const summary = auditRecordSummary(before, usersById)
-    return summary ? `Registro removido — ${summary}` : 'Registro removido.'
-  }
-  if (after && (entry.antes === null || entry.antes === undefined)) {
-    const summary = auditRecordSummary(after, usersById)
-    return summary ? `Registro criado — ${summary}` : 'Registro criado.'
-  }
-  if (entry.antes !== undefined || entry.depois !== undefined) {
+  if (before && entry.depois === null)
+    return auditRecordSummary(before, usersById)
+      ? `Registro removido — ${auditRecordSummary(before, usersById)}`
+      : 'Registro removido.'
+  if (after && (entry.antes === null || entry.antes === undefined))
+    return auditRecordSummary(after, usersById)
+      ? `Registro criado — ${auditRecordSummary(after, usersById)}`
+      : 'Registro criado.'
+  if (entry.antes !== undefined || entry.depois !== undefined)
     return `Alterado de “${auditText(entry.antes)}” para “${auditText(entry.depois)}”`
-  }
   return 'Evento registrado.'
 }
-=======
-<<<<<<< SEARCH
-  const [auditSearch, setAuditSearch] = useState('')
-=======
-  const [auditSearch, setAuditSearch] = useState('')
-  const [selectedAudit, setSelectedAudit] = useState<AuditEntry | null>(null)
 
 export default function Configuracoes() {
   const { user } = useAuth()
@@ -280,6 +283,7 @@ export default function Configuracoes() {
   const [removeTarget, setRemoveTarget] = useState<User | null>(null)
   const [removing, setRemoving] = useState(false)
   const [auditSearch, setAuditSearch] = useState('')
+  const [selectedAudit, setSelectedAudit] = useState<AuditEntry | null>(null)
 
   const loadAdminData = async () => {
     let listLoaded = false
@@ -293,7 +297,6 @@ export default function Configuracoes() {
     try {
       setAuditEntries(await userService.getAudit())
     } catch {
-      // A auditoria não pode ocultar usuários já carregados ou impedir mutações.
       if (!listLoaded) toast.error('Erro ao carregar o painel administrativo.')
     } finally {
       setLoading(false)
@@ -315,7 +318,6 @@ export default function Configuracoes() {
   }
 
   const usersById = useMemo(() => new Map(users.map((item) => [item.id, item])), [users])
-
   const filteredAudit = useMemo(() => {
     const query = auditSearch.trim().toLowerCase()
     if (!query) return auditEntries
@@ -346,7 +348,6 @@ export default function Configuracoes() {
     setFormPermissions(DEFAULT_PERMISSIONS)
     setModalOpen(true)
   }
-
   const handleOpenEdit = (item: User) => {
     setEditingUser(item)
     setFormName(item.name || '')
@@ -397,7 +398,7 @@ export default function Configuracoes() {
             formPermissions[key],
           ]),
         )
-        const updated = await userService.update(editingUser.id, {
+        await userService.update(editingUser.id, {
           name: formName.trim(),
           role: formRole,
           carteira: formCarteira.trim(),
@@ -472,7 +473,7 @@ export default function Configuracoes() {
     }
     const nextActive = item.ativo === false
     try {
-      const updated = await userService.update(item.id, { ativo: nextActive })
+      await userService.update(item.id, { ativo: nextActive })
       const audited = await auditBestEffort({
         autor: user?.id || 'sessão atual',
         alvo: item.id,
@@ -530,7 +531,7 @@ export default function Configuracoes() {
     }
   }
 
-  if (loading) {
+  if (loading)
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
         <div className="flex flex-col items-center gap-2">
@@ -539,7 +540,6 @@ export default function Configuracoes() {
         </div>
       </div>
     )
-  }
 
   return (
     <div className="mx-auto w-full max-w-[1360px] space-y-6 px-4 py-5 sm:px-6 md:py-6 lg:px-8">
@@ -566,7 +566,6 @@ export default function Configuracoes() {
           <UserPlus className="h-4 w-4" /> Novo usuário
         </Button>
       </div>
-
       <Tabs defaultValue="usuarios" className="space-y-5">
         <TabsList className="grid h-auto w-full grid-cols-3 bg-white p-1 shadow-xs sm:w-fit sm:flex">
           <TabsTrigger value="usuarios" className="gap-2 text-xs">
@@ -579,7 +578,6 @@ export default function Configuracoes() {
             <History className="h-3.5 w-3.5" /> Auditoria
           </TabsTrigger>
         </TabsList>
-
         <TabsContent value="usuarios" className="space-y-5">
           <Card className="overflow-hidden rounded-xl border-[#E2E8F0] bg-white shadow-xs">
             <CardHeader className="border-b border-[#F1F5F9] pb-3">
@@ -681,7 +679,6 @@ export default function Configuracoes() {
             </CardContent>
           </Card>
         </TabsContent>
-
         <TabsContent value="perfis">
           <Card className="rounded-xl border-[#E2E8F0] bg-white shadow-xs">
             <CardHeader className="border-b border-[#F1F5F9] pb-3">
@@ -707,7 +704,6 @@ export default function Configuracoes() {
             </CardContent>
           </Card>
         </TabsContent>
-
         <TabsContent value="auditoria" className="space-y-4">
           <div className="flex items-center gap-2">
             <Input
@@ -748,7 +744,9 @@ export default function Configuracoes() {
                         </td>
                         <td className="max-w-[520px] px-4 py-3 text-gray-600">
                           <div className="flex items-start gap-2">
-                            <span className="line-clamp-3 flex-1">{auditChangeSummary(entry, usersById)}</span>
+                            <span className="line-clamp-3 flex-1">
+                              {auditChangeSummary(entry, usersById)}
+                            </span>
                             <Button
                               type="button"
                               variant="ghost"
@@ -777,8 +775,10 @@ export default function Configuracoes() {
           </Card>
         </TabsContent>
       </Tabs>
-
-      <Dialog open={Boolean(selectedAudit)} onOpenChange={(open) => !open && setSelectedAudit(null)}>
+      <Dialog
+        open={Boolean(selectedAudit)}
+        onOpenChange={(open) => !open && setSelectedAudit(null)}
+      >
         <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Detalhes completos da auditoria</DialogTitle>
@@ -786,21 +786,51 @@ export default function Configuracoes() {
           {selectedAudit && (
             <div className="space-y-4 text-xs">
               <div className="grid grid-cols-1 gap-3 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-3 sm:grid-cols-2">
-                <div><span className="font-semibold text-gray-500">Autor</span><p className="font-bold text-gray-900">{auditUserLabel(selectedAudit.autor, usersById)}</p></div>
-                <div><span className="font-semibold text-gray-500">Data</span><p className="font-bold text-gray-900">{formatDateBR(selectedAudit.created)}</p></div>
-                <div><span className="font-semibold text-gray-500">Ação</span><p className="font-bold text-gray-900">{selectedAudit.acao}</p></div>
-                <div><span className="font-semibold text-gray-500">Registro afetado</span><p className="font-bold text-gray-900">{auditTargetLabel(selectedAudit.alvo, usersById)}</p></div>
+                <div>
+                  <span className="font-semibold text-gray-500">Autor</span>
+                  <p className="font-bold text-gray-900">
+                    {auditUserLabel(selectedAudit.autor, usersById)}
+                  </p>
+                </div>
+                <div>
+                  <span className="font-semibold text-gray-500">Data</span>
+                  <p className="font-bold text-gray-900">{formatDateBR(selectedAudit.created)}</p>
+                </div>
+                <div>
+                  <span className="font-semibold text-gray-500">Ação</span>
+                  <p className="font-bold text-gray-900">{selectedAudit.acao}</p>
+                </div>
+                <div>
+                  <span className="font-semibold text-gray-500">Registro afetado</span>
+                  <p className="font-bold text-gray-900">
+                    {auditTargetLabel(selectedAudit.alvo, usersById)}
+                  </p>
+                </div>
               </div>
-              <div className="rounded-lg border border-blue-100 bg-blue-50/50 p-3"><p className="font-semibold text-blue-900">Resumo legível</p><p className="mt-1 leading-relaxed text-blue-800">{auditChangeSummary(selectedAudit, usersById)}</p></div>
+              <div className="rounded-lg border border-blue-100 bg-blue-50/50 p-3">
+                <p className="font-semibold text-blue-900">Resumo legível</p>
+                <p className="mt-1 leading-relaxed text-blue-800">
+                  {auditChangeSummary(selectedAudit, usersById)}
+                </p>
+              </div>
               <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                <div><p className="mb-1 font-semibold text-gray-700">Antes — registro completo</p><pre className="max-h-64 overflow-auto rounded-lg bg-slate-950 p-3 text-[10px] leading-relaxed text-slate-100">{JSON.stringify(selectedAudit.antes, null, 2) || 'null'}</pre></div>
-                <div><p className="mb-1 font-semibold text-gray-700">Depois — registro completo</p><pre className="max-h-64 overflow-auto rounded-lg bg-slate-950 p-3 text-[10px] leading-relaxed text-slate-100">{JSON.stringify(selectedAudit.depois, null, 2) || 'null'}</pre></div>
+                <div>
+                  <p className="mb-1 font-semibold text-gray-700">Antes — registro completo</p>
+                  <pre className="max-h-64 overflow-auto rounded-lg bg-slate-950 p-3 text-[10px] leading-relaxed text-slate-100">
+                    {JSON.stringify(selectedAudit.antes, null, 2) || 'null'}
+                  </pre>
+                </div>
+                <div>
+                  <p className="mb-1 font-semibold text-gray-700">Depois — registro completo</p>
+                  <pre className="max-h-64 overflow-auto rounded-lg bg-slate-950 p-3 text-[10px] leading-relaxed text-slate-100">
+                    {JSON.stringify(selectedAudit.depois, null, 2) || 'null'}
+                  </pre>
+                </div>
               </div>
             </div>
           )}
         </DialogContent>
       </Dialog>
-
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="max-h-[90vh] max-w-xl overflow-y-auto rounded-2xl">
           <DialogHeader>
@@ -932,7 +962,6 @@ export default function Configuracoes() {
           </form>
         </DialogContent>
       </Dialog>
-
       <AlertDialog
         open={Boolean(removeTarget)}
         onOpenChange={(open) => {
