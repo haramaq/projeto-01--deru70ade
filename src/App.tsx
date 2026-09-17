@@ -16,6 +16,7 @@ import RevendaDetalhe from '@/pages/RevendaDetalhe'
 import Suporte from '@/pages/Suporte'
 import Relatorios from '@/pages/Relatorios'
 import Configuracoes from '@/pages/Configuracoes'
+import Feiras from '@/pages/Feiras'
 import AccessDenied from '@/pages/AccessDenied'
 import NotFound from '@/pages/NotFound'
 
@@ -88,6 +89,14 @@ const App = () => (
               element={
                 <ProtectedRoute requiredPermission="relatorios">
                   <Relatorios />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="feiras"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <Feiras />
                 </ProtectedRoute>
               }
             />

@@ -7,6 +7,7 @@ import {
   Headphones,
   BarChart3,
   Settings,
+  Store,
   LogOut,
   Bell,
   Menu,
@@ -84,6 +85,16 @@ export default function Layout() {
     },
     { title: 'Relatórios', path: '/relatorios', icon: BarChart3, permission: 'relatorios' },
     { title: 'Configurações', path: '/configuracoes', icon: Settings, permission: 'configuracoes' },
+    ...(role === 'admin'
+      ? [
+          {
+            title: 'Feiras',
+            path: '/feiras',
+            icon: Store,
+            permission: 'configuracoes' as PermissionKey,
+          },
+        ]
+      : []),
   ].filter((item) => can(item.permission))
 
   const roleLabels: Record<string, string> = {
@@ -199,13 +210,22 @@ export default function Layout() {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {role === 'admin' && (
-                  <DropdownMenuItem
-                    onClick={() => navigate('/configuracoes')}
-                    className="text-xs text-gray-700 cursor-pointer gap-2 py-2"
-                  >
-                    <Settings className="w-4 h-4 text-gray-500" />
-                    <span>Configurações do Sistema</span>
-                  </DropdownMenuItem>
+                  <>
+                    <DropdownMenuItem
+                      onClick={() => navigate('/configuracoes')}
+                      className="text-xs text-gray-700 cursor-pointer gap-2 py-2"
+                    >
+                      <Settings className="w-4 h-4 text-gray-500" />
+                      <span>Configurações do Sistema</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => navigate('/feiras')}
+                      className="text-xs text-gray-700 cursor-pointer gap-2 py-2"
+                    >
+                      <Store className="w-4 h-4 text-gray-500" />
+                      <span>Feiras e Eventos</span>
+                    </DropdownMenuItem>
+                  </>
                 )}
                 <DropdownMenuItem
                   onClick={() => navigate('/suporte')}

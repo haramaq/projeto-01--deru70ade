@@ -76,6 +76,88 @@ export interface Cliente extends CadastroFields {
 export type RevendaStatus = 'autorizada' | 'pendente'
 export type ProdutoModelo = 'PROHMIX' | 'SUPERMIX'
 
+export type FeiraStatus = 'planejada' | 'em_andamento' | 'concluida' | 'cancelada'
+export type FeiraCustoCategoria =
+  | 'locacao_terreno'
+  | 'estrutura_estande'
+  | 'alimentacao'
+  | 'bebida'
+  | 'hospedagem'
+  | 'deslocamento'
+  | 'logistica_maquinas'
+  | 'relatorios_equipe_comercial'
+  | 'outros'
+export type FeiraResultadoTipo = 'venda_realizada' | 'proposta' | 'lead_gerado'
+export type FeiraArquivoTipo = 'relatorio' | 'comprovante' | 'nota_fiscal' | 'outro'
+export type FeiraLeituraStatus = 'processado' | 'revisao_manual' | 'erro'
+
+export interface Feira {
+  id: string
+  nome: string
+  edicao?: string
+  cidade?: string
+  estado?: string
+  local?: string
+  organizador?: string
+  data_inicio?: string
+  data_fim?: string
+  ano: number
+  status: FeiraStatus
+  descricao?: string
+  observacoes?: string
+  created: string
+  updated: string
+}
+
+export interface FeiraCusto {
+  id: string
+  feira: string
+  categoria: FeiraCustoCategoria
+  descricao?: string
+  fornecedor?: string
+  data_custo?: string
+  valor_estimado: number
+  valor_realizado: number
+  observacoes?: string
+  created: string
+  updated: string
+  expand?: { feira?: Feira }
+}
+
+export interface FeiraResultado {
+  id: string
+  feira: string
+  cliente?: string
+  produto?: string
+  quantidade: number
+  valor_venda: number
+  data_resultado?: string
+  tipo_resultado: FeiraResultadoTipo
+  observacoes?: string
+  created: string
+  updated: string
+  expand?: { feira?: Feira }
+}
+
+export interface FeiraArquivo {
+  id: string
+  feira: string
+  arquivo?: string
+  nome_arquivo: string
+  tipo_arquivo: FeiraArquivoTipo
+  leitura_status: FeiraLeituraStatus
+  texto_extraido?: string
+  dados_extraidos?: {
+    itens?: Array<{ categoria: FeiraCustoCategoria; descricao: string; valor: number }>
+  }
+  total_custo_extraido: number
+  custos_importados: number
+  observacoes?: string
+  created: string
+  updated: string
+  expand?: { feira?: Feira }
+}
+
 export type CategoriaProduto =
   | 'Linha Prohmix'
   | 'Linha Supermix'
