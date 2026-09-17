@@ -424,8 +424,8 @@ export default function Feiras() {
           result: sales - realized,
           roi: realized > 0 ? ((sales - realized) / realized) * 100 : 0,
           annualPercent:
-            annualRealized > 0 && feira.ano === new Date().getFullYear()
-              ? (realized / annualRealized) * 100
+            (annualRealizedByYear.get(feira.ano) || 0) > 0
+              ? (realized / (annualRealizedByYear.get(feira.ano) || 0)) * 100
               : 0,
         }
       })
