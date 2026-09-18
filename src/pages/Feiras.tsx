@@ -1,9 +1,10 @@
+import './lib/pdfjs-compat'
 import React, { useEffect, useMemo, useState } from 'react'
 import { GlobalWorkerOptions, getDocument } from 'pdfjs-dist'
 // Vite inlines this worker so Skip Cloud does not need to serve an .mjs asset
 // with a JavaScript MIME type for PDF.js to import it as a module.
 // @ts-expect-error Vite worker query is provided by vite/client at build time.
-import PdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?worker&inline'
+import PdfWorker from './lib/pdf-worker?worker&inline'
 import { createWorker } from 'tesseract.js'
 
 GlobalWorkerOptions.workerPort = new PdfWorker()
