@@ -589,6 +589,75 @@ export default function Feiras() {
     }
   }
 
+  const [categoryValues, setCategoryValues] = useState<
+    Record<string, { estimado: string; realizado: string }>
+  >({})
+  const [savingCategoryValues, setSavingCategoryValues] = useState(false)
+
+  useEffect(() => {
+    const next: Record<string, { estimado: string; realizado: string }> = {}
+    FEIRA_COST_CATEGORIES.forEach((categoria) => {
+      const existing = selectedCosts.find((item) => item.categoria === categoria)
+      next[categoria] = {
+        estimado: existing ? String(existing.valor_estimado || '') : '',
+        realizado: existing ? String(existing.valor_realizado || '') : '',
+      }
+    })
+    setCategoryValues(next)
+  }, [selectedFeiraId, custos])
+
+  const saveCategoryValues = async () => {
+    if (!selectedFeira) return toast.info('Selecione uma feira antes de salvar os valores.')
+    setSavingCategoryValues(true)
+    try {
+      const updates: Promise<unknown>[] = []
+      FEIRA_COST_CATEGORIES.forEach((categoria) => {
+        const values = categoryValues[categoria] || { estimado: '', realizado: '' }
+        const estimated = money(values.estimado)
+        const realized = money(values.realizado)
+        const existing = selectedCosts.find((item) => item.categoria === categoria)
+        if (existing) {
+          if (existing.valor_estimado === estimated && existing.valor_realizado === realized) return
+          updates.push(
+            feiraService.updateCusto(existing.id, {
+              valor_estimado: estimated,
+              valor_realizado: realized,
+            }),
+          )
+        } else if (estimated || realized) {
+          updates.push(
+            feiraService.createCusto({
+              feira: selectedFeira.id,
+              categoria,
+              descricao: FEIRA_COST_LABELS[categoria],
+              valor_estimado: estimated,
+              valor_realizado: realized,
+            }),
+          )
+        }
+      })
+      const saved = await Promise.all(updates)
+      if (saved.length) {
+        const savedIds = new Set(saved.map((item) => (item as { id: string }).id))
+        const savedItems = saved as unknown as FeiraCusto[]
+        setCustos((current) => [
+          ...savedItems.filter((item) => !current.some((existing) => existing.id === item.id)),
+          ...current.map((item) =>
+            savedIds.has(item.id) ? (savedItems.find((s) => s.id === item.id) as FeiraCusto) : item,
+          ),
+        ])
+      }
+      toast.success(
+        updates.length ? 'Valores por tipo de custo salvos.' : 'Nenhuma alteração para salvar.',
+      )
+    } catch (error) {
+      console.error(error)
+      toast.error('Não foi possível salvar os valores por tipo de custo.')
+    } finally {
+      setSavingCategoryValues(false)
+    }
+  }
+
   const openNewResultado = () => {
     if (!selectedFeiraId) return toast.info('Selecione uma feira antes de adicionar um resultado.')
     setEditingResultado(null)
@@ -1245,6 +1314,66 @@ export default function Feiras() {
           </CardHeader>
           <CardContent className="space-y-6 p-4">
             <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+              <div className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-3 xl:col-span-2">
+                <div className="mb-2 flex items-center justify-between">
+                  <h3 className="text-xs font-bold uppercase tracking-wide text-[#64748B]">
+                    Valores por tipo de custo
+                  </h3>
+                  <Button
+                    onClick={() => void saveCategoryValues()}
+                    disabled={savingCategoryValues}
+                    className="h-8 gap-1.5 bg-[#D92323] text-xs text-white hover:bg-[#B91C1C]"
+                  >
+                    <Save className="h-3.5 w-3.5" />{' '}
+                    {savingCategoryValues ? 'Salvando...' : 'Salvar valores'}
+                  </Button>
+                </div>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {FEIRA_COST_CATEGORIES.map((categoria) => {
+                    const values = categoryValues[categoria] || { estimado: '', realizado: '' }
+                    return (
+                      <div
+                        key={categoria}
+                        className="rounded-md border border-[#E2E8F0] bg-white p-2"
+                      >
+                        <p className="text-[11px] font-semibold text-[#1E293B]">
+                          {FEIRA_COST_LABELS[categoria]}
+                        </p>
+                        <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+                          <div>
+                            <Label className="text-[10px] text-[#64748B]">Estimado</Label>
+                            <Input
+                              value={values.estimado}
+                              onChange={(event) =>
+                                setCategoryValues((current) => ({
+                                  ...current,
+                                  [categoria]: { ...values, estimado: event.target.value },
+                                }))
+                              }
+                              placeholder="R$ 0,00"
+                              className="h-8 text-xs"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-[10px] text-[#64748B]">Realizado</Label>
+                            <Input
+                              value={values.realizado}
+                              onChange={(event) =>
+                                setCategoryValues((current) => ({
+                                  ...current,
+                                  [categoria]: { ...values, realizado: event.target.value },
+                                }))
+                              }
+                              placeholder="R$ 0,00"
+                              className="h-8 text-xs"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
               <div>
                 <div className="mb-2 flex items-center justify-between">
                   <h3 className="text-xs font-bold uppercase tracking-wide text-[#64748B]">
