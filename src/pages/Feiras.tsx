@@ -263,7 +263,7 @@ function parsePedidoMoney(value: string) {
     .replace(/\.(?=\d{3}(?:,|$))/g, '')
     .replace(',', '.')
   const parsed = Number(normalized.replace(/[^\d.-]/g, ''))
-  return Number.isFinite(parsed) ? parsed : 0
+  return Number.isFinite(parsed) ? Math.round(parsed * 100) / 100 : 0
 }
 
 function toInputDate(value: string) {
@@ -1684,6 +1684,7 @@ export default function Feiras() {
                           <td className="px-3 py-2">{FEIRA_RESULT_LABELS[item.tipo_resultado]}</td>
                           <td className="px-3 py-2 text-[#64748B]">
                             {item.cliente || '—'}
+                            {item.numero_pedido ? ` · Pedido Nº ${item.numero_pedido}` : ''}
                             {item.produto ? ` · ${item.produto}` : ''}
                           </td>
                           <td className="px-3 py-2 text-right">{item.quantidade || 0}</td>
@@ -2144,7 +2145,7 @@ export default function Feiras() {
               />
             </div>
             <div className="space-y-1">
-              <Label>Cliente / oportunidade</Label>
+              <Label>Comprador (cliente)</Label>
               <Input
                 value={resultadoForm.cliente}
                 onChange={(event) =>
