@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-18T11:23:23.138Z",
+  "generatedAt": "2026-09-18T12:57:30.668Z",
   "collections": [
     {
       "name": "users",
@@ -1578,6 +1578,36 @@
           "autodateTriggers": [
             "onCreate",
             "onUpdate"
+          ]
+        },
+        {
+          "name": "pedido_arquivo",
+          "type": "file",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "pedido_nome_arquivo",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "pedido_texto_extraido",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "pedido_leitura_status",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": [
+            "manual",
+            "processado",
+            "revisao_manual",
+            "erro"
           ]
         }
       ],

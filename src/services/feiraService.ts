@@ -12,7 +12,13 @@ import type {
 } from '@/types/crm'
 
 export type FeiraCostInput = Partial<FeiraCusto> & { feira: string }
-export type FeiraResultInput = Partial<FeiraResultado> & { feira: string }
+export type FeiraResultInput = Omit<Partial<FeiraResultado>, 'pedido_arquivo'> & {
+  feira: string
+  pedido_arquivo?: File
+}
+export type FeiraResultUpdateInput = Omit<Partial<FeiraResultado>, 'pedido_arquivo'> & {
+  pedido_arquivo?: File
+}
 export type FeiraFileInput = {
   feira: string
   arquivo?: File
@@ -150,25 +156,28 @@ export const feiraService = {
   },
 
   async createResultado(data: FeiraResultInput): Promise<FeiraResultado> {
-    const created = (await pb.collection('feira_resultados').create(
-      {
-        ...data,
-        quantidade: data.quantidade ?? 0,
-        valor_venda: data.valor_venda ?? 0,
-      },
-      { expand: 'feira' },
-    )) as unknown as FeiraResultado
+    const payload: Record<string, unknown> = {
+      ...data,
+      quantidade: data.quantidade ?? 0,
+      valor_venda: data.valor_venda ?? 0,
+    }
+    if (!data.pedido_arquivo) delete payload.pedido_arquivo
+    const created = (await pb.collection('feira_resultados').create(payload, {
+      expand: 'feira',
+    })) as unknown as FeiraResultado
     await recordAudit('criar_resultado_feira', created.id, null, created)
     return created
   },
 
-  async updateResultado(id: string, data: Partial<FeiraResultado>): Promise<FeiraResultado> {
+  async updateResultado(id: string, data: FeiraResultUpdateInput): Promise<FeiraResultado> {
     const before = (await pb
       .collection('feira_resultados')
       .getOne(id, { expand: 'feira' })) as unknown as FeiraResultado
+    const payload: Record<string, unknown> = { ...data }
+    if (!data.pedido_arquivo) delete payload.pedido_arquivo
     const updated = (await pb
       .collection('feira_resultados')
-      .update(id, data, { expand: 'feira' })) as unknown as FeiraResultado
+      .update(id, payload, { expand: 'feira' })) as unknown as FeiraResultado
     await recordAudit('editar_resultado_feira', id, before, updated)
     return updated
   },

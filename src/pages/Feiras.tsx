@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import { getDocument } from 'pdfjs-dist'
+import { createWorker } from 'tesseract.js'
 import {
   BarChart3,
   CalendarDays,
@@ -122,7 +124,15 @@ const emptyResultado = {
   data_resultado: '',
   tipo_resultado: 'venda_realizada' as FeiraResultadoTipo,
   observacoes: '',
+  pedido_arquivo: undefined as File | undefined,
+  pedido_nome_arquivo: '',
+  pedido_texto_extraido: '',
+  pedido_leitura_status: 'manual' as const,
 }
+
+type PedidoForm = typeof emptyResultado
+
+type PedidoLeituraStatus = NonNullable<FeiraResultado['pedido_leitura_status']>
 
 function dateOnly(value?: string) {
   return value ? value.slice(0, 10) : ''
@@ -241,6 +251,126 @@ function readTextFile(file: File) {
   })
 }
 
+function parsePedidoMoney(value: string) {
+  const normalized = value
+    .replace(/R\$\s?/gi, '')
+    .replace(/\s/g, '')
+    .replace(/\.(?=\d{3}(?:,|$))/g, '')
+    .replace(',', '.')
+  const parsed = Number(normalized.replace(/[^\d.-]/g, ''))
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+function toInputDate(value: string) {
+  const match = value.match(/(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})/)
+  if (!match) return ''
+  const year = match[3].length === 2 ? `20${match[3]}` : match[3]
+  return `${year}-${match[2].padStart(2, '0')}-${match[1].padStart(2, '0')}`
+}
+
+function findPedidoLabel(text: string, labels: string[]) {
+  const pattern = new RegExp(`(?:${labels.join('|')})\\s*[:#-]\\s*([^\\n\\r]+)`, 'i')
+  return text.match(pattern)?.[1]?.trim() || ''
+}
+
+function parsePedidoText(text: string) {
+  const normalized = text.replace(/\r/g, '').trim()
+  const result: Partial<
+    Pick<
+      FeiraResultado,
+      | 'cliente'
+      | 'produto'
+      | 'quantidade'
+      | 'valor_venda'
+      | 'data_resultado'
+      | 'tipo_resultado'
+      | 'observacoes'
+    >
+  > = {}
+  const cliente = findPedidoLabel(normalized, [
+    'cliente',
+    'comprador',
+    'empresa',
+    'razão social',
+    'razao social',
+  ])
+  const produto = findPedidoLabel(normalized, ['produto', 'equipamento', 'modelo', 'linha', 'item'])
+  const quantityMatch = normalized.match(
+    /(?:quantidade|qtd\\.?|qtde\\.?)\\s*[:#-]?\\s*(\\d+(?:[,.]\\d+)?)/i,
+  )
+  const valueMatch = normalized.match(
+    /(?:valor total|total do pedido|valor da venda|total|valor)\\s*[:#-]?\\s*(R\\$?\\s*[\\d.]+(?:,\\d{1,2})?)/i,
+  )
+  const dateMatch = normalized.match(
+    /(?:data do pedido|data da venda|data)\\s*[:#-]?\\s*(\\d{1,2}[\\/.-]\\d{1,2}[\\/.-]\\d{2,4})/i,
+  )
+
+  if (cliente) result.cliente = cliente
+  if (produto) result.produto = produto
+  if (quantityMatch) result.quantidade = Number(quantityMatch[1].replace(',', '.')) || 0
+  if (valueMatch) result.valor_venda = parsePedidoMoney(valueMatch[1])
+  if (dateMatch) result.data_resultado = toInputDate(dateMatch[1])
+  if (/proposta|orçamento|orcamento|cotação|cotacao/i.test(normalized)) {
+    result.tipo_resultado = 'proposta'
+  } else if (/lead|interesse|contato/i.test(normalized)) {
+    result.tipo_resultado = 'lead_gerado'
+  } else if (/pedido|venda|faturamento|nota fiscal/i.test(normalized)) {
+    result.tipo_resultado = 'venda_realizada'
+  }
+  if (normalized)
+    result.observacoes = `Leitura automática do pedido. Revise os dados antes de salvar.`
+  return result
+}
+
+async function readPdfFile(file: File) {
+  const buffer = await file.arrayBuffer()
+  const document = await getDocument({ data: new Uint8Array(buffer), disableWorker: true } as never)
+    .promise
+  const pages: string[] = []
+  for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
+    const page = await document.getPage(pageNumber)
+    const content = await page.getTextContent()
+    pages.push(
+      content.items
+        .map((item) => ('str' in item ? item.str : ''))
+        .filter(Boolean)
+        .join(' '),
+    )
+  }
+  return pages.join('\\n')
+}
+
+async function readImageFile(file: File, onProgress: (message: string) => void) {
+  const worker = await createWorker('por', 1, {
+    logger: (event) => {
+      if (event.status) onProgress(`${event.status} ${Math.round((event.progress || 0) * 100)}%`)
+    },
+  })
+  try {
+    const result = await worker.recognize(file)
+    return result.data.text || ''
+  } finally {
+    await worker.terminate()
+  }
+}
+
+async function readPedidoFile(file: File, onProgress: (message: string) => void) {
+  const extension = file.name.split('.').pop()?.toLowerCase() || ''
+  if (file.type.startsWith('image/') || ['jpg', 'jpeg', 'png', 'webp'].includes(extension)) {
+    onProgress('Lendo imagem do pedido...')
+    return readImageFile(file, onProgress)
+  }
+  if (extension === 'pdf' || file.type === 'application/pdf') {
+    onProgress('Extraindo texto do PDF...')
+    return readPdfFile(file)
+  }
+  if (['txt', 'csv', 'json'].includes(extension) || file.type.startsWith('text/')) {
+    onProgress('Lendo arquivo de texto...')
+    return readTextFile(file)
+  }
+  return ''
+}
+
 function statusClass(status: Feira['status']) {
   if (status === 'concluida') return 'bg-emerald-50 text-emerald-700 border-emerald-200'
   if (status === 'em_andamento') return 'bg-blue-50 text-blue-700 border-blue-200'
@@ -280,8 +410,13 @@ export default function Feiras() {
 
   const [resultadoDialog, setResultadoDialog] = useState(false)
   const [editingResultado, setEditingResultado] = useState<FeiraResultado | null>(null)
-  const [resultadoForm, setResultadoForm] = useState(emptyResultado)
+  const [resultadoForm, setResultadoForm] = useState<PedidoForm>(emptyResultado)
   const [deleteResultado, setDeleteResultado] = useState<FeiraResultado | null>(null)
+  const [pedidoDialog, setPedidoDialog] = useState(false)
+  const [pedidoFile, setPedidoFile] = useState<File | null>(null)
+  const [pedidoReading, setPedidoReading] = useState(false)
+  const [pedidoReadingMessage, setPedidoReadingMessage] = useState('')
+  const [pedidoReviewReady, setPedidoReviewReady] = useState(false)
 
   const [arquivoDialog, setArquivoDialog] = useState(false)
   const [arquivoTipo, setArquivoTipo] = useState<FeiraArquivoTipo>('relatorio')
@@ -665,6 +800,69 @@ export default function Feiras() {
     setResultadoDialog(true)
   }
 
+  const openPedidoDialog = () => {
+    if (!selectedFeiraId) return toast.info('Selecione uma feira antes de importar um pedido.')
+    setPedidoFile(null)
+    setPedidoReviewReady(false)
+    setPedidoReadingMessage('')
+    setPedidoDialog(true)
+  }
+
+  const applyPedidoRead = async (file: File) => {
+    setPedidoFile(file)
+    setPedidoReading(true)
+    setPedidoReviewReady(false)
+    try {
+      const text = await readPedidoFile(file, setPedidoReadingMessage)
+      const parsed = parsePedidoText(text)
+      setResultadoForm((current) => ({
+        ...current,
+        ...parsed,
+        pedido_arquivo: file,
+        pedido_nome_arquivo: file.name,
+        pedido_texto_extraido: text.slice(0, 100000),
+        pedido_leitura_status: Object.keys(parsed).length ? 'processado' : 'revisao_manual',
+      }))
+      setEditingResultado(null)
+      setPedidoReviewReady(true)
+      setPedidoDialog(false)
+      setResultadoDialog(true)
+      toast.success(
+        Object.keys(parsed).length
+          ? 'Pedido lido. Revise os campos antes de salvar.'
+          : 'Arquivo recebido. Preencha ou revise os campos manualmente.',
+      )
+    } catch (error) {
+      console.error(error)
+      setResultadoForm((current) => ({
+        ...current,
+        pedido_arquivo: file,
+        pedido_nome_arquivo: file.name,
+        pedido_leitura_status: 'erro',
+      }))
+      setPedidoReviewReady(true)
+      setPedidoDialog(false)
+      setResultadoDialog(true)
+      toast.error('Não foi possível ler automaticamente o pedido. Revise os campos manualmente.')
+    } finally {
+      setPedidoReading(false)
+      setPedidoReadingMessage('')
+    }
+  }
+
+  const handlePedidoPaste = async (event: React.ClipboardEvent<HTMLDivElement>) => {
+    const image = Array.from(event.clipboardData.items).find((item) =>
+      item.type.startsWith('image/'),
+    )
+    if (!image) return
+    event.preventDefault()
+    const file = image.getAsFile()
+    if (file)
+      await applyPedidoRead(
+        new File([file], `pedido-colado-${Date.now()}.png`, { type: file.type }),
+      )
+  }
+
   const openEditResultado = (resultado: FeiraResultado) => {
     setEditingResultado(resultado)
     setResultadoForm({
@@ -675,6 +873,10 @@ export default function Feiras() {
       data_resultado: dateOnly(resultado.data_resultado),
       tipo_resultado: resultado.tipo_resultado,
       observacoes: resultado.observacoes || '',
+      pedido_arquivo: undefined,
+      pedido_nome_arquivo: resultado.pedido_nome_arquivo || '',
+      pedido_texto_extraido: resultado.pedido_texto_extraido || '',
+      pedido_leitura_status: resultado.pedido_leitura_status || 'manual',
     })
     setResultadoDialog(true)
   }
@@ -690,6 +892,9 @@ export default function Feiras() {
         ...resultadoForm,
         quantidade: money(resultadoForm.quantidade),
         valor_venda: money(resultadoForm.valor_venda),
+        pedido_leitura_status: resultadoForm.pedido_arquivo
+          ? resultadoForm.pedido_leitura_status || 'revisao_manual'
+          : resultadoForm.pedido_leitura_status || 'manual',
       }
       const saved = editingResultado
         ? await feiraService.updateResultado(editingResultado.id, payload)
@@ -1441,10 +1646,28 @@ export default function Feiras() {
               </div>
               <div>
                 <div className="mb-2 flex items-center justify-between">
-                  <h3 className="text-xs font-bold uppercase tracking-wide text-[#64748B]">
-                    Resultados comerciais
-                  </h3>
-                  <span className="text-[10px] text-[#64748B]">Vendas e oportunidades</span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-xs font-bold uppercase tracking-wide text-[#64748B]">
+                      Resultados comerciais
+                    </h3>
+                    <span className="text-[10px] text-[#64748B]">Vendas e oportunidades</span>
+                  </div>
+                  <div className="flex flex-wrap justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      className="h-8 gap-1.5 text-[11px]"
+                      onClick={openPedidoDialog}
+                    >
+                      <Upload className="h-3.5 w-3.5" /> Importar pedido
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="h-8 gap-1.5 text-[11px]"
+                      onClick={openNewResultado}
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Registrar manualmente
+                    </Button>
+                  </div>
                 </div>
                 <div className="overflow-x-auto rounded-lg border border-[#E2E8F0]">
                   <table className="w-full min-w-[620px] text-xs">
@@ -1915,9 +2138,24 @@ export default function Feiras() {
               <Textarea
                 value={resultadoForm.observacoes}
                 onChange={(event) =>
-                  setResultadoForm({ ...resultadoForm, observacoes: event.target.value })
+                  setResultadoForm((current) => ({ ...current, observacoes: event.target.value }))
                 }
               />
+              {resultadoForm.pedido_texto_extraido && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-[11px] text-amber-900 sm:col-span-2">
+                  <p className="font-semibold">Leitura automática para revisão</p>
+                  <p className="mt-1">
+                    {resultadoForm.pedido_nome_arquivo || 'Pedido recebido'} · revise os campos
+                    acima antes de salvar.
+                  </p>
+                  <details className="mt-2">
+                    <summary className="cursor-pointer font-medium">Ver texto extraído</summary>
+                    <pre className="mt-2 max-h-32 overflow-auto whitespace-pre-wrap rounded bg-white/70 p-2 text-[10px]">
+                      {resultadoForm.pedido_texto_extraido}
+                    </pre>
+                  </details>
+                </div>
+              )}
             </div>
             <DialogFooter className="sm:col-span-2">
               <Button type="button" variant="outline" onClick={() => setResultadoDialog(false)}>

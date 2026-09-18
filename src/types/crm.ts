@@ -134,6 +134,10 @@ export interface FeiraResultado {
   data_resultado?: string
   tipo_resultado: FeiraResultadoTipo
   observacoes?: string
+  pedido_arquivo?: string
+  pedido_nome_arquivo?: string
+  pedido_texto_extraido?: string
+  pedido_leitura_status?: 'manual' | 'processado' | 'revisao_manual' | 'erro'
   created: string
   updated: string
   expand?: { feira?: Feira }
