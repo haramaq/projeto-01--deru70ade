@@ -274,7 +274,10 @@ function findPedidoLabel(text: string, labels: string[]) {
 }
 
 function parsePedidoText(text: string) {
-  const normalized = text.replace(/\r/g, '').trim()
+  const normalized = text
+    .replace(/\uFEFF/g, '')
+    .replace(/\r/g, '')
+    .trim()
   const result: Partial<
     Pick<
       FeiraResultado,
@@ -815,14 +818,15 @@ export default function Feiras() {
     try {
       const text = await readPedidoFile(file, setPedidoReadingMessage)
       const parsed = parsePedidoText(text)
-      setResultadoForm((current) => ({
-        ...current,
+      const importedForm: PedidoForm = {
+        ...emptyResultado,
         ...parsed,
         pedido_arquivo: file,
         pedido_nome_arquivo: file.name,
         pedido_texto_extraido: text.slice(0, 100000),
         pedido_leitura_status: Object.keys(parsed).length ? 'processado' : 'revisao_manual',
-      }))
+      }
+      setResultadoForm(importedForm)
       setEditingResultado(null)
       setPedidoReviewReady(true)
       setPedidoDialog(false)
