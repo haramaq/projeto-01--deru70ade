@@ -118,7 +118,6 @@ const emptyCusto = {
   descricao: '',
   fornecedor: '',
   data_custo: '',
-  valor_estimado: '',
   valor_realizado: '',
   observacoes: '',
 }
@@ -311,7 +310,7 @@ function parsePedidoText(text: string) {
     ''
   const comprador =
     normalized.match(
-      /comprador\s*(?:nome|fantasia)?\s*[:#-]?\s*([A-Za-zÀ-ÿ0-9][^|]*?)(?=\s*(?:nome fantasia|endere|cnpj|inscri|telefone|email|e-mail|produtos?|modelo|quantidade|valor|data|prazo|frete|m[ée]todo|subtotal|total)\b|,\s*\d{5}|\s*\d{5}\s*-)/i,
+      /comprador\s*(?:nome|fantasia)?\s*[:#-]?\s*([A-Za-zÀ-ÿ0-9][^|]*?)(?=\s*(?:nome fantasia|fantasia|endere|cnpj|inscri|telefone|email|e-mail|produtos?|modelo|quantidade|valor|data|prazo|frete|m[ée]todo|subtotal|total)\b|,\s*\d{5}|\s*\d{5}\s*-)/i,
     )?.[1] ||
     findPedidoLabel(text.replace(/\r/g, '').trim(), [
       'comprador',
@@ -321,7 +320,7 @@ function parsePedidoText(text: string) {
     ])
   const produto =
     normalized.match(
-      /(?:nome do produto|produtos?|equipamento)\s*[:#-]?\s*([^0-9][^|]*?)(?=\s*(?:r\$|valor unit|quantidade|modelo|acess)\b|\sR\$)/i,
+      /(?:nome do produto|produtos?|equipamento)\s*[:#-]?\s*(.+?)(?=\s+(?:preço|preco)\s+unit[aá]rio\b|\s+(?:valor unit|quantidade|modelo|acessórios?|acessorios?)\b|\sR\$)/i,
     )?.[1] ||
     normalized.match(
       /modelo\s*[:#-]?\s*([A-Za-zÀ-ÿ0-9][^|]*?)(?=\s*(?:auto|descarga|balança|balanca|ano|marca|ncm|quantidade|valor)\b|$)/i,
@@ -741,7 +740,6 @@ export default function Feiras() {
       descricao: custo.descricao || '',
       fornecedor: custo.fornecedor || '',
       data_custo: dateOnly(custo.data_custo),
-      valor_estimado: String(custo.valor_estimado || ''),
       valor_realizado: String(custo.valor_realizado || ''),
       observacoes: custo.observacoes || '',
     })
@@ -757,7 +755,10 @@ export default function Feiras() {
       const payload = {
         feira: feiraId,
         ...custoForm,
-        valor_estimado: money(custoForm.valor_estimado),
+        // O custo estimado por categoria foi removido da UI; o único estimado
+        // é o "Custo estimado total da feira". Ao editar, preserva o valor já
+        // gravado para não alterar totais existentes (ex.: Expointer 2026).
+        valor_estimado: editingCusto ? editingCusto.valor_estimado || 0 : 0,
         valor_realizado: money(custoForm.valor_realizado),
       }
       const saved = editingCusto
@@ -1629,7 +1630,6 @@ export default function Feiras() {
                       <tr>
                         <th className="px-3 py-2 text-left">Categoria</th>
                         <th className="px-3 py-2 text-left">Descrição</th>
-                        <th className="px-3 py-2 text-right">Estimado</th>
                         <th className="px-3 py-2 text-right">Realizado</th>
                         <th className="px-3 py-2 text-right">%</th>
                         <th className="px-3 py-2 text-right">Ações</th>
@@ -1640,9 +1640,6 @@ export default function Feiras() {
                         <tr key={item.id}>
                           <td className="px-3 py-2">{FEIRA_COST_LABELS[item.categoria]}</td>
                           <td className="px-3 py-2 text-[#64748B]">{item.descricao || '—'}</td>
-                          <td className="px-3 py-2 text-right">
-                            {formatCurrencyBRL(item.valor_estimado)}
-                          </td>
                           <td className="px-3 py-2 text-right font-semibold">
                             {formatCurrencyBRL(item.valor_realizado)}
                           </td>
@@ -2037,18 +2034,6 @@ export default function Feiras() {
               <Input
                 value={custoForm.fornecedor}
                 onChange={(event) => setCustoForm({ ...custoForm, fornecedor: event.target.value })}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label>Custo estimado (R$)</Label>
-              <Input
-                type="number"
-                min="0"
-                step="0.01"
-                value={custoForm.valor_estimado}
-                onChange={(event) =>
-                  setCustoForm({ ...custoForm, valor_estimado: event.target.value })
-                }
               />
             </div>
             <div className="space-y-1">
