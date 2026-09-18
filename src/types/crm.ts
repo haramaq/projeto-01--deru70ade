@@ -134,6 +134,7 @@ export interface FeiraResultado {
   data_resultado?: string
   tipo_resultado: FeiraResultadoTipo
   observacoes?: string
+  numero_pedido?: string
   pedido_arquivo?: string
   pedido_nome_arquivo?: string
   pedido_texto_extraido?: string

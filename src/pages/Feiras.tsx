@@ -124,6 +124,7 @@ const emptyResultado = {
   data_resultado: '',
   tipo_resultado: 'venda_realizada' as FeiraResultadoTipo,
   observacoes: '',
+  numero_pedido: '',
   pedido_arquivo: undefined as File | undefined,
   pedido_nome_arquivo: '',
   pedido_texto_extraido: '',
@@ -281,6 +282,7 @@ function parsePedidoText(text: string) {
   const normalized = text
     .replace(/\uFEFF/g, '')
     .replace(/\r/g, '')
+    .replace(/\s+/g, ' ')
     .trim()
   const result: Partial<
     Pick<
@@ -292,31 +294,53 @@ function parsePedidoText(text: string) {
       | 'data_resultado'
       | 'tipo_resultado'
       | 'observacoes'
+      | 'numero_pedido'
     >
   > = {}
-  const cliente = findPedidoLabel(normalized, [
-    'cliente',
-    'comprador',
-    'empresa',
-    'razão social',
-    'razao social',
-  ])
-  const produto = findPedidoLabel(normalized, ['produto', 'equipamento', 'modelo', 'linha', 'item'])
-  const quantityMatch = normalized.match(
-    /(?:quantidade|qtd\.?|qtde\.?)\s*[:#-]?\s*(\d+(?:[,.]\d+)?)/i,
-  )
-  const valueMatch = normalized.match(
-    /(?:valor total|total do pedido|valor da venda|total|valor)\s*[:#-]?\s*(R\$?\s*[\d.]+(?:,\d{1,2})?)/i,
-  )
-  const dateMatch = normalized.match(
-    /(?:data do pedido|data da venda|data)\s*[:#-]?\s*(\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4})/i,
-  )
 
-  if (cliente) result.cliente = cliente
-  if (produto) result.produto = produto
-  if (quantityMatch) result.quantidade = Number(quantityMatch[1].replace(',', '.')) || 0
-  if (valueMatch) result.valor_venda = parsePedidoMoney(valueMatch[1])
-  if (dateMatch) result.data_resultado = toInputDate(dateMatch[1])
+  const numeroPedido =
+    normalized.match(/pedido\s*n[ºo°]?\s*[:#-]?\s*(\d{1,10})/i)?.[1] ||
+    normalized.match(/pedido\s*[:#]\s*(\d{1,10})/i)?.[1] ||
+    ''
+  const comprador =
+    normalized.match(
+      /comprador\s*(?:nome|fantasia)?\s*[:#-]?\s*([A-Za-zÀ-ÿ0-9][^|]*?)(?=\s*(?:nome fantasia|endere|cnpj|inscri|telefone|email|e-mail|produtos?|modelo|quantidade|valor|data|prazo|frete|m[ée]todo|subtotal|total)\b|,\s*\d{5}|\s*\d{5}\s*-)/i,
+    )?.[1] ||
+    findPedidoLabel(text.replace(/\r/g, '').trim(), [
+      'comprador',
+      'cliente',
+      'razão social',
+      'razao social',
+    ])
+  const produto =
+    normalized.match(
+      /(?:nome do produto|produto|equipamento)\s*[:#-]?\s*([^0-9][^|]*?)(?=\s*(?:r\$|valor unit|quantidade|modelo|acess)\b|\sR\$)/i,
+    )?.[1] ||
+    normalized.match(
+      /modelo\s*[:#-]?\s*([A-Za-zÀ-ÿ0-9][^|]*?)(?=\s*(?:auto|descarga|balança|balanca|ano|marca|ncm|quantidade|valor)\b|$)/i,
+    )?.[1] ||
+    ''
+  const quantityMatch =
+    normalized.match(/quantidade\s*[:#-]?\s*(\d{1,4})/i)?.[1] ||
+    normalized.match(/(?:qtd|qtde)\.?\s*[:#-]?\s*(\d{1,4})/i)?.[1] ||
+    ''
+  const totalMatch =
+    normalized.match(/total\s*[:#-]?\s*R\$\s*([\d.]+(?:,\d{1,2})?)/i)?.[1] ||
+    normalized.match(/subtotal\s*[:#-]?\s*R\$\s*([\d.]+(?:,\d{1,2})?)/i)?.[1] ||
+    normalized.match(/valor total\s*[:#-]?\s*R\$\s*([\d.]+(?:,\d{1,2})?)/i)?.[1] ||
+    ''
+  const dateMatch =
+    normalized.match(/criado em\s*[:#-]?\s*(\d{1,2}\/\d{1,2}\/\d{2,4})/i)?.[1] ||
+    normalized.match(/data do pedido\s*[:#-]?\s*(\d{1,2}\/\d{1,2}\/\d{2,4})/i)?.[1] ||
+    normalized.match(/data\s*[:#-]\s*(\d{1,2}\/\d{1,2}\/\d{2,4})/i)?.[1] ||
+    ''
+
+  if (comprador) result.cliente = comprador.replace(/\s+/g, ' ').trim()
+  if (produto) result.produto = produto.replace(/\s+/g, ' ').trim()
+  if (numeroPedido) result.numero_pedido = numeroPedido
+  if (quantityMatch) result.quantidade = Number(quantityMatch) || 0
+  if (totalMatch) result.valor_venda = parsePedidoMoney(`R$ ${totalMatch}`)
+  if (dateMatch) result.data_resultado = toInputDate(dateMatch)
   if (/proposta|orçamento|orcamento|cotação|cotacao/i.test(normalized)) {
     result.tipo_resultado = 'proposta'
   } else if (/lead|interesse|contato/i.test(normalized)) {
@@ -731,72 +755,66 @@ export default function Feiras() {
     }
   }
 
-  const [categoryValues, setCategoryValues] = useState<
-    Record<string, { estimado: string; realizado: string }>
-  >({})
-  const [savingCategoryValues, setSavingCategoryValues] = useState(false)
+  const [totalEstimatedInput, setTotalEstimatedInput] = useState('')
+  const [savingTotalEstimated, setSavingTotalEstimated] = useState(false)
 
   useEffect(() => {
-    const next: Record<string, { estimado: string; realizado: string }> = {}
-    FEIRA_COST_CATEGORIES.forEach((categoria) => {
-      const existing = selectedCosts.find((item) => item.categoria === categoria)
-      next[categoria] = {
-        estimado: existing ? String(existing.valor_estimado || '') : '',
-        realizado: existing ? String(existing.valor_realizado || '') : '',
-      }
-    })
-    setCategoryValues(next)
-  }, [selectedFeiraId, custos])
+    if (!selectedFeira) {
+      setTotalEstimatedInput('')
+      return
+    }
+    const fairCosts = custos.filter((item) => item.feira === selectedFeira.id)
+    const total = fairCosts.reduce((sum, item) => sum + (item.valor_estimado || 0), 0)
+    setTotalEstimatedInput(total ? String(total) : '')
+  }, [selectedFeiraId, custos, selectedFeira])
 
-  const saveCategoryValues = async () => {
-    if (!selectedFeira) return toast.info('Selecione uma feira antes de salvar os valores.')
-    setSavingCategoryValues(true)
+  const saveTotalEstimated = async () => {
+    if (!selectedFeira) return toast.info('Selecione uma feira antes de salvar o custo estimado.')
+    setSavingTotalEstimated(true)
     try {
-      const updates: Promise<unknown>[] = []
-      FEIRA_COST_CATEGORIES.forEach((categoria) => {
-        const values = categoryValues[categoria] || { estimado: '', realizado: '' }
-        const estimated = money(values.estimado)
-        const realized = money(values.realizado)
-        const existing = selectedCosts.find((item) => item.categoria === categoria)
-        if (existing) {
-          if (existing.valor_estimado === estimated && existing.valor_realizado === realized) return
-          updates.push(
-            feiraService.updateCusto(existing.id, {
-              valor_estimado: estimated,
-              valor_realizado: realized,
-            }),
-          )
-        } else if (estimated || realized) {
-          updates.push(
-            feiraService.createCusto({
-              feira: selectedFeira.id,
-              categoria,
-              descricao: FEIRA_COST_LABELS[categoria],
-              valor_estimado: estimated,
-              valor_realizado: realized,
-            }),
-          )
-        }
-      })
-      const saved = await Promise.all(updates)
-      if (saved.length) {
-        const savedIds = new Set(saved.map((item) => (item as { id: string }).id))
-        const savedItems = saved as unknown as FeiraCusto[]
-        setCustos((current) => [
-          ...savedItems.filter((item) => !current.some((existing) => existing.id === item.id)),
-          ...current.map((item) =>
-            savedIds.has(item.id) ? (savedItems.find((s) => s.id === item.id) as FeiraCusto) : item,
-          ),
-        ])
+      const target = money(totalEstimatedInput)
+      const fairCosts = custos.filter((item) => item.feira === selectedFeira.id)
+      const currentTotal = fairCosts.reduce((sum, item) => sum + (item.valor_estimado || 0), 0)
+      const diff = target - currentTotal
+      if (diff === 0) {
+        toast.info('Nenhuma alteração no custo estimado.')
+        return
       }
-      toast.success(
-        updates.length ? 'Valores por tipo de custo salvos.' : 'Nenhuma alteração para salvar.',
-      )
+      const othersTotal = fairCosts
+        .filter((item) => item.categoria !== 'outros')
+        .reduce((sum, item) => sum + (item.valor_estimado || 0), 0)
+      const others = fairCosts.filter((item) => item.categoria === 'outros')
+      const desiredOthers = target - othersTotal
+      if (desiredOthers < 0) {
+        toast.error(
+          'O custo estimado total é menor que a soma dos custos já lançados por categoria. Ajuste os lançamentos individuais.',
+        )
+        return
+      }
+      if (others.length) {
+        const primary = others[0]
+        await feiraService.updateCusto(primary.id, { valor_estimado: desiredOthers })
+        setCustos((current) =>
+          current.map((item) =>
+            item.id === primary.id ? { ...item, valor_estimado: desiredOthers } : item,
+          ),
+        )
+      } else {
+        const created = await feiraService.createCusto({
+          feira: selectedFeira.id,
+          categoria: 'outros',
+          descricao: 'Custo estimado total da feira',
+          valor_estimado: desiredOthers,
+          valor_realizado: 0,
+        })
+        setCustos((current) => [created, ...current])
+      }
+      toast.success('Custo estimado total salvo.')
     } catch (error) {
       console.error(error)
-      toast.error('Não foi possível salvar os valores por tipo de custo.')
+      toast.error('Não foi possível salvar o custo estimado total.')
     } finally {
-      setSavingCategoryValues(false)
+      setSavingTotalEstimated(false)
     }
   }
 
@@ -881,6 +899,7 @@ export default function Feiras() {
       data_resultado: dateOnly(resultado.data_resultado),
       tipo_resultado: resultado.tipo_resultado,
       observacoes: resultado.observacoes || '',
+      numero_pedido: resultado.numero_pedido || '',
       pedido_arquivo: undefined,
       pedido_nome_arquivo: resultado.pedido_nome_arquivo || '',
       pedido_texto_extraido: resultado.pedido_texto_extraido || '',
@@ -1530,61 +1549,30 @@ export default function Feiras() {
               <div className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-3 xl:col-span-2">
                 <div className="mb-2 flex items-center justify-between">
                   <h3 className="text-xs font-bold uppercase tracking-wide text-[#64748B]">
-                    Valores por tipo de custo
+                    Custo estimado total da feira
                   </h3>
                   <Button
-                    onClick={() => void saveCategoryValues()}
-                    disabled={savingCategoryValues}
+                    onClick={() => void saveTotalEstimated()}
+                    disabled={savingTotalEstimated}
                     className="h-8 gap-1.5 bg-[#D92323] text-xs text-white hover:bg-[#B91C1C]"
                   >
                     <Save className="h-3.5 w-3.5" />{' '}
-                    {savingCategoryValues ? 'Salvando...' : 'Salvar valores'}
+                    {savingTotalEstimated ? 'Salvando...' : 'Salvar custo estimado'}
                   </Button>
                 </div>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                  {FEIRA_COST_CATEGORIES.map((categoria) => {
-                    const values = categoryValues[categoria] || { estimado: '', realizado: '' }
-                    return (
-                      <div
-                        key={categoria}
-                        className="rounded-md border border-[#E2E8F0] bg-white p-2"
-                      >
-                        <p className="text-[11px] font-semibold text-[#1E293B]">
-                          {FEIRA_COST_LABELS[categoria]}
-                        </p>
-                        <div className="mt-1.5 grid grid-cols-2 gap-1.5">
-                          <div>
-                            <Label className="text-[10px] text-[#64748B]">Estimado</Label>
-                            <Input
-                              value={values.estimado}
-                              onChange={(event) =>
-                                setCategoryValues((current) => ({
-                                  ...current,
-                                  [categoria]: { ...values, estimado: event.target.value },
-                                }))
-                              }
-                              placeholder="R$ 0,00"
-                              className="h-8 text-xs"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-[10px] text-[#64748B]">Realizado</Label>
-                            <Input
-                              value={values.realizado}
-                              onChange={(event) =>
-                                setCategoryValues((current) => ({
-                                  ...current,
-                                  [categoria]: { ...values, realizado: event.target.value },
-                                }))
-                              }
-                              placeholder="R$ 0,00"
-                              className="h-8 text-xs"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
+                  <div className="rounded-md border border-[#E2E8F0] bg-white p-2">
+                    <p className="text-[11px] font-semibold text-[#1E293B]">Custo estimado total</p>
+                    <div className="mt-1.5">
+                      <Label className="text-[10px] text-[#64748B]">Estimado (R$)</Label>
+                      <Input
+                        value={totalEstimatedInput}
+                        onChange={(event) => setTotalEstimatedInput(event.target.value)}
+                        placeholder="R$ 0,00"
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
               <div>
@@ -2160,6 +2148,16 @@ export default function Feiras() {
                 onChange={(event) =>
                   setResultadoForm((current) => ({ ...current, cliente: event.target.value }))
                 }
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Número do pedido</Label>
+              <Input
+                value={resultadoForm.numero_pedido}
+                onChange={(event) =>
+                  setResultadoForm((current) => ({ ...current, numero_pedido: event.target.value }))
+                }
+                placeholder="Ex.: 1755"
               />
             </div>
             <div className="space-y-1">
