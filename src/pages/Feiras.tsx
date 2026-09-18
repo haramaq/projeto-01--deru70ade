@@ -262,7 +262,7 @@ function parsePedidoMoney(value: string) {
 }
 
 function toInputDate(value: string) {
-  const match = value.match(/(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})/)
+  const match = value.match(/(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})/)
   if (!match) return ''
   const year = match[3].length === 2 ? `20${match[3]}` : match[3]
   return `${year}-${match[2].padStart(2, '0')}-${match[1].padStart(2, '0')}`
@@ -296,13 +296,13 @@ function parsePedidoText(text: string) {
   ])
   const produto = findPedidoLabel(normalized, ['produto', 'equipamento', 'modelo', 'linha', 'item'])
   const quantityMatch = normalized.match(
-    /(?:quantidade|qtd\\.?|qtde\\.?)\\s*[:#-]?\\s*(\\d+(?:[,.]\\d+)?)/i,
+    /(?:quantidade|qtd\.?|qtde\.?)\s*[:#-]?\s*(\d+(?:[,.]\d+)?)/i,
   )
   const valueMatch = normalized.match(
-    /(?:valor total|total do pedido|valor da venda|total|valor)\\s*[:#-]?\\s*(R\\$?\\s*[\\d.]+(?:,\\d{1,2})?)/i,
+    /(?:valor total|total do pedido|valor da venda|total|valor)\s*[:#-]?\s*(R\$?\s*[\d.]+(?:,\d{1,2})?)/i,
   )
   const dateMatch = normalized.match(
-    /(?:data do pedido|data da venda|data)\\s*[:#-]?\\s*(\\d{1,2}[\\/.-]\\d{1,2}[\\/.-]\\d{2,4})/i,
+    /(?:data do pedido|data da venda|data)\s*[:#-]?\s*(\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4})/i,
   )
 
   if (cliente) result.cliente = cliente
