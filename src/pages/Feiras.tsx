@@ -319,11 +319,14 @@ function parsePedidoText(text: string) {
       'razao social',
     ])
   const produto =
+    // Nome do produto precede "Preço unitário" (formato Haramaq); captura o
+    // trecho entre o fim do bloco de descrição e o preço, evitando a descrição.
+    normalized.match(/(?:^|\s)([A-ZÀ-Ý][^:]{2,80}?)\s+Preço unitário:/i)?.[1] ||
     normalized.match(
       /(?:nome do produto|produtos?|equipamento)\s*[:#-]?\s*(.+?)(?=\s+(?:preço|preco)\s+unit[aá]rio\b|\s+(?:valor unit|quantidade|modelo|acessórios?|acessorios?)\b|\sR\$)/i,
     )?.[1] ||
     normalized.match(
-      /modelo\s*[:#-]?\s*([A-Za-zÀ-ÿ0-9][^|]*?)(?=\s*(?:auto|descarga|balança|balanca|ano|marca|ncm|quantidade|valor)\b|$)/i,
+      /modelo\s*[:#-]?\s*([A-Za-zÀ-ÿ0-9][^|]*?)(?=\s*(?:auto|descarga|balança|balança|ano|marca|ncm|quantidade|valor)\b|$)/i,
     )?.[1] ||
     ''
   const quantityMatch =
