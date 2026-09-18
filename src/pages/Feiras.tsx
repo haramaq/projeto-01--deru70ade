@@ -242,13 +242,17 @@ function parseRowsFromText(text: string) {
     .filter((item) => item.valor > 0)
 }
 
-function readTextFile(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(String(reader.result || ''))
-    reader.onerror = () => reject(reader.error || new Error('Não foi possível ler o arquivo.'))
-    reader.readAsText(file)
-  })
+async function readTextFile(file: File) {
+  try {
+    return await file.text()
+  } catch {
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(String(reader.result || ''))
+      reader.onerror = () => reject(reader.error || new Error('Não foi possível ler o arquivo.'))
+      reader.readAsText(file)
+    })
+  }
 }
 
 function parsePedidoMoney(value: string) {
