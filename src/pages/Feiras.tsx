@@ -1,9 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { GlobalWorkerOptions, getDocument } from 'pdfjs-dist'
-import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
+// Vite inlines this worker so Skip Cloud does not need to serve an .mjs asset
+// with a JavaScript MIME type for PDF.js to import it as a module.
+// @ts-expect-error Vite worker query is provided by vite/client at build time.
+import PdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?worker&inline'
 import { createWorker } from 'tesseract.js'
 
-GlobalWorkerOptions.workerSrc = pdfWorker
+GlobalWorkerOptions.workerPort = new PdfWorker()
 import {
   BarChart3,
   CalendarDays,
@@ -317,7 +320,7 @@ function parsePedidoText(text: string) {
     ])
   const produto =
     normalized.match(
-      /(?:nome do produto|produto|equipamento)\s*[:#-]?\s*([^0-9][^|]*?)(?=\s*(?:r\$|valor unit|quantidade|modelo|acess)\b|\sR\$)/i,
+      /(?:nome do produto|produtos?|equipamento)\s*[:#-]?\s*([^0-9][^|]*?)(?=\s*(?:r\$|valor unit|quantidade|modelo|acess)\b|\sR\$)/i,
     )?.[1] ||
     normalized.match(
       /modelo\s*[:#-]?\s*([A-Za-zÀ-ÿ0-9][^|]*?)(?=\s*(?:auto|descarga|balança|balanca|ano|marca|ncm|quantidade|valor)\b|$)/i,
