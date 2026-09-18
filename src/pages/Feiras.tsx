@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { getDocument } from 'pdfjs-dist'
+import { GlobalWorkerOptions, getDocument } from 'pdfjs-dist'
+import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import { createWorker } from 'tesseract.js'
+
+GlobalWorkerOptions.workerSrc = pdfWorker
 import {
   BarChart3,
   CalendarDays,
@@ -353,13 +356,12 @@ function parsePedidoText(text: string) {
   return result
 }
 
-async function readPdfFile(file: File) {
+async function readPdfFile(file: File, onProgress: (message: string) => void) {
   const buffer = await file.arrayBuffer()
-  const document = await getDocument({ data: new Uint8Array(buffer), disableWorker: true } as never)
-    .promise
+  const pdf = await getDocument({ data: new Uint8Array(buffer) }).promise
   const pages: string[] = []
-  for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
-    const page = await document.getPage(pageNumber)
+  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+    const page = await pdf.getPage(pageNumber)
     const content = await page.getTextContent()
     pages.push(
       content.items
@@ -368,7 +370,38 @@ async function readPdfFile(file: File) {
         .join(' '),
     )
   }
-  return pages.join('\\n')
+  const extractedText = pages.join('\\n').trim()
+  if (extractedText.length >= 40) return extractedText
+
+  onProgress('PDF sem texto selecionável. Aplicando OCR nas páginas...')
+  const worker = await createWorker('por', 1, {
+    logger: (event) => {
+      if (event.status)
+        onProgress(`OCR do PDF: ${event.status} ${Math.round((event.progress || 0) * 100)}%`)
+    },
+  })
+  try {
+    const ocrPages: string[] = []
+    for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+      const page = await pdf.getPage(pageNumber)
+      const viewport = page.getViewport({ scale: 2 })
+      const canvas = document.createElement('canvas')
+      canvas.width = Math.ceil(viewport.width)
+      canvas.height = Math.ceil(viewport.height)
+      const context = canvas.getContext('2d')
+      if (!context) continue
+      await page.render({ canvasContext: context, viewport }).promise
+      const image = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
+      if (!image) continue
+      const result = await worker.recognize(image)
+      if (result.data.text) ocrPages.push(result.data.text)
+      canvas.width = 1
+      canvas.height = 1
+    }
+    return [extractedText, ...ocrPages].filter(Boolean).join('\\n').trim()
+  } finally {
+    await worker.terminate()
+  }
 }
 
 async function readImageFile(file: File, onProgress: (message: string) => void) {
@@ -393,7 +426,7 @@ async function readPedidoFile(file: File, onProgress: (message: string) => void)
   }
   if (extension === 'pdf' || file.type === 'application/pdf') {
     onProgress('Extraindo texto do PDF...')
-    return readPdfFile(file)
+    return readPdfFile(file, onProgress)
   }
   if (['txt', 'csv', 'json'].includes(extension) || file.type.startsWith('text/')) {
     onProgress('Lendo arquivo de texto...')
@@ -862,10 +895,12 @@ export default function Feiras() {
       )
     } catch (error) {
       console.error(error)
+      const message = error instanceof Error ? error.message : 'erro desconhecido'
       setResultadoForm((current) => ({
         ...current,
         pedido_arquivo: file,
         pedido_nome_arquivo: file.name,
+        pedido_texto_extraido: `Falha na leitura automática: ${message}`,
         pedido_leitura_status: 'erro',
       }))
       setPedidoReviewReady(true)
