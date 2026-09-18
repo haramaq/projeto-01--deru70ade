@@ -759,21 +759,23 @@ export default function Feiras() {
   const [savingTotalEstimated, setSavingTotalEstimated] = useState(false)
 
   useEffect(() => {
-    if (!selectedFeira) {
+    const current = feiras.find((feira) => feira.id === selectedFeiraId)
+    if (!current) {
       setTotalEstimatedInput('')
       return
     }
-    const fairCosts = custos.filter((item) => item.feira === selectedFeira.id)
+    const fairCosts = custos.filter((item) => item.feira === current.id)
     const total = fairCosts.reduce((sum, item) => sum + (item.valor_estimado || 0), 0)
     setTotalEstimatedInput(total ? String(total) : '')
-  }, [selectedFeiraId, custos, selectedFeira])
+  }, [selectedFeiraId, custos, feiras])
 
   const saveTotalEstimated = async () => {
-    if (!selectedFeira) return toast.info('Selecione uma feira antes de salvar o custo estimado.')
+    const current = feiras.find((feira) => feira.id === selectedFeiraId)
+    if (!current) return toast.info('Selecione uma feira antes de salvar o custo estimado.')
     setSavingTotalEstimated(true)
     try {
       const target = money(totalEstimatedInput)
-      const fairCosts = custos.filter((item) => item.feira === selectedFeira.id)
+      const fairCosts = custos.filter((item) => item.feira === current.id)
       const currentTotal = fairCosts.reduce((sum, item) => sum + (item.valor_estimado || 0), 0)
       const diff = target - currentTotal
       if (diff === 0) {
@@ -801,7 +803,7 @@ export default function Feiras() {
         )
       } else {
         const created = await feiraService.createCusto({
-          feira: selectedFeira.id,
+          feira: current.id,
           categoria: 'outros',
           descricao: 'Custo estimado total da feira',
           valor_estimado: desiredOthers,
