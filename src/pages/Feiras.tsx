@@ -477,6 +477,10 @@ export default function Feiras() {
   const [editingCusto, setEditingCusto] = useState<FeiraCusto | null>(null)
   const [custoForm, setCustoForm] = useState(emptyCusto)
   const [deleteCusto, setDeleteCusto] = useState<FeiraCusto | null>(null)
+  const [custoAnexo, setCustoAnexo] = useState<File | null>(null)
+  const [custoAnexoNome, setCustoAnexoNome] = useState('')
+  const [custoReading, setCustoReading] = useState(false)
+  const [custoReadingMessage, setCustoReadingMessage] = useState('')
 
   const [resultadoDialog, setResultadoDialog] = useState(false)
   const [editingResultado, setEditingResultado] = useState<FeiraResultado | null>(null)
@@ -729,10 +733,101 @@ export default function Feiras() {
     }
   }
 
+  const applyCustoAnexoRead = async (file: File) => {
+    setCustoAnexo(file)
+    setCustoAnexoNome(file.name)
+    setCustoReading(true)
+    setCustoReadingMessage('')
+    try {
+      const text = await readPedidoFile(file, setCustoReadingMessage)
+      const normalized = text
+        .replace(/\uFEFF/g, '')
+        .replace(/\r/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+      const nextForm: Partial<typeof emptyCusto> = {}
+
+      // Valor: prioriza rótulos de custo/total; cai para o primeiro R$ do texto.
+      const valorRotulado =
+        normalized.match(
+          /(?:valor\s*(?:total|pago)?|total\s*(?:da\s*nota|do\s*custo)?|total|custo)\s*[:#-]?\s*R\$\s*([\d.]+(?:,\d{1,2})?)/i,
+        )?.[1] || ''
+      const primeiroR$ = normalized.match(/R\$\s*([\d.]+(?:,\d{1,2})?)/)?.[1] || ''
+      const valor = valorRotulado || primeiroR$
+      if (valor) nextForm.valor_realizado = String(parsePedidoMoney(`R$ ${valor}`))
+
+      // Fornecedor: rótulos comuns de nota/recibo.
+      const fornecedor =
+        normalized.match(
+          /(?:fornecedor|raz[ãa]o social|emitente|prestador|empresa)\s*[:#-]?\s*([A-Za-zÀ-ÿ0-9][^|]*?)(?=\s*(?:cnpj|endere|telefone|email|e-mail|data|valor|n[ºo°]|nf|nota)\b|,\s*\d{5})/i,
+        )?.[1] || findPedidoLabel(text, ['fornecedor', 'razão social', 'razao social', 'emitente'])
+      if (fornecedor) nextForm.fornecedor = fornecedor.replace(/\s+/g, ' ').trim()
+
+      // Data: rótulos comuns; cai para a primeira data dd/mm/aaaa do texto.
+      const dataRotulada = normalized.match(
+        /(?:data\s*(?:da\s*emiss[ãa]o|do\s*custo|emiss[ãa]o)?|emiss[ãa]o)\s*[:#-]?\s*(\d{1,2}\/\d{1,2}\/\d{2,4})/i,
+      )?.[1]
+      const dataPrimeira = normalized.match(/(\d{1,2}\/\d{1,2}\/\d{2,4})/)?.[1]
+      const data = dataRotulada || dataPrimeira
+      if (data) nextForm.data_custo = toInputDate(data)
+
+      // Categoria: deduz a partir de palavras-chave do texto.
+      const categoriaMap: Array<[RegExp, FeiraCustoCategoria]> = [
+        [/aliment|refei|lanche|restaurante/i, 'alimentacao'],
+        [/bebida|caf[eé]/i, 'bebida'],
+        [/hosped|hotel|pousada|di[áa]ria/i, 'hospedagem'],
+        [/desloc|combust|passagem|ped[áa]gio|uber|t[áa]xi|frete/i, 'deslocamento'],
+        [/estande|montagem|tenda|estrutura/i, 'estrutura_estande'],
+        [/loca[çc][ãa]o|aluguel|terreno/i, 'locacao_terreno'],
+        [/log[íi]stica|m[áa]quina|transporte\s*de\s*m[áa]/i, 'logistica_maquinas'],
+        [/relat[óo]rio/i, 'relatorios_equipe_comercial'],
+      ]
+      for (const [pattern, categoria] of categoriaMap) {
+        if (pattern.test(normalized)) {
+          nextForm.categoria = categoria
+          break
+        }
+      }
+
+      // Descrição: usa o nome do arquivo como sugestão editável.
+      if (file.name) nextForm.descricao = file.name.replace(/\.[^.]+$/, '')
+
+      const preenchidos = Object.keys(nextForm).length
+      setCustoForm((current) => ({ ...current, ...nextForm }))
+      toast.success(
+        preenchidos
+          ? `Anexo lido. ${preenchidos} campo(s) preenchido(s) para revisão.`
+          : 'Anexo recebido. Revise os campos manualmente.',
+      )
+    } catch (error) {
+      console.error(error)
+      const message = error instanceof Error ? error.message : 'erro desconhecido'
+      toast.error(`Não foi possível ler o anexo (${message}). Preencha os campos manualmente.`)
+    } finally {
+      setCustoReading(false)
+      setCustoReadingMessage('')
+    }
+  }
+
+  const handleCustoAnexoPaste = async (event: React.ClipboardEvent<HTMLDivElement>) => {
+    const image = Array.from(event.clipboardData.items).find((item) =>
+      item.type.startsWith('image/'),
+    )
+    if (!image) return
+    event.preventDefault()
+    const file = image.getAsFile()
+    if (file)
+      await applyCustoAnexoRead(
+        new File([file], `anexo-custo-colado-${Date.now()}.png`, { type: file.type }),
+      )
+  }
+
   const openNewCusto = () => {
     if (!selectedFeiraId) return toast.info('Selecione uma feira antes de adicionar um custo.')
     setEditingCusto(null)
     setCustoForm(emptyCusto)
+    setCustoAnexo(null)
+    setCustoAnexoNome('')
     setCustoDialog(true)
   }
 
@@ -746,6 +841,8 @@ export default function Feiras() {
       valor_realizado: String(custo.valor_realizado || ''),
       observacoes: custo.observacoes || '',
     })
+    setCustoAnexo(null)
+    setCustoAnexoNome(custo.observacoes?.match(/Anexo: (.+)$/)?.[1] || '')
     setCustoDialog(true)
   }
 
@@ -755,9 +852,13 @@ export default function Feiras() {
     if (!feiraId) return toast.error('Selecione uma feira.')
     setSaving(true)
     try {
+      const observacoesComAnexo = custoAnexo
+        ? `${custoForm.observacoes ? `${custoForm.observacoes}\n` : ''}Anexo: ${custoAnexoNome}`
+        : custoForm.observacoes
       const payload = {
         feira: feiraId,
         ...custoForm,
+        observacoes: observacoesComAnexo,
         // O custo estimado por categoria foi removido da UI; o único estimado
         // é o "Custo estimado total da feira". Ao editar, preserva o valor já
         // gravado para não alterar totais existentes (ex.: Expointer 2026).
@@ -1995,6 +2096,40 @@ export default function Feiras() {
           <DialogHeader>
             <DialogTitle>{editingCusto ? 'Editar custo' : 'Registrar custo'}</DialogTitle>
           </DialogHeader>
+          <div className="space-y-3 text-xs">
+            <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-[11px] text-blue-900">
+              Envie a nota, comprovante ou print, ou cole um print com Ctrl+V. A leitura automática
+              preenche os campos para revisão antes de salvar.
+            </div>
+            <div
+              className="rounded-lg border-2 border-dashed border-[#CBD5E1] bg-[#F8FAFC] p-4 text-center outline-none focus:border-[#D92323]"
+              tabIndex={0}
+              onPaste={(event) => void handleCustoAnexoPaste(event)}
+            >
+              <Upload className="mx-auto h-6 w-6 text-[#D92323]" />
+              <p className="mt-1.5 font-semibold text-[#1E293B]">Cole o print do custo aqui</p>
+              <p className="mt-1 text-[11px] text-[#64748B]">Use Ctrl+V após copiar a imagem.</p>
+            </div>
+            <div className="space-y-1">
+              <Label>Anexo (nota, comprovante ou print)</Label>
+              <Input
+                type="file"
+                accept=".txt,.csv,.json,.pdf,.jpg,.jpeg,.png,.webp"
+                onChange={(event) => {
+                  const file = event.target.files?.[0]
+                  if (file) void applyCustoAnexoRead(file)
+                }}
+              />
+              {custoAnexoNome && (
+                <p className="text-[11px] text-[#64748B]">Anexo: {custoAnexoNome}</p>
+              )}
+            </div>
+            {custoReading && (
+              <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-[11px] text-amber-900">
+                {custoReadingMessage || 'Lendo anexo...'}
+              </div>
+            )}
+          </div>
           <form onSubmit={saveCusto} className="grid grid-cols-1 gap-3 text-xs sm:grid-cols-2">
             <div className="space-y-1">
               <Label>Categoria *</Label>
