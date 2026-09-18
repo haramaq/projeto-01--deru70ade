@@ -2050,6 +2050,57 @@ export default function Feiras() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={pedidoDialog} onOpenChange={setPedidoDialog}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Importar pedido para resultado comercial</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 text-xs">
+            <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-[11px] text-blue-900">
+              Envie o arquivo do pedido ou cole um print nesta área. A leitura é automática e os
+              campos serão abertos para revisão antes de gravar.
+            </div>
+            <div
+              className="rounded-lg border-2 border-dashed border-[#CBD5E1] bg-[#F8FAFC] p-6 text-center outline-none focus:border-[#D92323]"
+              tabIndex={0}
+              onPaste={(event) => void handlePedidoPaste(event)}
+            >
+              <Upload className="mx-auto h-7 w-7 text-[#D92323]" />
+              <p className="mt-2 font-semibold text-[#1E293B]">Cole o print do pedido aqui</p>
+              <p className="mt-1 text-[11px] text-[#64748B]">Use Ctrl+V após copiar a imagem.</p>
+            </div>
+            <div className="space-y-1">
+              <Label>Arquivo do pedido</Label>
+              <Input
+                type="file"
+                accept=".txt,.csv,.json,.pdf,.jpg,.jpeg,.png,.webp"
+                onChange={(event) => {
+                  const file = event.target.files?.[0]
+                  if (file) void applyPedidoRead(file)
+                }}
+              />
+              <p className="text-[10px] text-[#64748B]">
+                Formatos aceitos: TXT, CSV, JSON, PDF, JPG, PNG e WEBP. O arquivo será anexado ao
+                resultado após a revisão.
+              </p>
+            </div>
+            {pedidoReading && (
+              <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-[11px] text-amber-900">
+                {pedidoReadingMessage || 'Lendo pedido...'}
+              </div>
+            )}
+            {pedidoFile && !pedidoReading && !pedidoReviewReady && (
+              <p className="text-[11px] text-[#64748B]">Arquivo selecionado: {pedidoFile.name}</p>
+            )}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setPedidoDialog(false)}>
+                Cancelar
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={resultadoDialog} onOpenChange={setResultadoDialog}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
@@ -2063,10 +2114,10 @@ export default function Feiras() {
               <Select
                 value={resultadoForm.tipo_resultado}
                 onValueChange={(value) =>
-                  setResultadoForm({
-                    ...resultadoForm,
+                  setResultadoForm((current) => ({
+                    ...current,
                     tipo_resultado: value as FeiraResultadoTipo,
-                  })
+                  }))
                 }
               >
                 <SelectTrigger>
@@ -2087,7 +2138,10 @@ export default function Feiras() {
                 type="date"
                 value={resultadoForm.data_resultado}
                 onChange={(event) =>
-                  setResultadoForm({ ...resultadoForm, data_resultado: event.target.value })
+                  setResultadoForm((current) => ({
+                    ...current,
+                    data_resultado: event.target.value,
+                  }))
                 }
               />
             </div>
@@ -2096,7 +2150,7 @@ export default function Feiras() {
               <Input
                 value={resultadoForm.cliente}
                 onChange={(event) =>
-                  setResultadoForm({ ...resultadoForm, cliente: event.target.value })
+                  setResultadoForm((current) => ({ ...current, cliente: event.target.value }))
                 }
               />
             </div>
@@ -2105,7 +2159,7 @@ export default function Feiras() {
               <Input
                 value={resultadoForm.produto}
                 onChange={(event) =>
-                  setResultadoForm({ ...resultadoForm, produto: event.target.value })
+                  setResultadoForm((current) => ({ ...current, produto: event.target.value }))
                 }
               />
             </div>
@@ -2117,7 +2171,7 @@ export default function Feiras() {
                 step="1"
                 value={resultadoForm.quantidade}
                 onChange={(event) =>
-                  setResultadoForm({ ...resultadoForm, quantidade: event.target.value })
+                  setResultadoForm((current) => ({ ...current, quantidade: event.target.value }))
                 }
               />
             </div>
@@ -2129,7 +2183,7 @@ export default function Feiras() {
                 step="0.01"
                 value={resultadoForm.valor_venda}
                 onChange={(event) =>
-                  setResultadoForm({ ...resultadoForm, valor_venda: event.target.value })
+                  setResultadoForm((current) => ({ ...current, valor_venda: event.target.value }))
                 }
               />
             </div>
