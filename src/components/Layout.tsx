@@ -4,10 +4,10 @@ import {
   LayoutDashboard,
   TrendingUp,
   Users,
-  Building2,
   Headphones,
   BarChart3,
   Settings,
+  Store,
   LogOut,
   Bell,
   Menu,
@@ -16,11 +16,11 @@ import {
   Shield,
   HelpCircle,
 } from 'lucide-react'
-import type { PermissionKey } from '@/types/crm'
 import { useAuth } from '@/contexts/AuthContext'
 import { ticketService } from '@/services/crmService'
 import useRealtime from '@/hooks/use-realtime'
 import { HaramaqLogo } from '@/components/haramaq/HaramaqLogo'
+import type { PermissionKey } from '@/types/crm'
 import { Badge } from '@/components/ui/badge'
 import {
   DropdownMenu,
@@ -70,17 +70,31 @@ export default function Layout() {
     title: string
     path: string
     icon: typeof LayoutDashboard
-    roles: string[]
     permission: PermissionKey
     badgeCount?: number
   }[] = [
-    { title: 'Dashboard', path: '/', icon: LayoutDashboard, roles: ['admin', 'vendedor', 'suporte'], permission: 'dashboard' as PermissionKey },
-    { title: 'Leads / Kanban', path: '/vendas', icon: TrendingUp, roles: ['admin', 'gestor', 'triagem', 'vendedor', 'revendedor', 'suporte'], permission: 'leads' as PermissionKey },
-    { title: 'Clientes', path: '/clientes', icon: Users, roles: ['admin', 'vendedor', 'suporte'], permission: 'clientes' as PermissionKey },
-    { title: 'Revendas', path: '/revendas', icon: Building2, roles: ['admin', 'vendedor'], permission: 'revendas' as PermissionKey },
-    { title: 'Suporte', path: '/suporte', icon: Headphones, roles: ['admin', 'suporte'], permission: 'suporte' as PermissionKey, badgeCount: openTicketsCount },
-    { title: 'Relatórios', path: '/relatorios', icon: BarChart3, roles: ['admin'], permission: 'relatorios' as PermissionKey },
-    { title: 'Configurações', path: '/configuracoes', icon: Settings, roles: ['admin'], permission: 'configuracoes' as PermissionKey },
+    { title: 'Dashboard', path: '/', icon: LayoutDashboard, permission: 'dashboard' },
+    { title: 'Leads / Kanban', path: '/vendas', icon: TrendingUp, permission: 'leads' },
+    { title: 'Clientes', path: '/clientes', icon: Users, permission: 'clientes' },
+    {
+      title: 'Suporte',
+      path: '/suporte',
+      icon: Headphones,
+      permission: 'suporte',
+      badgeCount: openTicketsCount,
+    },
+    { title: 'Relatórios', path: '/relatorios', icon: BarChart3, permission: 'relatorios' },
+    { title: 'Configurações', path: '/configuracoes', icon: Settings, permission: 'configuracoes' },
+    ...(role === 'admin'
+      ? [
+          {
+            title: 'Feiras',
+            path: '/feiras',
+            icon: Store,
+            permission: 'configuracoes' as PermissionKey,
+          },
+        ]
+      : []),
   ].filter((item) => can(item.permission))
 
   const roleLabels: Record<string, string> = {
@@ -99,7 +113,7 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen bg-[#F1F3F5] flex flex-col text-[#1E293B]">
-      {/**
+      {/*
         1. RED INSTITUTIONAL HEADER (HARAMAQ)
         Matches reference screenshots:
         - Compact height (~52px)
@@ -196,13 +210,22 @@ export default function Layout() {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {role === 'admin' && (
-                  <DropdownMenuItem
-                    onClick={() => navigate('/configuracoes')}
-                    className="text-xs text-gray-700 cursor-pointer gap-2 py-2"
-                  >
-                    <Settings className="w-4 h-4 text-gray-500" />
-                    <span>Configurações do Sistema</span>
-                  </DropdownMenuItem>
+                  <>
+                    <DropdownMenuItem
+                      onClick={() => navigate('/configuracoes')}
+                      className="text-xs text-gray-700 cursor-pointer gap-2 py-2"
+                    >
+                      <Settings className="w-4 h-4 text-gray-500" />
+                      <span>Configurações do Sistema</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => navigate('/feiras')}
+                      className="text-xs text-gray-700 cursor-pointer gap-2 py-2"
+                    >
+                      <Store className="w-4 h-4 text-gray-500" />
+                      <span>Feiras e Eventos</span>
+                    </DropdownMenuItem>
+                  </>
                 )}
                 <DropdownMenuItem
                   onClick={() => navigate('/suporte')}
@@ -236,7 +259,7 @@ export default function Layout() {
         </div>
       </header>
 
-      {/**
+      {/*
         2. HORIZONTAL MODULE TABS BAR (DESKTOP)
         Matches the reference screenshots ("Inspeções | Dashboard Gargalos | Pós-Venda"):
         - Positioned right below the red header
@@ -360,7 +383,7 @@ export default function Layout() {
         </div>
       )}
 
-      {/**
+      {/*
         3. MAIN CONTROLLED CONTENT AREA
         - Light gray background (#F1F3F5)
         - Controlled max-width with side margins (not 100% fluid)
@@ -370,7 +393,7 @@ export default function Layout() {
         <Outlet />
       </main>
 
-      {/**
+      {/*
         4. HARAMAQ CLEAN FOOTER
       */}
       <footer className="mt-auto py-3 border-t border-[#E2E8F0] bg-white text-center text-xs text-[#64748B]">
