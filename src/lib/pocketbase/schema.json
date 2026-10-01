@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-15T10:25:00Z",
+  "generatedAt": "2026-09-18T17:33:27.247Z",
   "collections": [
     {
       "name": "users",
@@ -12,33 +12,1575 @@
         "delete": "@request.auth.id != '' && @request.auth.role = 'admin'"
       },
       "fields": [
-        {"name":"name","type":"text","required":false,"system":false},
-        {"name":"avatar","type":"file","required":false,"system":false},
-        {"name":"created","type":"autodate","required":false,"system":false,"autodateTriggers":["onCreate"]},
-        {"name":"updated","type":"autodate","required":false,"system":false,"autodateTriggers":["onCreate","onUpdate"]},
-        {"name":"role","type":"select","required":false,"system":false,"selectValues":["admin","triagem","vendedor","revendedor","gestor","suporte"]},
-        {"name":"ativo","type":"bool","required":false,"system":false},
-        {"name":"carteira","type":"text","required":false,"system":false},
-        {"name":"perm_dashboard","type":"bool","required":false,"system":false},
-        {"name":"perm_leads","type":"bool","required":false,"system":false},
-        {"name":"perm_clientes","type":"bool","required":false,"system":false},
-        {"name":"perm_revendas","type":"bool","required":false,"system":false},
-        {"name":"perm_suporte","type":"bool","required":false,"system":false},
-        {"name":"perm_relatorios","type":"bool","required":false,"system":false},
-        {"name":"perm_configuracoes","type":"bool","required":false,"system":false},
-        {"name":"permissoes","type":"json","required":false,"system":false}
+        {
+          "name": "name",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "avatar",
+          "type": "file",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "role",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["admin", "triagem", "vendedor", "revendedor", "gestor", "suporte"]
+        },
+        {
+          "name": "ativo",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "carteira",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "perm_dashboard",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "perm_leads",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "perm_clientes",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "perm_revendas",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "perm_suporte",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "perm_relatorios",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "perm_configuracoes",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "permissoes",
+          "type": "json",
+          "required": false,
+          "system": false
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX `idx_tokenKey__pb_users_auth_` ON `users` (`tokenKey`)",
+        "CREATE UNIQUE INDEX `idx_email__pb_users_auth_` ON `users` (`email`) WHERE `email` != ''",
+        "CREATE INDEX `idx_users_role` ON `users` (role)"
+      ]
+    },
+    {
+      "name": "clientes",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'triagem' || @request.auth.role = 'vendedor' || @request.auth.role = 'revendedor' || @request.auth.role = 'suporte' || @request.auth.perm_clientes = true) && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || responsavel = @request.auth.id || responsavel_usuario = @request.auth.id || (@request.auth.carteira != '' && carteira = @request.auth.carteira))",
+        "view": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'triagem' || @request.auth.role = 'vendedor' || @request.auth.role = 'revendedor' || @request.auth.role = 'suporte' || @request.auth.perm_clientes = true) && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || responsavel = @request.auth.id || responsavel_usuario = @request.auth.id || (@request.auth.carteira != '' && carteira = @request.auth.carteira))",
+        "create": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'triagem' || @request.auth.role = 'vendedor' || @request.auth.role = 'revendedor' || @request.auth.role = 'suporte' || @request.auth.perm_clientes = true)",
+        "update": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'triagem' || @request.auth.role = 'vendedor' || @request.auth.role = 'revendedor' || @request.auth.role = 'suporte' || @request.auth.perm_clientes = true) && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || responsavel = @request.auth.id || responsavel_usuario = @request.auth.id || (@request.auth.carteira != '' && carteira = @request.auth.carteira))",
+        "delete": "@request.auth.id != '' && @request.auth.role = 'admin'"
+      },
+      "fields": [
+        {
+          "name": "nome",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "empresa",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "cnpj",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "email",
+          "type": "email",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "telefone",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "cidade",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "estado",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["ativo", "inativo"]
+        },
+        {
+          "name": "observacoes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "responsavel",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "carteira",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "altforce_stage_id",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "altforce_stage_name",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "tipo_cadastro",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["cliente_final", "revenda"]
+        },
+        {
+          "name": "external_id",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "razao_social",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "nome_fantasia",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "documento",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "documento_tipo",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["cpf", "cnpj"]
+        },
+        {
+          "name": "inscricao_estadual",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "pais",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "cep",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "bairro",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "rua",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "numero",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "responsavel_usuario",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_clientes_cidade ON clientes (cidade)",
+        "CREATE INDEX idx_clientes_status ON clientes (status)"
+      ]
+    },
+    {
+      "name": "revendas",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'vendedor' || @request.auth.perm_revendas = true) && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || responsavel = @request.auth.id || responsavel_usuario = @request.auth.id || (@request.auth.carteira != '' && carteira = @request.auth.carteira) || (responsavel = '' && carteira = ''))",
+        "view": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'vendedor' || @request.auth.perm_revendas = true) && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || responsavel = @request.auth.id || responsavel_usuario = @request.auth.id || (@request.auth.carteira != '' && carteira = @request.auth.carteira) || (responsavel = '' && carteira = ''))",
+        "create": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.perm_revendas = true)",
+        "update": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'vendedor' || @request.auth.perm_revendas = true) && (@request.auth.role = 'admin' || responsavel = @request.auth.id || responsavel_usuario = @request.auth.id || (@request.auth.carteira != '' && carteira = @request.auth.carteira))",
+        "delete": "@request.auth.id != '' && @request.auth.role = 'admin'"
+      },
+      "fields": [
+        {
+          "name": "nome",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "cnpj",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "cidade",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "estado",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "telefone",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "contato_principal",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "email",
+          "type": "email",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "modelos",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["PROHMIX", "SUPERMIX"]
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["autorizada", "pendente"]
+        },
+        {
+          "name": "observacoes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "external_id",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "tipo_cadastro",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["revenda"]
+        },
+        {
+          "name": "razao_social",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "nome_fantasia",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "documento",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "documento_tipo",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["cnpj"]
+        },
+        {
+          "name": "inscricao_estadual",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "pais",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "cep",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "bairro",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "rua",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "numero",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "responsavel",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "carteira",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "responsavel_usuario",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        }
       ],
       "indexes": []
     },
     {
-      "name":"clientes","type":"base",
-      "apiRules":{"list":"@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || ((@request.auth.role = 'triagem' || @request.auth.role = 'vendedor' || @request.auth.role = 'revendedor' || @request.auth.role = 'suporte' || @request.auth.perm_clientes = true) && (responsavel = @request.auth.id || (@request.auth.carteira != '' && carteira = @request.auth.carteira))))","view":"@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || ((@request.auth.role = 'triagem' || @request.auth.role = 'vendedor' || @request.auth.role = 'revendedor' || @request.auth.role = 'suporte' || @request.auth.perm_clientes = true) && (responsavel = @request.auth.id || (@request.auth.carteira != '' && carteira = @request.auth.carteira))))","create":"@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'triagem' || @request.auth.role = 'vendedor' || @request.auth.role = 'revendedor' || @request.auth.perm_clientes = true)","update":"@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || ((@request.auth.role = 'triagem' || @request.auth.role = 'vendedor' || @request.auth.role = 'revendedor' || @request.auth.role = 'suporte' || @request.auth.perm_clientes = true) && (responsavel = @request.auth.id || (@request.auth.carteira != '' && carteira = @request.auth.carteira))))","delete":"@request.auth.id != '' && @request.auth.role = 'admin'"},
-      "fields":[{"name":"nome","type":"text","required":true,"system":false},{"name":"empresa","type":"text","required":false,"system":false},{"name":"cnpj","type":"text","required":false,"system":false},{"name":"email","type":"email","required":false,"system":false},{"name":"telefone","type":"text","required":false,"system":false},{"name":"cidade","type":"text","required":false,"system":false},{"name":"estado","type":"text","required":false,"system":false},{"name":"status","type":"select","required":false,"system":false,"selectValues":["ativo","inativo"]},{"name":"observacoes","type":"text","required":false,"system":false},{"name":"created","type":"autodate","required":false,"system":false,"autodateTriggers":["onCreate"]},{"name":"updated","type":"autodate","required":false,"system":false,"autodateTriggers":["onCreate","onUpdate"]},{"name":"responsavel","type":"text","required":false,"system":false},{"name":"carteira","type":"text","required":false,"system":false}],"indexes":[]
+      "name": "vendas",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'triagem' || @request.auth.role = 'vendedor' || @request.auth.role = 'revendedor' || @request.auth.role = 'suporte' || @request.auth.perm_leads = true) && ((@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'suporte') || vendedor = @request.auth.id || (@request.auth.carteira != '' && carteira = @request.auth.carteira)) && ((@request.auth.role = 'admin' || @request.auth.role = 'triagem' || @request.auth.role = 'suporte') || (etapa != 'pecas_pos_vendas' && etapa != 'financeiro_fiscal' && etapa != 'fornecedores'))",
+        "view": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'triagem' || @request.auth.role = 'vendedor' || @request.auth.role = 'revendedor' || @request.auth.role = 'suporte' || @request.auth.perm_leads = true) && ((@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'suporte') || vendedor = @request.auth.id || (@request.auth.carteira != '' && carteira = @request.auth.carteira)) && ((@request.auth.role = 'admin' || @request.auth.role = 'triagem' || @request.auth.role = 'suporte') || (etapa != 'pecas_pos_vendas' && etapa != 'financeiro_fiscal' && etapa != 'fornecedores'))",
+        "create": "@request.auth.id != '' && ((@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'triagem' || @request.auth.role = 'vendedor' || @request.auth.role = 'revendedor' || @request.auth.role = 'suporte' || @request.auth.perm_leads = true)) && ((@request.auth.role = 'admin' || @request.auth.role = 'triagem' || @request.auth.role = 'suporte') || (@request.body.etapa != 'pecas_pos_vendas' && @request.body.etapa != 'financeiro_fiscal' && @request.body.etapa != 'fornecedores')) && ((@request.auth.role = 'admin' || @request.auth.role = 'gestor') || @request.body.vendedor = @request.auth.id || (@request.auth.carteira != '' && @request.body.carteira = @request.auth.carteira))",
+        "update": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'triagem' || @request.auth.role = 'vendedor' || @request.auth.role = 'revendedor' || @request.auth.role = 'suporte' || @request.auth.perm_leads = true) && ((@request.auth.role = 'admin' || @request.auth.role = 'triagem' || @request.auth.role = 'suporte') || ((etapa != 'pecas_pos_vendas' && etapa != 'financeiro_fiscal' && etapa != 'fornecedores') && (@request.body.etapa != 'pecas_pos_vendas' && @request.body.etapa != 'financeiro_fiscal' && @request.body.etapa != 'fornecedores'))) && ((@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'suporte') || vendedor = @request.auth.id || (@request.auth.carteira != '' && carteira = @request.auth.carteira))",
+        "delete": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor')"
+      },
+      "fields": [
+        {
+          "name": "cliente",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "clientes"
+        },
+        {
+          "name": "produto",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["PROHMIX", "SUPERMIX"]
+        },
+        {
+          "name": "valor",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "etapa",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "agendamento_primeiro_contato",
+            "em_contato",
+            "revenda_contato",
+            "orcamentacao",
+            "contato_futuro_agendado",
+            "arquivado_nao_retorna",
+            "perdido_concorrencia",
+            "convertido_pedido",
+            "pecas_pos_vendas",
+            "financeiro_fiscal",
+            "fornecedores"
+          ]
+        },
+        {
+          "name": "probabilidade",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "data_prevista_fechamento",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "vendedor",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "proxima_acao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "origem",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "altforce_id",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "altforce_stage_id",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "altforce_stage_name",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "altforce_sync_status",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "altforce_last_synced_at",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "altforce_payload",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "campos_customizados",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "numero_lead",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "categoria_produto",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": [
+            "Linha Prohmix",
+            "Linha Supermix",
+            "Linha Tipper",
+            "Vagões Rodoviários",
+            "Colhedora de forragens",
+            "Homogeneizador de esterco",
+            "Revolvedor de cama"
+          ]
+        },
+        {
+          "name": "origem_lead",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": [
+            "Campanhas",
+            "Eventos",
+            "Redes Sociais",
+            "Prospecção direta a campo",
+            "Google",
+            "Site",
+            "Ligação na empresa",
+            "Indicação de parceiros",
+            "Cliente antigo",
+            "Cliente de revenda"
+          ]
+        },
+        {
+          "name": "status_lead",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["em_andamento", "arquivado", "perdido", "convertido_pedido"]
+        },
+        {
+          "name": "status_motivo_codigo",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status_motivo_descricao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "nivel_interesse",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "data_solicitacao",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "etapa_atual_desde",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "prazo_etapa_em",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "observacoes_ia",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "equipe",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "equipes",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "responsavel_cargo",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "altforce_step_model_id",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "carteira",
+          "type": "text",
+          "required": false,
+          "system": false
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_vendas_etapa ON vendas (etapa)",
+        "CREATE INDEX idx_vendas_cliente ON vendas (cliente)"
+      ]
     },
     {
-      "name":"vendas","type":"base",
-      "apiRules":{"list":"@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'triagem' || @request.auth.role = 'vendedor' || @request.auth.role = 'revendedor' || @request.auth.role = 'suporte' || @request.auth.perm_leads = true) && ((@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'suporte') || vendedor = @request.auth.id || (@request.auth.carteira != '' && carteira = @request.auth.carteira))","view":"@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'triagem' || @request.auth.role = 'vendedor' || @request.auth.role = 'revendedor' || @request.auth.role = 'suporte' || @request.auth.perm_leads = true) && ((@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'suporte') || vendedor = @request.auth.id || (@request.auth.carteira != '' && carteira = @request.auth.carteira))","create":"@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'triagem' || @request.auth.role = 'vendedor' || @request.auth.role = 'revendedor' || @request.auth.perm_leads = true) && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.body.vendedor = @request.auth.id || (@request.auth.carteira != '' && @request.body.carteira = @request.auth.carteira))","update":"@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'triagem' || @request.auth.role = 'vendedor' || @request.auth.role = 'revendedor' || @request.auth.perm_leads = true) && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || vendedor = @request.auth.id || (@request.auth.carteira != '' && carteira = @request.auth.carteira))","delete":"@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor')"},
-      "fields":[{"name":"cliente","type":"relation","required":true,"system":false,"collectionRef":"clientes"},{"name":"produto","type":"select","required":true,"system":false,"selectValues":["PROHMIX","SUPERMIX"]},{"name":"valor","type":"number","required":false,"system":false},{"name":"etapa","type":"select","required":true,"system":false,"selectValues":["agendamento_primeiro_contato","em_contato","revenda_contato","orcamentacao","contato_futuro_agendado","arquivado_nao_retorna","perdido_concorrencia","convertido_pedido","pecas_pos_vendas","financeiro_fiscal","fornecedores"]},{"name":"vendedor","type":"relation","required":false,"system":false,"collectionRef":"users"},{"name":"carteira","type":"text","required":false,"system":false},{"name":"created","type":"autodate","required":false,"system":false,"autodateTriggers":["onCreate"]},{"name":"updated","type":"autodate","required":false,"system":false,"autodateTriggers":["onCreate","onUpdate"]}],"indexes":[]
+      "name": "tickets",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'suporte' || @request.auth.perm_suporte = true)",
+        "view": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'suporte' || @request.auth.perm_suporte = true)",
+        "create": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'suporte' || @request.auth.perm_suporte = true)",
+        "update": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'suporte' || @request.auth.perm_suporte = true)",
+        "delete": "@request.auth.id != '' && @request.auth.role = 'admin'"
+      },
+      "fields": [
+        {
+          "name": "cliente",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "clientes"
+        },
+        {
+          "name": "assunto",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "descricao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "prioridade",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["baixa", "media", "alta"]
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["aberto", "finalizado", "fechado"]
+        },
+        {
+          "name": "atribuido_a",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "respostas",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": ["CREATE INDEX idx_tickets_status ON tickets (status)"]
+    },
+    {
+      "name": "auditoria_acesso",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && @request.auth.role = 'admin'",
+        "view": "@request.auth.id != '' && @request.auth.role = 'admin'",
+        "create": "@request.auth.id != '' && @request.auth.role = 'admin'",
+        "update": "",
+        "delete": ""
+      },
+      "fields": [
+        {
+          "name": "autor",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "alvo",
+          "type": "text",
+          "required": true,
+      "system": false
+        },
+        {
+          "name": "acao",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "antes",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "depois",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "kanban_etapas",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor')",
+        "update": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor')",
+        "delete": "@request.auth.id != '' && @request.auth.role = 'admin'"
+      },
+      "fields": [
+        {
+          "name": "chave",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "nome",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "ordem",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "ativa",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "altforce_stage_id",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "altforce_stage_name",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "altforce_step_model_id",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "fluxo",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": ["CREATE UNIQUE INDEX idx_kanban_etapas_chave ON kanban_etapas (chave)"]
+    },
+    {
+      "name": "lead_historico",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && ((@request.auth.role = 'admin' || @request.auth.role = 'gestor') || (@request.auth.role = 'triagem' || @request.auth.role = 'suporte') || (lead_id.vendedor = @request.auth.id || (@request.auth.carteira != '' && lead_id.carteira = @request.auth.carteira))) && ((@request.auth.role = 'admin' || @request.auth.role = 'triagem' || @request.auth.role = 'suporte') || (lead_id.etapa != 'pecas_pos_vendas' && lead_id.etapa != 'financeiro_fiscal' && lead_id.etapa != 'fornecedores'))",
+        "view": "@request.auth.id != '' && ((@request.auth.role = 'admin' || @request.auth.role = 'gestor') || (@request.auth.role = 'triagem' || @request.auth.role = 'suporte') || (lead_id.vendedor = @request.auth.id || (@request.auth.carteira != '' && lead_id.carteira = @request.auth.carteira))) && ((@request.auth.role = 'admin' || @request.auth.role = 'triagem' || @request.auth.role = 'suporte') || (lead_id.etapa != 'pecas_pos_vendas' && lead_id.etapa != 'financeiro_fiscal' && lead_id.etapa != 'fornecedores'))",
+        "create": "@request.auth.id != '' && (((@request.auth.role = 'admin' || @request.auth.role = 'gestor') || (@request.auth.role = 'triagem' || @request.auth.role = 'suporte') || (lead_id.vendedor = @request.auth.id || (@request.auth.carteira != '' && lead_id.carteira = @request.auth.carteira))) || (@request.body.tipo_evento = 'transferencia' && @request.body.usuario_origem = @request.auth.id))",
+        "update": "",
+        "delete": ""
+      },
+      "fields": [
+        {
+          "name": "lead_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "vendas"
+        },
+        {
+          "name": "etapa_anterior",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "etapa_nova",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "motivo_codigo",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "motivo_descricao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "responsavel",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "data_hora",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "observacao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "tipo_evento",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "usuario_origem",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "usuario_destino",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_lead_historico_lead ON lead_historico (lead_id)",
+        "CREATE INDEX idx_lead_historico_data ON lead_historico (data_hora)"
+      ]
+    },
+    {
+      "name": "lead_tarefas",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && ((@request.auth.role = 'admin' || @request.auth.role = 'gestor') || lead_id.vendedor = @request.auth.id || (@request.auth.carteira != '' && lead_id.carteira = @request.auth.carteira))",
+        "view": "@request.auth.id != '' && ((@request.auth.role = 'admin' || @request.auth.role = 'gestor') || lead_id.vendedor = @request.auth.id || (@request.auth.carteira != '' && lead_id.carteira = @request.auth.carteira))",
+        "create": "@request.auth.id != '' && ((@request.auth.role = 'admin' || @request.auth.role = 'gestor') || lead_id.vendedor = @request.auth.id || (@request.auth.carteira != '' && lead_id.carteira = @request.auth.carteira))",
+        "update": "@request.auth.id != '' && ((@request.auth.role = 'admin' || @request.auth.role = 'gestor') || lead_id.vendedor = @request.auth.id || (@request.auth.carteira != '' && lead_id.carteira = @request.auth.carteira))",
+        "delete": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor')"
+      },
+      "fields": [
+        {
+          "name": "lead_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "vendas"
+        },
+        {
+          "name": "titulo",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "equipe",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "responsavel",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["pendente", "em_andamento", "concluida", "cancelada"]
+        },
+        {
+          "name": "prazo",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "observacoes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": ["CREATE INDEX idx_lead_tarefas_lead ON lead_tarefas (lead_id)"]
+    },
+    {
+      "name": "lead_motivos_status",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor')",
+        "update": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor')",
+        "delete": ""
+      },
+      "fields": [
+        {
+          "name": "codigo",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "descricao",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "ordem",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "altforce_reason_code",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "altforce_reason_name",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": ["CREATE UNIQUE INDEX idx_lead_motivos_codigo ON lead_motivos_status (codigo)"]
+    },
+    {
+      "name": "feiras",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && @request.auth.role = 'admin'",
+        "view": "@request.auth.id != '' && @request.auth.role = 'admin'",
+        "create": "@request.auth.id != '' && @request.auth.role = 'admin'",
+        "update": "@request.auth.id != '' && @request.auth.role = 'admin'",
+        "delete": "@request.auth.id != '' && @request.auth.role = 'admin'"
+      },
+      "fields": [
+        {
+          "name": "nome",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "edicao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "cidade",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "estado",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "local",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "organizador",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "data_inicio",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "data_fim",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "ano",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["planejada", "em_andamento", "concluida", "cancelada"]
+        },
+        {
+          "name": "descricao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "observacoes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_feiras_ano ON feiras (ano)",
+        "CREATE INDEX idx_feiras_status ON feiras (status)"
+      ]
+    },
+    {
+      "name": "feira_custos",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && @request.auth.role = 'admin'",
+        "view": "@request.auth.id != '' && @request.auth.role = 'admin'",
+        "create": "@request.auth.id != '' && @request.auth.role = 'admin'",
+        "update": "@request.auth.id != '' && @request.auth.role = 'admin'",
+        "delete": "@request.auth.id != '' && @request.auth.role = 'admin'"
+      },
+      "fields": [
+        {
+          "name": "feira",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "feiras"
+        },
+        {
+          "name": "categoria",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "locacao_terreno",
+            "estrutura_estande",
+            "alimentacao",
+            "bebida",
+            "hospedagem",
+            "deslocamento",
+            "logistica_maquinas",
+            "relatorios_equipe_comercial",
+            "outros"
+          ]
+        },
+        {
+          "name": "descricao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "fornecedor",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "data_custo",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "valor_estimado",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "valor_realizado",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "observacoes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_feira_custos_feira ON feira_custos (feira)",
+        "CREATE INDEX idx_feira_custos_categoria ON feira_custos (categoria)"
+      ]
+    },
+    {
+      "name": "feira_resultados",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && @request.auth.role = 'admin'",
+        "view": "@request.auth.id != '' && @request.auth.role = 'admin'",
+        "create": "@request.auth.id != '' && @request.auth.role = 'admin'",
+        "update": "@request.auth.id != '' && @request.auth.role = 'admin'",
+        "delete": "@request.auth.id != '' && @request.auth.role = 'admin'"
+      },
+      "fields": [
+        {
+          "name": "feira",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "feiras"
+        },
+        {
+          "name": "cliente",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "produto",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "quantidade",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "valor_venda",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "data_resultado",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "tipo_resultado",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["venda_realizada", "proposta", "lead_gerado"]
+        },
+        {
+          "name": "observacoes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "pedido_arquivo",
+          "type": "file",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "pedido_nome_arquivo",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "pedido_texto_extraido",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "pedido_leitura_status",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["manual", "processado", "revisao_manual", "erro"]
+        },
+        {
+          "name": "numero_pedido",
+          "type": "text",
+          "required": false,
+          "system": false
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_feira_resultados_feira ON feira_resultados (feira)",
+        "CREATE INDEX idx_feira_resultados_tipo ON feira_resultados (tipo_resultado)"
+      ]
+    },
+    {
+      "name": "feira_arquivos",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && @request.auth.role = 'admin'",
+        "view": "@request.auth.id != '' && @request.auth.role = 'admin'",
+        "create": "@request.auth.id != '' && @request.auth.role = 'admin'",
+        "update": "@request.auth.id != '' && @request.auth.role = 'admin'",
+        "delete": "@request.auth.id != '' && @request.auth.role = 'admin'"
+      },
+      "fields": [
+        {
+          "name": "feira",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "feiras"
+        },
+        {
+          "name": "arquivo",
+          "type": "file",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "nome_arquivo",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "tipo_arquivo",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["relatorio", "comprovante", "nota_fiscal", "outro"]
+        },
+        {
+          "name": "leitura_status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["processado", "revisao_manual", "erro"]
+        },
+        {
+          "name": "texto_extraido",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "dados_extraidos",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "total_custo_extraido",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "custos_importados",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "observacoes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": ["CREATE INDEX idx_feira_arquivos_feira ON feira_arquivos (feira)"]
     }
   ]
 }
