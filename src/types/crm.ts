@@ -24,7 +24,6 @@ export interface User {
   perm_suporte?: boolean
   perm_relatorios?: boolean
   perm_configuracoes?: boolean
-  /** @deprecated Kept for backwards-compatible migration reads. */
   permissoes?: Record<string, boolean>
   created: string
   updated: string
@@ -32,8 +31,26 @@ export interface User {
 
 export type ClienteStatus = 'ativo' | 'inativo'
 export type SyncStatus = 'pending' | 'not_connected' | 'synced' | 'error'
+export type CadastroTipo = 'cliente_final' | 'revenda'
+export type DocumentoTipo = 'cpf' | 'cnpj'
 
-export interface Cliente {
+export interface CadastroFields {
+  tipo_cadastro?: CadastroTipo
+  external_id?: string
+  razao_social?: string
+  nome_fantasia?: string
+  documento?: string
+  documento_tipo?: DocumentoTipo
+  inscricao_estadual?: string
+  pais?: string
+  cep?: string
+  bairro?: string
+  rua?: string
+  numero?: string
+  responsavel_usuario?: string
+}
+
+export interface Cliente extends CadastroFields {
   id: string
   nome: string
   empresa?: string
@@ -59,6 +76,93 @@ export interface Cliente {
 export type RevendaStatus = 'autorizada' | 'pendente'
 export type ProdutoModelo = 'PROHMIX' | 'SUPERMIX'
 
+export type FeiraStatus = 'planejada' | 'em_andamento' | 'concluida' | 'cancelada'
+export type FeiraCustoCategoria =
+  | 'locacao_terreno'
+  | 'estrutura_estande'
+  | 'alimentacao'
+  | 'bebida'
+  | 'hospedagem'
+  | 'deslocamento'
+  | 'logistica_maquinas'
+  | 'relatorios_equipe_comercial'
+  | 'outros'
+export type FeiraResultadoTipo = 'venda_realizada' | 'proposta' | 'lead_gerado'
+export type FeiraArquivoTipo = 'relatorio' | 'comprovante' | 'nota_fiscal' | 'outro'
+export type FeiraLeituraStatus = 'processado' | 'revisao_manual' | 'erro'
+
+export interface Feira {
+  id: string
+  nome: string
+  edicao?: string
+  cidade?: string
+  estado?: string
+  local?: string
+  organizador?: string
+  data_inicio?: string
+  data_fim?: string
+  ano: number
+  status: FeiraStatus
+  descricao?: string
+  observacoes?: string
+  created: string
+  updated: string
+}
+
+export interface FeiraCusto {
+  id: string
+  feira: string
+  categoria: FeiraCustoCategoria
+  descricao?: string
+  fornecedor?: string
+  data_custo?: string
+  valor_estimado: number
+  valor_realizado: number
+  observacoes?: string
+  created: string
+  updated: string
+  expand?: { feira?: Feira }
+}
+
+export interface FeiraResultado {
+  id: string
+  feira: string
+  cliente?: string
+  produto?: string
+  quantidade: number
+  valor_venda: number
+  data_resultado?: string
+  tipo_resultado: FeiraResultadoTipo
+  observacoes?: string
+  numero_pedido?: string
+  pedido_arquivo?: string
+  pedido_nome_arquivo?: string
+  pedido_texto_extraido?: string
+  pedido_leitura_status?: 'manual' | 'processado' | 'revisao_manual' | 'erro'
+  created: string
+  updated: string
+  expand?: { feira?: Feira }
+}
+
+export interface FeiraArquivo {
+  id: string
+  feira: string
+  arquivo?: string
+  nome_arquivo: string
+  tipo_arquivo: FeiraArquivoTipo
+  leitura_status: FeiraLeituraStatus
+  texto_extraido?: string
+  dados_extraidos?: {
+    itens?: Array<{ categoria: FeiraCustoCategoria; descricao: string; valor: number }>
+  }
+  total_custo_extraido: number
+  custos_importados: number
+  observacoes?: string
+  created: string
+  updated: string
+  expand?: { feira?: Feira }
+}
+
 export type CategoriaProduto =
   | 'Linha Prohmix'
   | 'Linha Supermix'
@@ -68,7 +172,7 @@ export type CategoriaProduto =
   | 'Homogeneizador de esterco'
   | 'Revolvedor de cama'
 
-export interface Revenda {
+export interface Revenda extends CadastroFields {
   id: string
   nome: string
   cnpj?: string
@@ -77,9 +181,12 @@ export interface Revenda {
   telefone?: string
   contato_principal?: string
   email?: string
-  modelos: ProdutoModelo[]
+  /** @deprecated Legacy field retained for historical compatibility; no longer shown or edited. */
+  modelos?: ProdutoModelo[]
   status: RevendaStatus
   observacoes?: string
+  carteira?: string
+  responsavel?: string
   created: string
   updated: string
 }
@@ -117,6 +224,9 @@ export interface LeadHistorico {
   motivo_codigo?: string
   motivo_descricao?: string
   responsavel?: string
+  tipo_evento?: string
+  usuario_origem?: string
+  usuario_destino?: string
   data_hora: string
   observacao?: string
   created?: string
@@ -138,7 +248,6 @@ export interface Venda {
   id: string
   numero_lead?: string
   cliente: string
-  carteira?: string
   produto?: ProdutoModelo
   categoria_produto?: CategoriaProduto
   valor: number
@@ -159,6 +268,7 @@ export interface Venda {
   vendedor?: string
   proxima_acao?: string
   probabilidade: number
+  carteira?: string
   origem?: string
   altforce_id?: string
   altforce_stage_id?: string
