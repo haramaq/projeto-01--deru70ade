@@ -8,14 +8,41 @@ const ROLE_PERMISSIONS: Record<UserRole, readonly PermissionKey[]> = {
   revendedor: ['leads'],
   suporte: ['dashboard', 'leads', 'clientes', 'suporte'],
 }
+
 const PERMISSION_FIELDS: Record<PermissionKey, keyof User> = {
-  dashboard: 'perm_dashboard', leads: 'perm_leads', clientes: 'perm_clientes', revendas: 'perm_revendas', suporte: 'perm_suporte', relatorios: 'perm_relatorios', configuracoes: 'perm_configuracoes',
+  dashboard: 'perm_dashboard',
+  leads: 'perm_leads',
+  clientes: 'perm_clientes',
+  revendas: 'perm_revendas',
+  suporte: 'perm_suporte',
+  relatorios: 'perm_relatorios',
+  configuracoes: 'perm_configuracoes',
 }
+
 export function hasPermission(user: User | null, permission: PermissionKey) {
   if (!user || user.ativo === false) return false
-  return ROLE_PERMISSIONS[user.role].includes(permission) || user[PERMISSION_FIELDS[permission]] === true
+  return (
+    ROLE_PERMISSIONS[user.role].includes(permission) || user[PERMISSION_FIELDS[permission]] === true
+  )
 }
+
 export function permissionsForRole(role: UserRole): Record<PermissionKey, boolean> {
-  return Object.fromEntries((Object.keys(PERMISSION_FIELDS) as PermissionKey[]).map((key) => [key, ROLE_PERMISSIONS[role].includes(key)])) as Record<PermissionKey, boolean>
+  return Object.fromEntries(
+    (Object.keys(PERMISSION_FIELDS) as PermissionKey[]).map((key) => [
+      key,
+      ROLE_PERMISSIONS[role].includes(key),
+    ]),
+  ) as Record<PermissionKey, boolean>
 }
+
 export const permissionFieldNames = PERMISSION_FIELDS
+
+export const restrictedLeadStages = [
+  'pecas_pos_vendas',
+  'financeiro_fiscal',
+  'fornecedores',
+] as const
+
+export function canAccessRestrictedLeadStages(user: User | null) {
+  return Boolean(user && ['admin', 'triagem', 'suporte'].includes(user.role))
+}

@@ -18,7 +18,7 @@ export function validateCNPJ(cnpj: string): boolean {
   if (!cnpj) return true // optional field in some forms unless required
   const clean = cnpj.replace(/\D/g, '')
   if (clean.length !== 14) return false
-  if (/^(\d)\1{13}$/.test(clean)) return false
+  if (/(\d)\1{13}/.test(clean)) return false
 
   // Validate check digits
   let length = 12
