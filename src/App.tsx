@@ -6,18 +6,17 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { AuthProvider } from '@/contexts/AuthContext'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import Layout from '@/components/Layout'
-
-// Pages
 import Login from '@/pages/Login'
 import Dashboard from '@/pages/Index'
 import Vendas from '@/pages/Vendas'
 import Clientes from '@/pages/Clientes'
 import ClienteDetalhe from '@/pages/ClienteDetalhe'
-import Revendas from '@/pages/Revendas'
+import ClientesUnificados from '@/pages/ClientesUnificados'
 import RevendaDetalhe from '@/pages/RevendaDetalhe'
 import Suporte from '@/pages/Suporte'
 import Relatorios from '@/pages/Relatorios'
 import Configuracoes from '@/pages/Configuracoes'
+import Feiras from '@/pages/Feiras'
 import AccessDenied from '@/pages/AccessDenied'
 import NotFound from '@/pages/NotFound'
 
@@ -28,10 +27,7 @@ const App = () => (
         <Toaster />
         <Sonner position="top-right" duration={3500} richColors />
         <Routes>
-          {/* Public Login Route */}
           <Route path="/login" element={<Login />} />
-
-          {/* Authenticated Layout Wrapped Routes */}
           <Route
             element={
               <ProtectedRoute>
@@ -39,9 +35,14 @@ const App = () => (
               </ProtectedRoute>
             }
           >
-            <Route index element={<ProtectedRoute requiredPermission="dashboard"><Dashboard /></ProtectedRoute>} />
-
-            {/* Leads/Kanban - perfis operacionais */}
+            <Route
+              index
+              element={
+                <ProtectedRoute requiredPermission="dashboard">
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="vendas"
               element={
@@ -50,19 +51,23 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-
-            <Route path="clientes" element={<ProtectedRoute requiredPermission="clientes"><Clientes /></ProtectedRoute>} />
-            <Route path="clientes/:id" element={<ProtectedRoute requiredPermission="clientes"><ClienteDetalhe /></ProtectedRoute>} />
-
-            {/* Revendas - admin, vendedor */}
             <Route
-              path="revendas"
+              path="clientes"
               element={
-                <ProtectedRoute requiredPermission="revendas">
-                  <Revendas />
+                <ProtectedRoute requiredPermission="clientes">
+                  <ClientesUnificados />
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="clientes/:id"
+              element={
+                <ProtectedRoute requiredPermission="clientes">
+                  <ClienteDetalhe />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="revendas" element={<Navigate to="/clientes?tipo=revenda" replace />} />
             <Route
               path="revendas/:id"
               element={
@@ -71,8 +76,6 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-
-            {/* Suporte - admin, suporte */}
             <Route
               path="suporte"
               element={
@@ -81,8 +84,6 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-
-            {/* Relatórios - admin only */}
             <Route
               path="relatorios"
               element={
@@ -91,8 +92,14 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-
-            {/* Configurações - admin only */}
+            <Route
+              path="feiras"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <Feiras />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="configuracoes"
               element={
@@ -101,14 +108,9 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-
-            {/* Explicit Access Denied Screen */}
             <Route path="acesso-negado" element={<AccessDenied />} />
-
-            {/* Legacy /dashboard redirect to root / */}
             <Route path="dashboard" element={<Navigate to="/" replace />} />
           </Route>
-
           <Route path="*" element={<NotFound />} />
         </Routes>
       </TooltipProvider>
