@@ -19,6 +19,8 @@ import Configuracoes from '@/pages/Configuracoes'
 import Feiras from '@/pages/Feiras'
 import AccessDenied from '@/pages/AccessDenied'
 import NotFound from '@/pages/NotFound'
+const MapaComercial = React.lazy(() => import('@/pages/MapaComercial'))
+import { MAP_ALLOWED_ROLES } from '@/features/mapa-comercial/domain/access'
 
 const App = () => (
   <BrowserRouter>
@@ -40,6 +42,20 @@ const App = () => (
               element={
                 <ProtectedRoute requiredPermission="dashboard">
                   <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="mapa-comercial"
+              element={
+                <ProtectedRoute allowedRoles={MAP_ALLOWED_ROLES}>
+                  <React.Suspense
+                    fallback={
+                      <div className="p-8 text-sm text-[#64748B]">Carregando Mapa Comercial…</div>
+                    }
+                  >
+                    <MapaComercial />
+                  </React.Suspense>
                 </ProtectedRoute>
               }
             />

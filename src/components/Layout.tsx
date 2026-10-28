@@ -8,6 +8,7 @@ import {
   BarChart3,
   Settings,
   Store,
+  MapPinned,
   LogOut,
   Bell,
   Menu,
@@ -31,6 +32,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
+import { canAccessCommercialMap } from '@/features/mapa-comercial/domain/access'
 
 export default function Layout() {
   const { user, role, can, logout } = useAuth()
@@ -66,36 +68,55 @@ export default function Layout() {
     setMobileOpen(false)
   }, [location.pathname])
 
-  const visibleNavItems: {
+  type NavigationItem = {
     title: string
     path: string
     icon: typeof LayoutDashboard
     permission: PermissionKey
     badgeCount?: number
-  }[] = [
-    { title: 'Dashboard', path: '/', icon: LayoutDashboard, permission: 'dashboard' },
-    { title: 'Leads / Kanban', path: '/vendas', icon: TrendingUp, permission: 'leads' },
-    { title: 'Clientes', path: '/clientes', icon: Users, permission: 'clientes' },
-    {
-      title: 'Suporte',
-      path: '/suporte',
-      icon: Headphones,
-      permission: 'suporte',
-      badgeCount: openTicketsCount,
-    },
-    { title: 'Relatórios', path: '/relatorios', icon: BarChart3, permission: 'relatorios' },
-    { title: 'Configurações', path: '/configuracoes', icon: Settings, permission: 'configuracoes' },
-    ...(role === 'admin'
-      ? [
-          {
-            title: 'Feiras',
-            path: '/feiras',
-            icon: Store,
-            permission: 'configuracoes' as PermissionKey,
-          },
-        ]
-      : []),
-  ].filter((item) => can(item.permission))
+  }
+
+  const mapNavigationItem: NavigationItem | null = canAccessCommercialMap(role)
+    ? {
+        title: 'Mapa Comercial',
+        path: '/mapa-comercial',
+        icon: MapPinned,
+        permission: 'leads' as PermissionKey,
+      }
+    : null
+
+  const visibleNavItems = (
+    [
+      ...(mapNavigationItem ? [mapNavigationItem] : []),
+      { title: 'Dashboard', path: '/', icon: LayoutDashboard, permission: 'dashboard' },
+      { title: 'Leads / Kanban', path: '/vendas', icon: TrendingUp, permission: 'leads' },
+      { title: 'Clientes', path: '/clientes', icon: Users, permission: 'clientes' },
+      {
+        title: 'Suporte',
+        path: '/suporte',
+        icon: Headphones,
+        permission: 'suporte',
+        badgeCount: openTicketsCount,
+      },
+      { title: 'Relatórios', path: '/relatorios', icon: BarChart3, permission: 'relatorios' },
+      {
+        title: 'Configurações',
+        path: '/configuracoes',
+        icon: Settings,
+        permission: 'configuracoes',
+      },
+      ...(role === 'admin'
+        ? [
+            {
+              title: 'Feiras',
+              path: '/feiras',
+              icon: Store,
+              permission: 'configuracoes' as PermissionKey,
+            },
+          ]
+        : []),
+    ] as NavigationItem[]
+  ).filter((item) => can(item.permission))
 
   const roleLabels: Record<string, string> = {
     admin: 'Administrador',
