@@ -377,7 +377,7 @@ export default function Configuracoes() {
     }
     if (
       !editingUser &&
-      users.some((item) => item.email.toLowerCase() === formEmail.trim().toLowerCase())
+      users.some((item) => (item.email || '').toLowerCase() === formEmail.trim().toLowerCase())
     ) {
       toast.error('Já existe um usuário com este e-mail.')
       return
