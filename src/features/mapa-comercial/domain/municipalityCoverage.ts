@@ -3,14 +3,20 @@
  *
  * Estratégia (decisões anteriores preservadas):
  * - O KML define territórios POLIGONAIS por vendedor (rótulo visual, nunca identidade CRM).
- * - A consulta usa a COORDENADA OFICIAL do município (dataset real reconciliado com CNEFE/IBGE)
- *   testada contra os polígonos (ray casting, algoritmo padrão even-odd).
+ * - A consulta usa a COORDENADA OFICIAL do município (dataset real de fonte pública,
+ *   reconciliado com CNEFE/IBGE) testada contra os polígonos (ray casting even-odd).
  * - Município fora de todo polígono = SEM COBERTURA (sinalizado, nunca atribuído).
  * - Município dentro de 2+ polígonos = CONFLITO (sinalizado para revisão humana, nunca automático).
  * - Nenhuma escrita: consulta pura em memória.
  */
-import { MUNICIPIOS, MUNICIPIO_DATASET_META } from '../data/municipios-coordenadas.ts'
+import {
+  loadMunicipalities,
+  cachedMunicipalities,
+  datasetMeta,
+} from '../data/municipios-runtime.ts'
 import type { KmlTerritory } from '../kml/parseKml'
+
+export { loadMunicipalities, cachedMunicipalities, datasetMeta }
 
 export interface MunicipalityPoint {
   codigoIbge: string
@@ -26,29 +32,6 @@ export interface MunicipalityHit {
   /** Territórios (rótulos visuais do KML) cujos polígonos contêm a coordenada do município. */
   territories: Array<{ id: string; label: string; color?: string }>
   status: 'coberto' | 'conflito' | 'sem-cobertura'
-}
-
-let cache: MunicipalityPoint[] | null = null
-
-export function loadMunicipalities(): MunicipalityPoint[] {
-  if (cache) return cache
-  cache = MUNICIPIOS.map(([codigoIbge, nome, uf, lat, lng]) => ({
-    codigoIbge,
-    nome,
-    uf,
-    lat,
-    lng,
-    normalizedName: normalizeName(nome),
-  }))
-  return cache
-}
-
-export function datasetMeta(): { total: number; fonte: string; geradoEm: string } {
-  return {
-    total: MUNICIPIO_DATASET_META.total,
-    fonte: MUNICIPIO_DATASET_META.fonte,
-    geradoEm: MUNICIPIO_DATASET_META.gerado_em,
-  }
 }
 
 function normalizeName(value: string): string {
@@ -103,7 +86,8 @@ export function lookupMunicipality(
 ): MunicipalityHit | { error: 'nao-encontrado' | 'ambiguo' } {
   const q = normalizeName(query)
   if (!q) return { error: 'nao-encontrado' }
-  const all = loadMunicipalities()
+  const all = cachedMunicipalities()
+  if (!all) return { error: 'nao-encontrado' }
   // código IBGE de 7 dígitos tem prioridade (identidade canônica — decisão D-6)
   const codigoMatch = query.trim().match(/^(\d{7})(\s*,\s*[a-z]{2})?$/i)
   if (codigoMatch) {
@@ -153,7 +137,7 @@ export function coverageSummary(
   territories: readonly KmlTerritory[],
   ufFilter?: string,
 ): { semCobertura: number; conflitos: number; cobertos: number; total: number } {
-  const all = loadMunicipalities().filter((m) => !ufFilter || m.uf === ufFilter)
+  const all = (cachedMunicipalities() ?? []).filter((m) => !ufFilter || m.uf === ufFilter)
   let semCobertura = 0,
     conflitos = 0,
     cobertos = 0
