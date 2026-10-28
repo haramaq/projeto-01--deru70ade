@@ -10,6 +10,8 @@ import {
   CheckCircle,
   Lock,
   Eye,
+  Copy,
+  Check,
 } from 'lucide-react'
 import { userService } from '@/services/crmService'
 import type { AuditEntry, PermissionKey, User, UserRole } from '@/types/crm'
@@ -284,6 +286,21 @@ export default function Configuracoes() {
   const [removing, setRemoving] = useState(false)
   const [auditSearch, setAuditSearch] = useState('')
   const [selectedAudit, setSelectedAudit] = useState<AuditEntry | null>(null)
+  const [copiedEmailId, setCopiedEmailId] = useState<string | null>(null)
+
+  const isAdmin = user?.role === 'admin'
+
+  const handleCopyEmail = async (item: User) => {
+    if (!item.email) return
+    try {
+      await navigator.clipboard.writeText(item.email)
+      setCopiedEmailId(item.id)
+      toast.success(`E-mail copiado: ${item.email}`)
+      setTimeout(() => setCopiedEmailId(null), 2000)
+    } catch {
+      toast.error('Não foi possível copiar o e-mail.')
+    }
+  }
 
   const loadAdminData = async () => {
     let listLoaded = false
@@ -363,7 +380,7 @@ export default function Configuracoes() {
 
   const handleSaveUser = async (event: React.FormEvent) => {
     event.preventDefault()
-    if (!formName.trim() || !formEmail.trim()) {
+    if (!formName.trim() || (!editingUser && !formEmail.trim())) {
       toast.error('Nome e e-mail são obrigatórios.')
       return
     }
@@ -631,6 +648,22 @@ export default function Configuracoes() {
                         <td className="px-4 py-3.5 text-gray-500">{formatDateBR(item.created)}</td>
                         <td className="px-4 py-3.5 text-right">
                           <div className="flex justify-end gap-1.5">
+                            {isAdmin && item.email && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => void handleCopyEmail(item)}
+                                className="h-8 w-8 p-0 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                                title="Copiar e-mail"
+                                aria-label={`Copiar e-mail de ${item.name || item.email}`}
+                              >
+                                {copiedEmailId === item.id ? (
+                                  <Check className="h-3.5 w-3.5 text-emerald-600" />
+                                ) : (
+                                  <Copy className="h-3.5 w-3.5" />
+                                )}
+                              </Button>
+                            )}
                             <Button
                               variant="ghost"
                               size="sm"
