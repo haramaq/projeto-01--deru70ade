@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { MapContainer, Polygon, TileLayer, Tooltip, useMap } from 'react-leaflet'
+import { MapContainer, Marker, Polygon, TileLayer, Tooltip, useMap } from 'react-leaflet'
 import {
   AlertTriangle,
   CheckCircle2,
@@ -9,13 +9,15 @@ import {
   Info,
   LocateFixed,
   MapPinned,
+  Maximize,
   Palette,
   RotateCcw,
   Search,
   Trash2,
   X,
+  ZoomIn,
 } from 'lucide-react'
-import { latLngBounds } from 'leaflet'
+import { latLngBounds, divIcon } from 'leaflet'
 import type { LatLngBoundsExpression, LatLngTuple, PathOptions } from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { PageContainer, PageHeader } from '@/components/haramaq'
@@ -35,10 +37,14 @@ import {
   datasetMeta,
   lookupMunicipality,
   coverageSummary,
+  cachedMunicipalities,
 } from '@/features/mapa-comercial/domain/municipalityCoverage'
-import type { MunicipalityHit } from '@/features/mapa-comercial/domain/municipalityCoverage'
+import type { MunicipalityLookupResult } from '@/features/mapa-comercial/domain/municipalityCoverage'
 import { decodeKmlVendedores } from '@/features/mapa-comercial/data/kml-vendedores'
-import { loadMunicipalities } from '@/features/mapa-comercial/data/municipios-runtime'
+import {
+  loadMunicipalities,
+  datasetLoadError,
+} from '@/features/mapa-comercial/data/municipios-runtime'
 import '@/features/mapa-comercial/mapa.css'
 
 const LOCAL_QA_MODE = import.meta.env.MODE === 'localqa'
@@ -66,20 +72,70 @@ function makeBounds(territories: readonly KmlTerritory[]): LatLngBoundsExpressio
 function FitTerritories({
   territories,
   selected,
+  focus,
 }: {
   territories: readonly KmlTerritory[]
   selected: KmlTerritory | null
+  focus: { lat: number; lng: number; zoom: number; nonce: number } | null
 }) {
   const map = useMap()
   useEffect(() => {
+    if (focus) {
+      map.setView([focus.lat, focus.lng], focus.zoom)
+      return
+    }
     const bounds = makeBounds(selected ? [selected] : territories)
     if (bounds && 'isValid' in bounds && bounds.isValid()) {
       map.fitBounds(bounds, { padding: [24, 24], maxZoom: selected ? 13 : 7 })
     } else if (!territories.length) {
       map.setView(DEFAULT_BRAZIL_CENTER, 4)
     }
-  }, [map, territories, selected?.id])
+  }, [map, territories, selected?.id, focus?.nonce])
   return null
+}
+
+/** Marcador visual do município pesquisado (divIcon sem dependência de assets). */
+function MuniMarker({
+  marker,
+}: {
+  marker: {
+    lat: number
+    lng: number
+    nome: string
+    uf: string
+    codigoIbge: string
+    status: 'coberto' | 'conflito' | 'sem-cobertura'
+    vendedores: string[]
+  } | null
+}) {
+  if (!marker) return null
+  const cor =
+    marker.status === 'coberto' ? '#059669' : marker.status === 'conflito' ? '#d97706' : '#64748b'
+  const rotulo =
+    marker.status === 'coberto'
+      ? 'Coberto por: ' + marker.vendedores.join(', ')
+      : marker.status === 'conflito'
+        ? 'Conflito — ' +
+          marker.vendedores.length +
+          ' territórios: ' +
+          marker.vendedores.join(', ') +
+          ' (revisão humana)'
+        : 'Sem cobertura territorial definida no KML'
+  return (
+    <Marker
+      position={[marker.lat, marker.lng]}
+      icon={divIcon({
+        className: 'map-muni-marker',
+        html: `<span style="display:block;width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid #fff;box-shadow:0 1px 4px rgb(15 23 42 / 45%)"></span>`,
+        iconSize: [14, 14],
+        iconAnchor: [7, 7],
+      })}
+    >
+      <Tooltip permanent direction="top" offset={[0, -8]}>
+        {marker.nome} · {marker.uf} · IBGE {marker.codigoIbge} — {rotulo}
+      </Tooltip>
+    </Marker>
+  )
 }
 
 function TerritoryLayer({
@@ -146,14 +202,27 @@ export default function MapaComercial() {
   const [message, setMessage] = useState<{ kind: 'success' | 'error'; text: string } | null>(null)
   const [readingFile, setReadingFile] = useState(false)
   const [muniQuery, setMuniQuery] = useState('')
-  const [muniResult, setMuniResult] = useState<
-    MunicipalityHit | { error: 'nao-encontrado' | 'ambiguo' } | null
-  >(null)
+  const [muniResult, setMuniResult] = useState<MunicipalityLookupResult | null>(null)
   const [muniBusy, setMuniBusy] = useState(false)
   const [muniSummary, setMuniSummary] = useState<{ total: number; fonte: string } | null>(null)
+  const [muniMarker, setMuniMarker] = useState<{
+    lat: number
+    lng: number
+    nome: string
+    uf: string
+    codigoIbge: string
+    status: 'coberto' | 'conflito' | 'sem-cobertura'
+    vendedores: string[]
+  } | null>(null)
+  const [mapFocus, setMapFocus] = useState<{
+    lat: number
+    lng: number
+    zoom: number
+    nonce: number
+  } | null>(null)
 
-  // Pré-carregamento automático: KML oficial versionado + dataset de municípios
-  // (fonte pública com cache de sessão). O upload manual continua disponível para outra versão.
+  // Pré-carregamento automático: KML oficial versionado (embutido, gzip) + dataset de municípios
+  // (fetch público com cache de sessão). O upload manual continua disponível para outra versão.
   useEffect(() => {
     let cancelado = false
     ;(async () => {
@@ -171,7 +240,7 @@ export default function MapaComercial() {
         if (!cancelado)
           setMessage({
             kind: 'error',
-            text: 'KML oficial não pôde ser pré-carregado — use o botão “Importar KML” com o arquivo Vendedores.kml.',
+            text: 'Falha ao decodificar o KML embutido — use o upload manual.',
           })
       }
       try {
@@ -290,6 +359,9 @@ export default function MapaComercial() {
     setSelectedTerritoryId(null)
     setOverlapsOnly(false)
     setMuniResult(null)
+    setMuniMarker(null)
+    setMapFocus(null)
+    setMuniSummary(null)
     setMessage({
       kind: 'success',
       text: 'A camada e as personalizações da sessão foram removidas.',
@@ -300,16 +372,57 @@ export default function MapaComercial() {
   function handleMunicipalityLookup() {
     if (!result || muniBusy) return
     setMuniBusy(true)
-    try {
-      const hit = lookupMunicipality(muniQuery, territories)
-      setMuniResult(hit)
-      if (!('error' in hit)) {
-        // destaca no mapa o território responsável (quando único)
-        if (hit.territories.length === 1) setSelectedTerritoryId(hit.territories[0].id)
+    void (async () => {
+      try {
+        // dataset ausente → tenta (re)carregar antes de falhar (fallback de mirror + retry)
+        if (!cachedMunicipalities()) {
+          try {
+            await loadMunicipalities()
+            setMuniSummary({ total: cachedMunicipalities()!.length, fonte: datasetMeta().fonte })
+          } catch {
+            const erro = datasetLoadError()
+            setMuniResult({ error: 'fonte-indisponivel' })
+            setMuniMarker(null)
+            setMapFocus(null)
+            setMessage({
+              kind: 'error',
+              text: `Fonte de municípios indisponível (${erro ?? 'falha de rede'}) — a consulta por código/nome exige essa base. Tente novamente.`,
+            })
+            return
+          }
+        }
+        const hit = lookupMunicipality(muniQuery, territories)
+        setMuniResult(hit)
+        if (!('error' in hit)) {
+          const vendedores = hit.territories.map((t) => t.label)
+          setMuniMarker({
+            lat: hit.municipality.lat,
+            lng: hit.municipality.lng,
+            nome: hit.municipality.nome,
+            uf: hit.municipality.uf,
+            codigoIbge: hit.municipality.codigoIbge,
+            status: hit.status,
+            vendedores,
+          })
+          // centraliza o mapa no município (zoom 11 ≈ município; conflito mantém todos os territórios visíveis)
+          setMapFocus({
+            lat: hit.municipality.lat,
+            lng: hit.municipality.lng,
+            zoom: 11,
+            nonce: Date.now(),
+          })
+          // destaca no mapa o território responsável (quando único)
+          if (hit.territories.length === 1) setSelectedTerritoryId(hit.territories[0].id)
+          // conflito: mantém todos visíveis (sem atribuição automática), sem seleção única
+          if (hit.territories.length > 1) setSelectedTerritoryId(null)
+        } else {
+          setMuniMarker(null)
+          setMapFocus(null)
+        }
+      } finally {
+        setMuniBusy(false)
       }
-    } finally {
-      setMuniBusy(false)
-    }
+    })()
   }
 
   function toggleSeller(sellerId: string) {
@@ -509,16 +622,109 @@ export default function MapaComercial() {
             </div>
           </details>
           <p className="mt-3 text-xs leading-relaxed text-[#64748b]">
-            <strong className="text-[#1e293b]">Sobreposição ≠ conflito:</strong> um vendedor com
-            vários polígonos na mesma área é um único território (sem conflito); a métrica acima
-            conta apenas municípios cuja coordenada cai em territórios de{' '}
-            <strong>vendedores distintos</strong>. Nenhuma atribuição automática é feita.
+            <strong className="text-[#1e293b]">Sobreposição ≠ conflito:</strong>{' '}
+            <strong className="text-[#1e293b]">{overlapPairs.length}</strong> é o número de{' '}
+            <strong className="text-[#1e293b]">
+              pares de territórios cujos polígonos se cruzam no mapa
+            </strong>{' '}
+            (geometria do KML; um vendedor com vários polígonos na mesma área é um único território,
+            sem conflito). Já os{' '}
+            <strong className="text-[#1e293b]">{coverage.conflitos.toLocaleString('pt-BR')}</strong>{' '}
+            municípios em conflito são{' '}
+            <strong className="text-[#1e293b]">
+              municípios cuja coordenada oficial cai dentro de territórios de vendedores distintos
+            </strong>{' '}
+            — podem ou não estar numa área de sobreposição geométrica. Nenhuma atribuição automática
+            é feita em nenhum dos casos.
           </p>
         </section>
       )}
 
       <section className="map-commercial-layout" aria-label="Mapa e filtros territoriais">
         <aside className="map-commercial-sidebar rounded-xl border border-[#e2e8f0] bg-white shadow-sm">
+          {result && (
+            <div
+              className="border-b border-[#e2e8f0] bg-white p-4"
+              aria-label="Consulta territorial por município"
+            >
+              <p className="text-[10px] font-bold uppercase tracking-wide text-[#64748b]">
+                Consultar município — acesso rápido
+              </p>
+              <form
+                className="mt-2 flex gap-2"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  handleMunicipalityLookup()
+                }}
+              >
+                <input
+                  value={muniQuery}
+                  onChange={(event) => setMuniQuery(event.currentTarget.value)}
+                  placeholder="Ex.: Uberlândia, MG"
+                  aria-label="Consultar responsabilidade territorial por município e UF"
+                  className="h-10 min-w-0 flex-1 rounded-lg border border-[#cbd5e1] bg-white px-3 text-sm outline-none transition focus:border-[#d92323] focus:ring-2 focus:ring-red-100"
+                />
+                <button
+                  type="submit"
+                  disabled={muniBusy}
+                  className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-3 text-xs font-semibold text-[#475569] transition hover:bg-[#f1f5f9] disabled:opacity-60"
+                >
+                  <LocateFixed className="h-3.5 w-3.5" /> Consultar
+                </button>
+              </form>
+              {muniResult && !('error' in muniResult) && (
+                <div
+                  className="mt-3 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] p-3 text-xs"
+                  aria-live="polite"
+                >
+                  <p className="font-bold text-[#1e293b]">
+                    {muniResult.municipality.nome} · {muniResult.municipality.uf}
+                    <span className="ml-1 font-normal text-[#64748b]">
+                      IBGE {muniResult.municipality.codigoIbge}
+                    </span>
+                  </p>
+                  {muniResult.status === 'coberto' && (
+                    <p className="mt-1.5 flex items-center gap-1.5 font-semibold text-emerald-700">
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Coberto por:{' '}
+                      {muniResult.territories.map((t) => t.label).join(', ')}
+                    </p>
+                  )}
+                  {muniResult.status === 'conflito' && (
+                    <p className="mt-1.5 flex items-center gap-1.5 font-semibold text-amber-700">
+                      <AlertTriangle className="h-3.5 w-3.5" /> Conflito —{' '}
+                      {muniResult.territories.length} territórios:{' '}
+                      {muniResult.territories.map((t) => t.label).join(', ')}. Requer revisão
+                      humana.
+                    </p>
+                  )}
+                  {muniResult.status === 'sem-cobertura' && (
+                    <p className="mt-1.5 flex items-center gap-1.5 font-semibold text-[#64748b]">
+                      <Info className="h-3.5 w-3.5" /> Sem cobertura territorial definida no KML.
+                    </p>
+                  )}
+                </div>
+              )}
+              {muniResult && 'error' in muniResult && (
+                <p
+                  className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-800"
+                  aria-live="polite"
+                >
+                  {muniResult.error === 'ambiguo'
+                    ? 'Município com mesmo nome em mais de uma UF — informe a UF (ex.: “Nome, SP”).'
+                    : muniResult.error === 'fonte-indisponivel'
+                      ? 'Base oficial de municípios indisponível nesta sessão (falha de rede na fonte pública). A consulta por código/nome requer essa base — tente novamente em instantes.'
+                      : 'Município não encontrado na base oficial.'}
+                </p>
+              )}
+              {muniSummary && (
+                <p className="mt-2 text-[10px] leading-relaxed text-[#94a3b8]">
+                  Base oficial: {muniSummary.total.toLocaleString('pt-BR')} municípios ·{' '}
+                  {muniSummary.fonte}
+                </p>
+              )}
+            </div>
+          )}
+
           <div className="border-b border-[#e2e8f0] p-4">
             <div className="mb-3 flex items-center justify-between gap-2">
               <div>
@@ -652,87 +858,6 @@ export default function MapaComercial() {
             )}
           </div>
 
-          {result && (
-            <div
-              className="border-t border-[#e2e8f0] bg-white p-4"
-              aria-label="Consulta territorial por município"
-            >
-              <p className="text-[10px] font-bold uppercase tracking-wide text-[#64748b]">
-                Consultar município
-              </p>
-              <form
-                className="mt-2 flex gap-2"
-                onSubmit={(event) => {
-                  event.preventDefault()
-                  handleMunicipalityLookup()
-                }}
-              >
-                <input
-                  value={muniQuery}
-                  onChange={(event) => setMuniQuery(event.currentTarget.value)}
-                  placeholder="Ex.: Uberlândia, MG ou 3170206"
-                  aria-label="Consultar responsabilidade territorial por município, UF ou código IBGE"
-                  className="h-10 min-w-0 flex-1 rounded-lg border border-[#cbd5e1] bg-white px-3 text-sm outline-none transition focus:border-[#d92323] focus:ring-2 focus:ring-red-100"
-                />
-                <button
-                  type="submit"
-                  disabled={muniBusy}
-                  className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-3 text-xs font-semibold text-[#475569] transition hover:bg-[#f1f5f9] disabled:opacity-60"
-                >
-                  <LocateFixed className="h-3.5 w-3.5" /> Consultar
-                </button>
-              </form>
-              {muniResult && !('error' in muniResult) && (
-                <div
-                  className="mt-3 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] p-3 text-xs"
-                  aria-live="polite"
-                >
-                  <p className="font-bold text-[#1e293b]">
-                    {muniResult.municipality.nome} · {muniResult.municipality.uf}
-                    <span className="ml-1 font-normal text-[#64748b]">
-                      IBGE {muniResult.municipality.codigoIbge}
-                    </span>
-                  </p>
-                  {muniResult.status === 'coberto' && (
-                    <p className="mt-1.5 flex items-center gap-1.5 font-semibold text-emerald-700">
-                      <CheckCircle2 className="h-3.5 w-3.5" /> Coberto por:{' '}
-                      {muniResult.territories.map((t) => t.label).join(', ')}
-                    </p>
-                  )}
-                  {muniResult.status === 'conflito' && (
-                    <p className="mt-1.5 flex items-center gap-1.5 font-semibold text-amber-700">
-                      <AlertTriangle className="h-3.5 w-3.5" /> Conflito —{' '}
-                      {muniResult.territories.length} territórios:{' '}
-                      {muniResult.territories.map((t) => t.label).join(', ')}. Requer revisão
-                      humana.
-                    </p>
-                  )}
-                  {muniResult.status === 'sem-cobertura' && (
-                    <p className="mt-1.5 flex items-center gap-1.5 font-semibold text-[#64748b]">
-                      <Info className="h-3.5 w-3.5" /> Sem cobertura territorial definida no KML.
-                    </p>
-                  )}
-                </div>
-              )}
-              {muniResult && 'error' in muniResult && (
-                <p
-                  className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-800"
-                  aria-live="polite"
-                >
-                  {muniResult.error === 'ambiguo'
-                    ? 'Município com mesmo nome em mais de uma UF — informe a UF (ex.: “Nome, SP”).'
-                    : 'Município não encontrado na base oficial.'}
-                </p>
-              )}
-              {muniSummary && (
-                <p className="mt-2 text-[10px] leading-relaxed text-[#94a3b8]">
-                  Base oficial: {muniSummary.total.toLocaleString('pt-BR')} municípios ·{' '}
-                  {muniSummary.fonte}
-                </p>
-              )}
-            </div>
-          )}
-
           {selectedTerritory && (
             <div className="border-t border-[#e2e8f0] bg-[#f8fafc] p-4" aria-live="polite">
               <div className="flex items-start justify-between gap-2">
@@ -774,6 +899,33 @@ export default function MapaComercial() {
               <LocateFixed className="h-4 w-4 text-[#d92323]" />
               <span>Territórios comerciais</span>
             </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setMapFocus(null)}
+                disabled={!result}
+                className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-[#e2e8f0] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#475569] transition hover:bg-[#f1f5f9] disabled:opacity-50"
+                aria-label="Enquadrar todos os territórios no mapa"
+              >
+                <Maximize className="h-3.5 w-3.5" /> Enquadrar territórios
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setMapFocus({
+                    lat: DEFAULT_BRAZIL_CENTER[0],
+                    lng: DEFAULT_BRAZIL_CENTER[1],
+                    zoom: 10,
+                    nonce: Date.now(),
+                  })
+                }
+                disabled={!result}
+                className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-[#e2e8f0] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#475569] transition hover:bg-[#f1f5f9] disabled:opacity-50"
+                aria-label="Expandir o mapa"
+              >
+                <ZoomIn className="h-3.5 w-3.5" /> Expandir mapa
+              </button>
+            </div>
             <div className="flex items-center gap-3 text-[10px] font-medium text-[#64748b]">
               <span className="inline-flex items-center gap-1">
                 <span className="h-2 w-2 rounded-sm bg-[#d92323]" /> vendedor
@@ -804,7 +956,12 @@ export default function MapaComercial() {
                   maxZoom={19}
                 />
               )}
-              <FitTerritories territories={territories} selected={selectedTerritory} />
+              <FitTerritories
+                territories={territories}
+                selected={selectedTerritory}
+                focus={mapFocus}
+              />
+              <MuniMarker marker={muniMarker} />
               {filteredTerritories.map((territory) => (
                 <TerritoryLayer
                   key={territory.id}

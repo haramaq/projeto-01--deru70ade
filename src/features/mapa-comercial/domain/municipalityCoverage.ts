@@ -3,8 +3,8 @@
  *
  * Estratégia (decisões anteriores preservadas):
  * - O KML define territórios POLIGONAIS por vendedor (rótulo visual, nunca identidade CRM).
- * - A consulta usa a COORDENADA OFICIAL do município (dataset real de fonte pública,
- *   reconciliado com CNEFE/IBGE) testada contra os polígonos (ray casting even-odd).
+ * - A consulta usa a COORDENADA OFICIAL do município (dataset real reconciliado com CNEFE/IBGE)
+ *   testada contra os polígonos (ray casting, algoritmo padrão even-odd).
  * - Município fora de todo polígono = SEM COBERTURA (sinalizado, nunca atribuído).
  * - Município dentro de 2+ polígonos = CONFLITO (sinalizado para revisão humana, nunca automático).
  * - Nenhuma escrita: consulta pura em memória.
@@ -15,8 +15,6 @@ import {
   datasetMeta,
 } from '../data/municipios-runtime.ts'
 import type { KmlTerritory } from '../kml/parseKml'
-
-export { loadMunicipalities, cachedMunicipalities, datasetMeta }
 
 export interface MunicipalityPoint {
   codigoIbge: string
@@ -33,6 +31,12 @@ export interface MunicipalityHit {
   territories: Array<{ id: string; label: string; color?: string }>
   status: 'coberto' | 'conflito' | 'sem-cobertura'
 }
+
+export type MunicipalityLookupResult =
+  | MunicipalityHit
+  | { error: 'nao-encontrado' | 'ambiguo' | 'fonte-indisponivel' }
+
+export { loadMunicipalities, cachedMunicipalities, datasetMeta }
 
 function normalizeName(value: string): string {
   return value
@@ -83,11 +87,11 @@ export function pointInTerritory(lat: number, lng: number, territory: KmlTerrito
 export function lookupMunicipality(
   query: string,
   territories: readonly KmlTerritory[],
-): MunicipalityHit | { error: 'nao-encontrado' | 'ambiguo' } {
+): MunicipalityLookupResult {
   const q = normalizeName(query)
   if (!q) return { error: 'nao-encontrado' }
   const all = cachedMunicipalities()
-  if (!all) return { error: 'nao-encontrado' }
+  if (!all) return { error: 'fonte-indisponivel' }
   // código IBGE de 7 dígitos tem prioridade (identidade canônica — decisão D-6)
   const codigoMatch = query.trim().match(/^(\d{7})(\s*,\s*[a-z]{2})?$/i)
   if (codigoMatch) {
