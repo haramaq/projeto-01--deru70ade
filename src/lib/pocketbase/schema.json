@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-28T12:21:45.291Z",
+  "generatedAt": "2026-10-29T19:56:53.673Z",
   "collections": [
     {
       "name": "users",
@@ -29,21 +29,33 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "role",
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["admin", "triagem", "vendedor", "revendedor", "gestor", "suporte"]
+          "selectValues": [
+            "admin",
+            "triagem",
+            "vendedor",
+            "revendedor",
+            "gestor",
+            "suporte"
+          ]
         },
         {
           "name": "ativo",
@@ -104,12 +116,36 @@
           "type": "json",
           "required": false,
           "system": false
+        },
+        {
+          "name": "external_id_altforce",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "senha_provisoria",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "altforce_sync_status",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": [
+            "nao_vinculado",
+            "pendente_validacao",
+            "validado"
+          ]
         }
       ],
       "indexes": [
         "CREATE UNIQUE INDEX `idx_tokenKey__pb_users_auth_` ON `users` (`tokenKey`)",
         "CREATE UNIQUE INDEX `idx_email__pb_users_auth_` ON `users` (`email`) WHERE `email` != ''",
-        "CREATE INDEX `idx_users_role` ON `users` (role)"
+        "CREATE INDEX `idx_users_role` ON `users` (role)",
+        "CREATE UNIQUE INDEX `idx_users_external_id_altforce` ON `users` (external_id_altforce) WHERE external_id_altforce IS NOT NULL AND external_id_altforce != ''"
       ]
     },
     {
@@ -170,7 +206,10 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["ativo", "inativo"]
+          "selectValues": [
+            "ativo",
+            "inativo"
+          ]
         },
         {
           "name": "observacoes",
@@ -183,14 +222,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "responsavel",
@@ -221,7 +265,10 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["cliente_final", "revenda"]
+          "selectValues": [
+            "cliente_final",
+            "revenda"
+          ]
         },
         {
           "name": "external_id",
@@ -252,7 +299,10 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["cpf", "cnpj"]
+          "selectValues": [
+            "cpf",
+            "cnpj"
+          ]
         },
         {
           "name": "inscricao_estadual",
@@ -361,14 +411,20 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["PROHMIX", "SUPERMIX"]
+          "selectValues": [
+            "PROHMIX",
+            "SUPERMIX"
+          ]
         },
         {
           "name": "status",
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["autorizada", "pendente"]
+          "selectValues": [
+            "autorizada",
+            "pendente"
+          ]
         },
         {
           "name": "observacoes",
@@ -381,14 +437,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "external_id",
@@ -401,7 +462,9 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["revenda"]
+          "selectValues": [
+            "revenda"
+          ]
         },
         {
           "name": "razao_social",
@@ -426,7 +489,9 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["cnpj"]
+          "selectValues": [
+            "cnpj"
+          ]
         },
         {
           "name": "inscricao_estadual",
@@ -509,7 +574,10 @@
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": ["PROHMIX", "SUPERMIX"]
+          "selectValues": [
+            "PROHMIX",
+            "SUPERMIX"
+          ]
         },
         {
           "name": "valor",
@@ -566,14 +634,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "origem",
@@ -667,7 +740,12 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["em_andamento", "arquivado", "perdido", "convertido_pedido"]
+          "selectValues": [
+            "em_andamento",
+            "arquivado",
+            "perdido",
+            "convertido_pedido"
+          ]
         },
         {
           "name": "status_motivo_codigo",
@@ -782,14 +860,22 @@
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": ["baixa", "media", "alta"]
+          "selectValues": [
+            "baixa",
+            "media",
+            "alta"
+          ]
         },
         {
           "name": "status",
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": ["aberto", "finalizado", "fechado"]
+          "selectValues": [
+            "aberto",
+            "finalizado",
+            "fechado"
+          ]
         },
         {
           "name": "atribuido_a",
@@ -809,17 +895,24 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
-      "indexes": ["CREATE INDEX idx_tickets_status ON tickets (status)"]
+      "indexes": [
+        "CREATE INDEX idx_tickets_status ON tickets (status)"
+      ]
     },
     {
       "name": "auditoria_acesso",
@@ -867,7 +960,9 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         }
       ],
       "indexes": []
@@ -936,17 +1031,24 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
-      "indexes": ["CREATE UNIQUE INDEX idx_kanban_etapas_chave ON kanban_etapas (chave)"]
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_kanban_etapas_chave ON kanban_etapas (chave)"
+      ]
     },
     {
       "name": "lead_historico",
@@ -1013,14 +1115,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "tipo_evento",
@@ -1089,7 +1196,12 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["pendente", "em_andamento", "concluida", "cancelada"]
+          "selectValues": [
+            "pendente",
+            "em_andamento",
+            "concluida",
+            "cancelada"
+          ]
         },
         {
           "name": "prazo",
@@ -1108,17 +1220,24 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
-      "indexes": ["CREATE INDEX idx_lead_tarefas_lead ON lead_tarefas (lead_id)"]
+      "indexes": [
+        "CREATE INDEX idx_lead_tarefas_lead ON lead_tarefas (lead_id)"
+      ]
     },
     {
       "name": "lead_motivos_status",
@@ -1172,17 +1291,24 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
-      "indexes": ["CREATE UNIQUE INDEX idx_lead_motivos_codigo ON lead_motivos_status (codigo)"]
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_lead_motivos_codigo ON lead_motivos_status (codigo)"
+      ]
     },
     {
       "name": "feiras",
@@ -1254,7 +1380,12 @@
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": ["planejada", "em_andamento", "concluida", "cancelada"]
+          "selectValues": [
+            "planejada",
+            "em_andamento",
+            "concluida",
+            "cancelada"
+          ]
         },
         {
           "name": "descricao",
@@ -1273,14 +1404,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
       "indexes": [
@@ -1364,14 +1500,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
       "indexes": [
@@ -1432,7 +1573,11 @@
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": ["venda_realizada", "proposta", "lead_gerado"]
+          "selectValues": [
+            "venda_realizada",
+            "proposta",
+            "lead_gerado"
+          ]
         },
         {
           "name": "observacoes",
@@ -1445,14 +1590,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "pedido_arquivo",
@@ -1477,7 +1627,12 @@
           "type": "select",
           "required": false,
           "system": false,
-          "selectValues": ["manual", "processado", "revisao_manual", "erro"]
+          "selectValues": [
+            "manual",
+            "processado",
+            "revisao_manual",
+            "erro"
+          ]
         },
         {
           "name": "numero_pedido",
@@ -1526,14 +1681,23 @@
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": ["relatorio", "comprovante", "nota_fiscal", "outro"]
+          "selectValues": [
+            "relatorio",
+            "comprovante",
+            "nota_fiscal",
+            "outro"
+          ]
         },
         {
           "name": "leitura_status",
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": ["processado", "revisao_manual", "erro"]
+          "selectValues": [
+            "processado",
+            "revisao_manual",
+            "erro"
+          ]
         },
         {
           "name": "texto_extraido",
@@ -1570,17 +1734,274 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
-      "indexes": ["CREATE INDEX idx_feira_arquivos_feira ON feira_arquivos (feira)"]
+      "indexes": [
+        "CREATE INDEX idx_feira_arquivos_feira ON feira_arquivos (feira)"
+      ]
+    },
+    {
+      "name": "vendedor_ddd",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || usuario_id = @request.auth.id)",
+        "view": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || usuario_id = @request.auth.id)",
+        "create": "@request.auth.role = 'admin'",
+        "update": "@request.auth.role = 'admin'",
+        "delete": "@request.auth.role = 'admin'"
+      },
+      "fields": [
+        {
+          "name": "usuario_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "ddi",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "ddd",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "ativo",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "confirmado_por",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "observacao",
+          "type": "text",
+          "required": false,
+          "system": false
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX `idx_vendedor_ddd_consulta` ON `vendedor_ddd` (ddi, ddd, ativo)",
+        "CREATE INDEX `idx_vendedor_ddd_usuario` ON `vendedor_ddd` (usuario_id)"
+      ]
+    },
+    {
+      "name": "vendedor_ddd_historico",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor')",
+        "view": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor')",
+        "create": "@request.auth.role = 'admin'",
+        "update": null,
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "vendedor_ddd_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "vendedor_ddd"
+        },
+        {
+          "name": "acao",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "criado",
+            "ativado",
+            "desativado",
+            "removido"
+          ]
+        },
+        {
+          "name": "autor",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "antes",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "depois",
+          "type": "json",
+          "required": false,
+          "system": false
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "ddi_paises",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.role = 'admin'",
+        "update": "@request.auth.role = 'admin'",
+        "delete": "@request.auth.role = 'admin'"
+      },
+      "fields": [
+        {
+          "name": "ddi",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "pais_iso",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "formato_nacional",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "observacao",
+          "type": "text",
+          "required": false,
+          "system": false
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX `idx_ddi_paises_ddi` ON `ddi_paises` (ddi)"
+      ]
+    },
+    {
+      "name": "oportunidades",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || vendedor_id = @request.auth.id) && @request.auth.senha_provisoria != true",
+        "view": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || vendedor_id = @request.auth.id) && @request.auth.senha_provisoria != true",
+        "create": "@request.auth.id != '' && (@request.auth.role = 'admin' || vendedor_id = @request.auth.id) && @request.auth.senha_provisoria != true",
+        "update": "@request.auth.id != '' && (@request.auth.role = 'admin' || vendedor_id = @request.auth.id) && @request.auth.senha_provisoria != true",
+        "delete": "@request.auth.role = 'admin' && @request.auth.senha_provisoria != true"
+      },
+      "fields": [
+        {
+          "name": "contato_nome",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "telefone_e164",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "ddi",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "ddd",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "vendedor_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "regra_distribuicao",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": [
+            "ddi-unico",
+            "mapa-ibge-unico",
+            "revisao-humana",
+            "transferencia-manual"
+          ]
+        },
+        {
+          "name": "municipio_ibge",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "municipio_nome",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "uf",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "altforce_user_id",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": [
+            "nova",
+            "distribuida",
+            "em_revisao",
+            "transferida",
+            "encerrada"
+          ]
+        },
+        {
+          "name": "origem_dados",
+          "type": "json",
+          "required": false,
+          "system": false
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX `idx_oportunidades_vendedor` ON `oportunidades` (vendedor_id)",
+        "CREATE INDEX `idx_oportunidades_ddi_ddd` ON `oportunidades` (ddi, ddd)"
+      ]
     }
   ]
 }
