@@ -238,6 +238,8 @@ export default function MapaComercial() {
     Array<{ id: string; name: string; ativo: boolean; role: string }>
   >([])
   const [directoryOpen, setDirectoryOpen] = useState(false)
+  type MapTab = 'territorios' | 'vendedores' | 'cobertura'
+  const [activeTab, setActiveTab] = useState<MapTab>('territorios')
 
   // Pré-carregamento automático: KML oficial versionado (embutido, gzip) + dataset de municípios
   // (fetch público com cache de sessão). O upload manual continua disponível para outra versão.
@@ -585,7 +587,34 @@ export default function MapaComercial() {
         </div>
       )}
 
-      {result && (
+      <div
+        role="tablist"
+        aria-label="Seções do Mapa Comercial"
+        className="mb-4 flex flex-wrap gap-1.5 rounded-xl border border-[#e2e8f0] bg-white p-1.5 shadow-sm"
+      >
+        {(
+          [
+            { id: 'territorios', label: 'Territórios', show: Boolean(result) },
+            { id: 'vendedores', label: 'Vendedores', show: Boolean(result) && isAdmin },
+            { id: 'cobertura', label: 'Cobertura', show: Boolean(result) && Boolean(coverage) },
+          ] as const
+        )
+          .filter((tab) => tab.show)
+          .map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`inline-flex min-h-9 items-center rounded-lg px-4 text-sm font-bold transition ${activeTab === tab.id ? 'bg-[#d92323] text-white shadow-sm' : 'text-[#475569] hover:bg-[#f1f5f9]'}`}
+            >
+              {tab.label}
+            </button>
+          ))}
+      </div>
+
+      {result && activeTab === 'territorios' && (
         <section aria-label="Resumo da camada territorial" className="mb-4">
           <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-[#64748b]">
             Mapa de Territórios
@@ -613,7 +642,7 @@ export default function MapaComercial() {
         </section>
       )}
 
-      {result && coverage && (
+      {result && coverage && activeTab === 'cobertura' && (
         <section
           aria-label="Cobertura territorial por UF e Brasil"
           className="mb-4 rounded-lg border border-[#e2e8f0] bg-white p-4 shadow-sm"
@@ -699,7 +728,7 @@ export default function MapaComercial() {
         </section>
       )}
 
-      {result && isAdmin && (
+      {result && isAdmin && activeTab === 'vendedores' && (
         <section
           aria-label="Vendedores — cadastro e preferências locais"
           className="mb-4 rounded-lg border border-[#e2e8f0] bg-white p-4 shadow-sm"
@@ -823,366 +852,370 @@ export default function MapaComercial() {
           )}
         </section>
       )}
-      <section className="map-commercial-layout" aria-label="Mapa e filtros territoriais">
-        <aside className="map-commercial-sidebar rounded-xl border border-[#e2e8f0] bg-white shadow-sm">
-          {result && (
-            <div
-              className="border-b border-[#e2e8f0] bg-white p-4"
-              aria-label="Consulta territorial por município"
-            >
-              <p className="text-[10px] font-bold uppercase tracking-wide text-[#64748b]">
-                Consultar município — acesso rápido
-              </p>
-              <form
-                className="mt-2 flex gap-2"
-                onSubmit={(event) => {
-                  event.preventDefault()
-                  handleMunicipalityLookup()
-                }}
+      {activeTab === 'territorios' && (
+        <section className="map-commercial-layout" aria-label="Mapa e filtros territoriais">
+          <aside className="map-commercial-sidebar rounded-xl border border-[#e2e8f0] bg-white shadow-sm">
+            {result && (
+              <div
+                className="border-b border-[#e2e8f0] bg-white p-4"
+                aria-label="Consulta territorial por município"
               >
-                <input
-                  value={muniQuery}
-                  onChange={(event) => setMuniQuery(event.currentTarget.value)}
-                  placeholder="Ex.: Uberlândia, MG"
-                  aria-label="Consultar responsabilidade territorial por município e UF"
-                  className="h-10 min-w-0 flex-1 rounded-lg border border-[#cbd5e1] bg-white px-3 text-sm outline-none transition focus:border-[#d92323] focus:ring-2 focus:ring-red-100"
-                />
-                <button
-                  type="submit"
-                  disabled={muniBusy}
-                  className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-3 text-xs font-semibold text-[#475569] transition hover:bg-[#f1f5f9] disabled:opacity-60"
-                >
-                  <LocateFixed className="h-3.5 w-3.5" /> Consultar
-                </button>
-              </form>
-              {muniResult && !('error' in muniResult) && (
-                <div
-                  className="mt-3 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] p-3 text-xs"
-                  aria-live="polite"
-                >
-                  <p className="font-bold text-[#1e293b]">
-                    {muniResult.municipality.nome} · {muniResult.municipality.uf}
-                    <span className="ml-1 font-normal text-[#64748b]">
-                      IBGE {muniResult.municipality.codigoIbge}
-                    </span>
-                  </p>
-                  {muniResult.status === 'coberto' && (
-                    <p className="mt-1.5 flex items-center gap-1.5 font-semibold text-emerald-700">
-                      <CheckCircle2 className="h-3.5 w-3.5" /> Coberto por:{' '}
-                      {muniResult.territories.map((t) => t.label).join(', ')}
-                    </p>
-                  )}
-                  {muniResult.status === 'conflito' && (
-                    <p className="mt-1.5 flex items-center gap-1.5 font-semibold text-amber-700">
-                      <AlertTriangle className="h-3.5 w-3.5" /> Conflito —{' '}
-                      {muniResult.territories.length} territórios:{' '}
-                      {muniResult.territories.map((t) => t.label).join(', ')}. Requer revisão
-                      humana.
-                    </p>
-                  )}
-                  {muniResult.status === 'sem-cobertura' && (
-                    <p className="mt-1.5 flex items-center gap-1.5 font-semibold text-[#64748b]">
-                      <Info className="h-3.5 w-3.5" /> Sem cobertura territorial definida no KML.
-                    </p>
-                  )}
-                </div>
-              )}
-              {muniResult && 'error' in muniResult && (
-                <p
-                  className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-800"
-                  aria-live="polite"
-                >
-                  {muniResult.error === 'ambiguo'
-                    ? 'Município com mesmo nome em mais de uma UF — informe a UF (ex.: “Nome, SP”).'
-                    : muniResult.error === 'fonte-indisponivel'
-                      ? 'Base oficial de municípios indisponível nesta sessão (falha de rede na fonte pública). A consulta por código/nome requer essa base — tente novamente em instantes.'
-                      : 'Município não encontrado na base oficial.'}
+                <p className="text-[10px] font-bold uppercase tracking-wide text-[#64748b]">
+                  Consultar município — acesso rápido
                 </p>
-              )}
-              {muniSummary && (
-                <p className="mt-2 text-[10px] leading-relaxed text-[#94a3b8]">
-                  Base oficial: {muniSummary.total.toLocaleString('pt-BR')} municípios ·{' '}
-                  {muniSummary.fonte}
-                </p>
-              )}
-            </div>
-          )}
-
-          <div className="border-b border-[#e2e8f0] p-4">
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <div>
-                <h2 className="text-sm font-bold text-[#1e293b]">Vendedores e filtros</h2>
-                <p className="mt-0.5 text-[11px] text-[#64748b]">
-                  Busca por rótulo; personalização nesta sessão.
-                </p>
-              </div>
-              <span className="rounded-full bg-[#f1f5f9] px-2 py-1 text-[10px] font-bold text-[#475569]">
-                {filteredTerritories.length}/{territories.length}
-              </span>
-            </div>
-            <label className="relative block">
-              <Search
-                aria-hidden="true"
-                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94a3b8]"
-              />
-              <input
-                value={query}
-                onChange={(event) => setQuery(event.currentTarget.value)}
-                placeholder="Buscar vendedor…"
-                aria-label="Buscar vendedores e territórios"
-                className="h-10 w-full rounded-lg border border-[#cbd5e1] bg-white pl-9 pr-9 text-sm outline-none transition focus:border-[#d92323] focus:ring-2 focus:ring-red-100"
-              />
-              {query && (
-                <button
-                  type="button"
-                  aria-label="Limpar busca"
-                  onClick={() => setQuery('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-[#64748b] hover:bg-[#f1f5f9]"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              )}
-            </label>
-            <label className="mt-3 flex cursor-pointer items-center gap-2 text-xs font-medium text-[#475569]">
-              <input
-                type="checkbox"
-                checked={overlapsOnly}
-                onChange={(event) => setOverlapsOnly(event.currentTarget.checked)}
-                disabled={!overlapPairs.length}
-                className="h-4 w-4 accent-[#d92323]"
-              />
-              <AlertTriangle className="h-3.5 w-3.5 text-amber-600" /> Mostrar somente sobreposições
-              ({overlapPairs.length})
-            </label>
-          </div>
-
-          <div className="map-commercial-seller-list p-3" aria-label="Filtros de vendedores">
-            {!result && (
-              <div className="rounded-lg border border-dashed border-[#cbd5e1] bg-[#f8fafc] p-4 text-center">
-                <MapPinned className="mx-auto h-6 w-6 text-[#d92323]" />
-                <p className="mt-2 text-xs font-semibold text-[#334155]">
-                  Carregue o KML dos vendedores
-                </p>
-                <p className="mt-1 text-[11px] leading-relaxed text-[#64748b]">
-                  Somente a pasta oficial e os polígonos são considerados. Marcadores, pastas de
-                  revendas e descrições são ignorados.
-                </p>
-              </div>
-            )}
-            {result && sellers.length === 0 && (
-              <p className="p-4 text-center text-xs text-[#64748b]">Nenhum vendedor encontrado.</p>
-            )}
-            {sellers.map((seller) => {
-              const hidden = hiddenSellerIds.has(seller.id)
-              const color = colorForSeller(seller.id, customColors)
-              return (
-                <div
-                  key={seller.id}
-                  className={`map-commercial-seller-row ${hidden ? 'opacity-55' : ''}`}
-                >
-                  <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5">
-                    <input
-                      type="checkbox"
-                      checked={!hidden}
-                      onChange={() => toggleSeller(seller.id)}
-                      className="h-4 w-4 shrink-0 accent-[#d92323]"
-                      aria-label={`Exibir territórios de ${seller.name}`}
-                    />
-                    <span
-                      aria-hidden="true"
-                      className="h-3 w-3 shrink-0 rounded-sm ring-1 ring-black/10"
-                      style={{ backgroundColor: color }}
-                    />
-                    <span
-                      className="min-w-0 flex-1 truncate text-xs font-semibold text-[#334155]"
-                      title={seller.name}
-                    >
-                      {seller.name}
-                    </span>
-                    <span className="shrink-0 text-[10px] tabular-nums text-[#64748b]">
-                      {seller.territoryCount}/{seller.polygonCount}
-                    </span>
-                  </label>
-                  <label
-                    className="map-commercial-color"
-                    title={`Cor temporária de ${seller.name}`}
-                  >
-                    <Palette className="h-3.5 w-3.5 text-[#64748b]" />
-                    <input
-                      type="color"
-                      value={color}
-                      onChange={(event) => {
-                        const selectedColor = event.currentTarget.value
-                        handleColorChange(seller.id, selectedColor)
-                      }}
-                      aria-label={`Personalizar cor de ${seller.name}`}
-                    />
-                  </label>
-                </div>
-              )
-            })}
-            {sellers.length > 0 && (
-              <div className="mt-3 flex items-center justify-between border-t border-[#e2e8f0] pt-3">
-                <button
-                  type="button"
-                  className="text-[11px] font-semibold text-[#475569] hover:text-[#d92323]"
-                  onClick={() => setHiddenSellerIds(new Set())}
-                >
-                  <Eye className="mr-1 inline h-3.5 w-3.5" /> Mostrar todos
-                </button>
-                <button
-                  type="button"
-                  className="text-[11px] font-semibold text-[#475569] hover:text-[#d92323]"
-                  onClick={() => {
-                    setCustomColors({})
-                    clearColorPrefs()
+                <form
+                  className="mt-2 flex gap-2"
+                  onSubmit={(event) => {
+                    event.preventDefault()
+                    handleMunicipalityLookup()
                   }}
                 >
-                  <RotateCcw className="mr-1 inline h-3.5 w-3.5" /> Cores automáticas
-                </button>
+                  <input
+                    value={muniQuery}
+                    onChange={(event) => setMuniQuery(event.currentTarget.value)}
+                    placeholder="Ex.: Uberlândia, MG"
+                    aria-label="Consultar responsabilidade territorial por município e UF"
+                    className="h-10 min-w-0 flex-1 rounded-lg border border-[#cbd5e1] bg-white px-3 text-sm outline-none transition focus:border-[#d92323] focus:ring-2 focus:ring-red-100"
+                  />
+                  <button
+                    type="submit"
+                    disabled={muniBusy}
+                    className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-3 text-xs font-semibold text-[#475569] transition hover:bg-[#f1f5f9] disabled:opacity-60"
+                  >
+                    <LocateFixed className="h-3.5 w-3.5" /> Consultar
+                  </button>
+                </form>
+                {muniResult && !('error' in muniResult) && (
+                  <div
+                    className="mt-3 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] p-3 text-xs"
+                    aria-live="polite"
+                  >
+                    <p className="font-bold text-[#1e293b]">
+                      {muniResult.municipality.nome} · {muniResult.municipality.uf}
+                      <span className="ml-1 font-normal text-[#64748b]">
+                        IBGE {muniResult.municipality.codigoIbge}
+                      </span>
+                    </p>
+                    {muniResult.status === 'coberto' && (
+                      <p className="mt-1.5 flex items-center gap-1.5 font-semibold text-emerald-700">
+                        <CheckCircle2 className="h-3.5 w-3.5" /> Coberto por:{' '}
+                        {muniResult.territories.map((t) => t.label).join(', ')}
+                      </p>
+                    )}
+                    {muniResult.status === 'conflito' && (
+                      <p className="mt-1.5 flex items-center gap-1.5 font-semibold text-amber-700">
+                        <AlertTriangle className="h-3.5 w-3.5" /> Conflito —{' '}
+                        {muniResult.territories.length} territórios:{' '}
+                        {muniResult.territories.map((t) => t.label).join(', ')}. Requer revisão
+                        humana.
+                      </p>
+                    )}
+                    {muniResult.status === 'sem-cobertura' && (
+                      <p className="mt-1.5 flex items-center gap-1.5 font-semibold text-[#64748b]">
+                        <Info className="h-3.5 w-3.5" /> Sem cobertura territorial definida no KML.
+                      </p>
+                    )}
+                  </div>
+                )}
+                {muniResult && 'error' in muniResult && (
+                  <p
+                    className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-800"
+                    aria-live="polite"
+                  >
+                    {muniResult.error === 'ambiguo'
+                      ? 'Município com mesmo nome em mais de uma UF — informe a UF (ex.: “Nome, SP”).'
+                      : muniResult.error === 'fonte-indisponivel'
+                        ? 'Base oficial de municípios indisponível nesta sessão (falha de rede na fonte pública). A consulta por código/nome requer essa base — tente novamente em instantes.'
+                        : 'Município não encontrado na base oficial.'}
+                  </p>
+                )}
+                {muniSummary && (
+                  <p className="mt-2 text-[10px] leading-relaxed text-[#94a3b8]">
+                    Base oficial: {muniSummary.total.toLocaleString('pt-BR')} municípios ·{' '}
+                    {muniSummary.fonte}
+                  </p>
+                )}
               </div>
             )}
-          </div>
 
-          {selectedTerritory && (
-            <div className="border-t border-[#e2e8f0] bg-[#f8fafc] p-4" aria-live="polite">
-              <div className="flex items-start justify-between gap-2">
+            <div className="border-b border-[#e2e8f0] p-4">
+              <div className="mb-3 flex items-center justify-between gap-2">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-[#64748b]">
-                    Território selecionado
+                  <h2 className="text-sm font-bold text-[#1e293b]">Vendedores e filtros</h2>
+                  <p className="mt-0.5 text-[11px] text-[#64748b]">
+                    Busca por rótulo; personalização nesta sessão.
                   </p>
-                  <h3 className="mt-1 text-sm font-bold text-[#1e293b]">
-                    {selectedTerritory.visualGroupName}
-                  </h3>
                 </div>
-                <button
-                  type="button"
-                  aria-label="Fechar detalhes do território"
-                  className="rounded p-1 text-[#64748b] hover:bg-white"
-                  onClick={() => setSelectedTerritoryId(null)}
-                >
-                  <X className="h-4 w-4" />
-                </button>
+                <span className="rounded-full bg-[#f1f5f9] px-2 py-1 text-[10px] font-bold text-[#475569]">
+                  {filteredTerritories.length}/{territories.length}
+                </span>
               </div>
-              <p className="mt-2 text-xs text-[#475569]">
-                {selectedTerritory.polygonCount}{' '}
-                {selectedTerritory.polygonCount === 1 ? 'polígono' : 'polígonos'} · identificador
-                temporário {selectedTerritory.id}
-              </p>
-              {overlapIds.has(selectedTerritory.id) && (
-                <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-amber-700">
-                  <AlertTriangle className="h-3.5 w-3.5" /> Sobreposição visual sinalizada para
-                  revisão humana.
+              <label className="relative block">
+                <Search
+                  aria-hidden="true"
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94a3b8]"
+                />
+                <input
+                  value={query}
+                  onChange={(event) => setQuery(event.currentTarget.value)}
+                  placeholder="Buscar vendedor…"
+                  aria-label="Buscar vendedores e territórios"
+                  className="h-10 w-full rounded-lg border border-[#cbd5e1] bg-white pl-9 pr-9 text-sm outline-none transition focus:border-[#d92323] focus:ring-2 focus:ring-red-100"
+                />
+                {query && (
+                  <button
+                    type="button"
+                    aria-label="Limpar busca"
+                    onClick={() => setQuery('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-[#64748b] hover:bg-[#f1f5f9]"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </label>
+              <label className="mt-3 flex cursor-pointer items-center gap-2 text-xs font-medium text-[#475569]">
+                <input
+                  type="checkbox"
+                  checked={overlapsOnly}
+                  onChange={(event) => setOverlapsOnly(event.currentTarget.checked)}
+                  disabled={!overlapPairs.length}
+                  className="h-4 w-4 accent-[#d92323]"
+                />
+                <AlertTriangle className="h-3.5 w-3.5 text-amber-600" /> Mostrar somente
+                sobreposições ({overlapPairs.length})
+              </label>
+            </div>
+
+            <div className="map-commercial-seller-list p-3" aria-label="Filtros de vendedores">
+              {!result && (
+                <div className="rounded-lg border border-dashed border-[#cbd5e1] bg-[#f8fafc] p-4 text-center">
+                  <MapPinned className="mx-auto h-6 w-6 text-[#d92323]" />
+                  <p className="mt-2 text-xs font-semibold text-[#334155]">
+                    Carregue o KML dos vendedores
+                  </p>
+                  <p className="mt-1 text-[11px] leading-relaxed text-[#64748b]">
+                    Somente a pasta oficial e os polígonos são considerados. Marcadores, pastas de
+                    revendas e descrições são ignorados.
+                  </p>
+                </div>
+              )}
+              {result && sellers.length === 0 && (
+                <p className="p-4 text-center text-xs text-[#64748b]">
+                  Nenhum vendedor encontrado.
                 </p>
               )}
-            </div>
-          )}
-        </aside>
-
-        <div className="min-w-0 overflow-hidden rounded-xl border border-[#d5dde5] bg-white shadow-sm">
-          <div className="flex min-h-12 flex-wrap items-center justify-between gap-2 border-b border-[#e2e8f0] px-3.5 py-2.5 sm:px-4">
-            <div className="flex items-center gap-2 text-xs font-bold text-[#334155]">
-              <LocateFixed className="h-4 w-4 text-[#d92323]" />
-              <span>Territórios comerciais</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setMapFocus(null)}
-                disabled={!result}
-                className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-[#e2e8f0] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#475569] transition hover:bg-[#f1f5f9] disabled:opacity-50"
-                aria-label="Enquadrar todos os territórios no mapa"
-              >
-                <Maximize className="h-3.5 w-3.5" /> Enquadrar territórios
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  setMapFocus({
-                    lat: DEFAULT_BRAZIL_CENTER[0],
-                    lng: DEFAULT_BRAZIL_CENTER[1],
-                    zoom: 10,
-                    nonce: Date.now(),
-                  })
-                }
-                disabled={!result}
-                className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-[#e2e8f0] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#475569] transition hover:bg-[#f1f5f9] disabled:opacity-50"
-                aria-label="Expandir o mapa"
-              >
-                <ZoomIn className="h-3.5 w-3.5" /> Expandir mapa
-              </button>
-            </div>
-            <div className="flex items-center gap-3 text-[10px] font-medium text-[#64748b]">
-              <span className="inline-flex items-center gap-1">
-                <span className="h-2 w-2 rounded-sm bg-[#d92323]" /> vendedor
-              </span>
-              <span className="inline-flex items-center gap-1">
-                <span className="h-2 w-2 rounded-sm border border-amber-600 bg-amber-200" />{' '}
-                sobreposição visual
-              </span>
-            </div>
-          </div>
-          <div
-            className={`map-commercial-map${LOCAL_QA_MODE ? ' map-commercial-map--localqa' : ''}`}
-            aria-label="Mapa interativo de territórios de vendedores"
-          >
-            <MapContainer
-              center={DEFAULT_BRAZIL_CENTER}
-              zoom={4}
-              minZoom={3}
-              maxZoom={18}
-              scrollWheelZoom
-              className="h-full w-full"
-              zoomControl
-            >
-              {!LOCAL_QA_MODE && (
-                <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap contributors</a>'
-                  url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  maxZoom={19}
-                />
+              {sellers.map((seller) => {
+                const hidden = hiddenSellerIds.has(seller.id)
+                const color = colorForSeller(seller.id, customColors)
+                return (
+                  <div
+                    key={seller.id}
+                    className={`map-commercial-seller-row ${hidden ? 'opacity-55' : ''}`}
+                  >
+                    <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5">
+                      <input
+                        type="checkbox"
+                        checked={!hidden}
+                        onChange={() => toggleSeller(seller.id)}
+                        className="h-4 w-4 shrink-0 accent-[#d92323]"
+                        aria-label={`Exibir territórios de ${seller.name}`}
+                      />
+                      <span
+                        aria-hidden="true"
+                        className="h-3 w-3 shrink-0 rounded-sm ring-1 ring-black/10"
+                        style={{ backgroundColor: color }}
+                      />
+                      <span
+                        className="min-w-0 flex-1 truncate text-xs font-semibold text-[#334155]"
+                        title={seller.name}
+                      >
+                        {seller.name}
+                      </span>
+                      <span className="shrink-0 text-[10px] tabular-nums text-[#64748b]">
+                        {seller.territoryCount}/{seller.polygonCount}
+                      </span>
+                    </label>
+                    <label
+                      className="map-commercial-color"
+                      title={`Cor temporária de ${seller.name}`}
+                    >
+                      <Palette className="h-3.5 w-3.5 text-[#64748b]" />
+                      <input
+                        type="color"
+                        value={color}
+                        onChange={(event) => {
+                          const selectedColor = event.currentTarget.value
+                          handleColorChange(seller.id, selectedColor)
+                        }}
+                        aria-label={`Personalizar cor de ${seller.name}`}
+                      />
+                    </label>
+                  </div>
+                )
+              })}
+              {sellers.length > 0 && (
+                <div className="mt-3 flex items-center justify-between border-t border-[#e2e8f0] pt-3">
+                  <button
+                    type="button"
+                    className="text-[11px] font-semibold text-[#475569] hover:text-[#d92323]"
+                    onClick={() => setHiddenSellerIds(new Set())}
+                  >
+                    <Eye className="mr-1 inline h-3.5 w-3.5" /> Mostrar todos
+                  </button>
+                  <button
+                    type="button"
+                    className="text-[11px] font-semibold text-[#475569] hover:text-[#d92323]"
+                    onClick={() => {
+                      setCustomColors({})
+                      clearColorPrefs()
+                    }}
+                  >
+                    <RotateCcw className="mr-1 inline h-3.5 w-3.5" /> Cores automáticas
+                  </button>
+                </div>
               )}
-              <FitTerritories
-                territories={territories}
-                selected={selectedTerritory}
-                focus={mapFocus}
-              />
-              <MuniMarker marker={muniMarker} />
-              {filteredTerritories.map((territory) => (
-                <TerritoryLayer
-                  key={territory.id}
-                  territory={territory}
-                  color={colorForSeller(territory.visualGroupId, customColors)}
-                  selected={territory.id === selectedTerritoryId}
-                  overlaps={overlapIds.has(territory.id)}
-                  onSelect={setSelectedTerritoryId}
-                />
-              ))}
-            </MapContainer>
-            {LOCAL_QA_MODE && (
-              <span className="map-commercial-qa-basemap-note">
-                QA local · mapa-base externo desativado
-              </span>
-            )}
-            {result && filteredTerritories.length === 0 && (
-              <div className="map-commercial-empty-layer">
-                <EyeOff className="h-5 w-5" />
-                <span>Nenhum território corresponde aos filtros.</span>
+            </div>
+
+            {selectedTerritory && (
+              <div className="border-t border-[#e2e8f0] bg-[#f8fafc] p-4" aria-live="polite">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-[#64748b]">
+                      Território selecionado
+                    </p>
+                    <h3 className="mt-1 text-sm font-bold text-[#1e293b]">
+                      {selectedTerritory.visualGroupName}
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    aria-label="Fechar detalhes do território"
+                    className="rounded p-1 text-[#64748b] hover:bg-white"
+                    onClick={() => setSelectedTerritoryId(null)}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <p className="mt-2 text-xs text-[#475569]">
+                  {selectedTerritory.polygonCount}{' '}
+                  {selectedTerritory.polygonCount === 1 ? 'polígono' : 'polígonos'} · identificador
+                  temporário {selectedTerritory.id}
+                </p>
+                {overlapIds.has(selectedTerritory.id) && (
+                  <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-amber-700">
+                    <AlertTriangle className="h-3.5 w-3.5" /> Sobreposição visual sinalizada para
+                    revisão humana.
+                  </p>
+                )}
               </div>
             )}
+          </aside>
+
+          <div className="min-w-0 overflow-hidden rounded-xl border border-[#d5dde5] bg-white shadow-sm">
+            <div className="flex min-h-12 flex-wrap items-center justify-between gap-2 border-b border-[#e2e8f0] px-3.5 py-2.5 sm:px-4">
+              <div className="flex items-center gap-2 text-xs font-bold text-[#334155]">
+                <LocateFixed className="h-4 w-4 text-[#d92323]" />
+                <span>Territórios comerciais</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setMapFocus(null)}
+                  disabled={!result}
+                  className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-[#e2e8f0] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#475569] transition hover:bg-[#f1f5f9] disabled:opacity-50"
+                  aria-label="Enquadrar todos os territórios no mapa"
+                >
+                  <Maximize className="h-3.5 w-3.5" /> Enquadrar territórios
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setMapFocus({
+                      lat: DEFAULT_BRAZIL_CENTER[0],
+                      lng: DEFAULT_BRAZIL_CENTER[1],
+                      zoom: 10,
+                      nonce: Date.now(),
+                    })
+                  }
+                  disabled={!result}
+                  className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-[#e2e8f0] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#475569] transition hover:bg-[#f1f5f9] disabled:opacity-50"
+                  aria-label="Expandir o mapa"
+                >
+                  <ZoomIn className="h-3.5 w-3.5" /> Expandir mapa
+                </button>
+              </div>
+              <div className="flex items-center gap-3 text-[10px] font-medium text-[#64748b]">
+                <span className="inline-flex items-center gap-1">
+                  <span className="h-2 w-2 rounded-sm bg-[#d92323]" /> vendedor
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <span className="h-2 w-2 rounded-sm border border-amber-600 bg-amber-200" />{' '}
+                  sobreposição visual
+                </span>
+              </div>
+            </div>
+            <div
+              className={`map-commercial-map${LOCAL_QA_MODE ? ' map-commercial-map--localqa' : ''}`}
+              aria-label="Mapa interativo de territórios de vendedores"
+            >
+              <MapContainer
+                center={DEFAULT_BRAZIL_CENTER}
+                zoom={4}
+                minZoom={3}
+                maxZoom={18}
+                scrollWheelZoom
+                className="h-full w-full"
+                zoomControl
+              >
+                {!LOCAL_QA_MODE && (
+                  <TileLayer
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap contributors</a>'
+                    url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    maxZoom={19}
+                  />
+                )}
+                <FitTerritories
+                  territories={territories}
+                  selected={selectedTerritory}
+                  focus={mapFocus}
+                />
+                <MuniMarker marker={muniMarker} />
+                {filteredTerritories.map((territory) => (
+                  <TerritoryLayer
+                    key={territory.id}
+                    territory={territory}
+                    color={colorForSeller(territory.visualGroupId, customColors)}
+                    selected={territory.id === selectedTerritoryId}
+                    overlaps={overlapIds.has(territory.id)}
+                    onSelect={setSelectedTerritoryId}
+                  />
+                ))}
+              </MapContainer>
+              {LOCAL_QA_MODE && (
+                <span className="map-commercial-qa-basemap-note">
+                  QA local · mapa-base externo desativado
+                </span>
+              )}
+              {result && filteredTerritories.length === 0 && (
+                <div className="map-commercial-empty-layer">
+                  <EyeOff className="h-5 w-5" />
+                  <span>Nenhum território corresponde aos filtros.</span>
+                </div>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#e2e8f0] bg-[#f8fafc] px-3.5 py-2 text-[10px] text-[#64748b] sm:px-4">
+              <span>
+                {result
+                  ? `${filteredTerritories.length} territórios visíveis · ${overlapPairs.length} pares com sobreposição visual`
+                  : 'Aguardando importação local do KML'}
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <Info className="h-3 w-3" /> Dados temporários desta sessão
+              </span>
+            </div>
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#e2e8f0] bg-[#f8fafc] px-3.5 py-2 text-[10px] text-[#64748b] sm:px-4">
-            <span>
-              {result
-                ? `${filteredTerritories.length} territórios visíveis · ${overlapPairs.length} pares com sobreposição visual`
-                : 'Aguardando importação local do KML'}
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <Info className="h-3 w-3" /> Dados temporários desta sessão
-            </span>
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       <section
         aria-label="Gestão territorial — implementação futura"
