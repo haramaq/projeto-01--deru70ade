@@ -325,7 +325,6 @@ export const vendaService = {
   async transfer(id: string, target: TransferTarget): Promise<Venda> {
     const current = await this.getById(id)
     const actorId = pb.authStore.record?.id || ''
-    const now = new Date().toISOString()
     const updated = (await pb.collection('vendas').update(
       id,
       {
@@ -334,17 +333,9 @@ export const vendaService = {
       },
       { expand: 'cliente,vendedor' },
     )) as unknown as Venda
-    await pb.collection('lead_historico').create({
-      lead_id: id,
-      etapa_anterior: current.etapa,
-      etapa_nova: current.etapa,
-      responsavel: target.id,
-      data_hora: now,
-      tipo_evento: 'transferencia',
-      usuario_origem: actorId,
-      usuario_destino: target.id,
-      observacao: `Transferido da carteira ${current.carteira || 'não definida'} para ${target.carteira || 'não definida'}.`,
-    })
+    // Auditoria da transferência é GRAVADA PELO SERVIDOR (hook transferencia_historico_atomico):
+    // toda reatribuição de vendedor gera lead_historico automaticamente. O frontend NÃO cria
+    // mais o registro — criação duplicada violaria a regra única de auditoria server-side.
     await auditService.record({
       autor: actorId || 'sessão atual',
       alvo: id,
