@@ -164,10 +164,10 @@ function TerritoryLayer({
 }) {
   const pathOptions: PathOptions = {
     color: selected ? '#182b38' : color,
-    weight: selected ? 3 : overlaps ? 2.3 : 1.5,
+    weight: selected ? 3 : overlaps ? 2.6 : 1.5,
     opacity: 0.96,
     fillColor: color,
-    fillOpacity: selected ? 0.48 : 0.25,
+    fillOpacity: selected ? 0.48 : overlaps ? 0.16 : 0.25,
     dashArray: overlaps ? '7 4' : undefined,
     lineJoin: 'round',
   }
@@ -1140,10 +1140,40 @@ export default function MapaComercial() {
                   temporário {selectedTerritory.id}
                 </p>
                 {overlapIds.has(selectedTerritory.id) && (
-                  <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-amber-700">
-                    <AlertTriangle className="h-3.5 w-3.5" /> Sobreposição visual sinalizada para
-                    revisão humana.
-                  </p>
+                  <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-xs">
+                    <p className="flex items-center gap-1.5 font-semibold text-amber-700">
+                      <AlertTriangle className="h-3.5 w-3.5" /> Sobreposição visual sinalizada para
+                      revisão humana.
+                    </p>
+                    {(() => {
+                      const parceiros = [
+                        ...new Map(
+                          overlapPairs
+                            .filter(
+                              (p) =>
+                                p.firstId === selectedTerritory.id ||
+                                p.secondId === selectedTerritory.id,
+                            )
+                            .map((p) => [
+                              p.firstId === selectedTerritory.id
+                                ? p.secondSellerId
+                                : p.firstSellerId,
+                              p.firstId === selectedTerritory.id
+                                ? p.secondSellerName
+                                : p.firstSellerName,
+                            ]),
+                        ).values(),
+                      ]
+                      if (!parceiros.length) return null
+                      return (
+                        <p className="mt-1.5 leading-relaxed text-amber-800">
+                          Compartilha área com: <strong>{parceiros.join(', ')}</strong>. Áreas
+                          compartilhadas não definem responsabilidade — consulta um município em
+                          "Consultar município" para ver a cobertura oficial.
+                        </p>
+                      )
+                    })()}
+                  </div>
                 )}
               </div>
             )}
@@ -1218,16 +1248,18 @@ export default function MapaComercial() {
                   focus={mapFocus}
                 />
                 <MuniMarker marker={muniMarker} />
-                {filteredTerritories.map((territory) => (
-                  <TerritoryLayer
-                    key={territory.id}
-                    territory={territory}
-                    color={colorForSeller(territory.visualGroupId, customColors)}
-                    selected={territory.id === selectedTerritoryId}
-                    overlaps={overlapIds.has(territory.id)}
-                    onSelect={setSelectedTerritoryId}
-                  />
-                ))}
+                {[...filteredTerritories]
+                  .sort((a, b) => Number(overlapIds.has(a.id)) - Number(overlapIds.has(b.id)))
+                  .map((territory) => (
+                    <TerritoryLayer
+                      key={territory.id}
+                      territory={territory}
+                      color={colorForSeller(territory.visualGroupId, customColors)}
+                      selected={territory.id === selectedTerritoryId}
+                      overlaps={overlapIds.has(territory.id)}
+                      onSelect={setSelectedTerritoryId}
+                    />
+                  ))}
               </MapContainer>
               {LOCAL_QA_MODE && (
                 <span className="map-commercial-qa-basemap-note">
