@@ -488,7 +488,7 @@ export const userService = {
     return (await pb.collection('users').getFullList({
       sort: 'name',
       fields:
-        'id,name,email,role,carteira,ativo,created,updated,perm_dashboard,perm_leads,perm_clientes,perm_revendas,perm_suporte,perm_relatorios,perm_configuracoes',
+        'id,name,email,role,carteira,ativo,created,updated,perm_dashboard,perm_leads,perm_clientes,perm_revendas,perm_suporte,perm_relatorios,perm_configuracoes,external_id_altforce,senha_provisoria,altforce_sync_status',
     })) as unknown as User[]
   },
   async getTransferTargets(): Promise<TransferTarget[]> {
@@ -506,6 +506,8 @@ export const userService = {
     role: string
     carteira?: string
     ativo?: boolean
+    external_id_altforce?: string
+    altforce_sync_status?: 'nao_vinculado' | 'pendente_validacao' | 'validado'
     perm_dashboard?: boolean
     perm_leads?: boolean
     perm_clientes?: boolean
@@ -541,5 +543,44 @@ export const userService = {
     depois: unknown
   }) {
     return pb.collection('auditoria_acesso').create(data)
+  },
+}
+
+export interface VendedorDdd {
+  id: string
+  usuario_id: string
+  ddi: string
+  ddd: string
+  ativo: boolean
+  observacao?: string
+  created?: string
+  updated?: string
+}
+
+export const dddService = {
+  async listByUser(usuarioId: string): Promise<VendedorDdd[]> {
+    return (await pb.collection('vendedor_ddd').getFullList({
+      sort: '-created',
+      filter: `usuario_id = "${usuarioId}"`,
+    })) as unknown as VendedorDdd[]
+  },
+  async create(data: {
+    usuario_id: string
+    ddi: string
+    ddd: string
+    ativo?: boolean
+    confirmado_por?: string
+    observacao?: string
+  }): Promise<VendedorDdd> {
+    return (await pb.collection('vendedor_ddd').create(data)) as unknown as VendedorDdd
+  },
+  async update(
+    id: string,
+    data: { ddd?: string; ddi?: string; ativo?: boolean; observacao?: string },
+  ): Promise<VendedorDdd> {
+    return (await pb.collection('vendedor_ddd').update(id, data)) as unknown as VendedorDdd
+  },
+  async remove(id: string): Promise<void> {
+    await pb.collection('vendedor_ddd').delete(id)
   },
 }

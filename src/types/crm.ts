@@ -17,6 +17,9 @@ export interface User {
   role: UserRole
   ativo: boolean
   carteira?: string
+  external_id_altforce?: string
+  senha_provisoria?: boolean
+  altforce_sync_status?: 'nao_vinculado' | 'pendente_validacao' | 'validado'
   perm_dashboard?: boolean
   perm_leads?: boolean
   perm_clientes?: boolean

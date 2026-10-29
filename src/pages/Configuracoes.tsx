@@ -13,10 +13,11 @@ import {
   Copy,
   Check,
 } from 'lucide-react'
-import { userService } from '@/services/crmService'
+import { userService, dddService, type VendedorDdd } from '@/services/crmService'
 import type { AuditEntry, PermissionKey, User, UserRole } from '@/types/crm'
 import { permissionFieldNames } from '@/lib/permissions'
 import { formatDateBR } from '@/lib/formatters'
+import { DddMultiSelect } from '@/components/haramaq/DddMultiSelect'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -278,6 +279,14 @@ export default function Configuracoes() {
   const [formPasswordConfirm, setFormPasswordConfirm] = useState('')
   const [formRole, setFormRole] = useState<UserRole>('vendedor')
   const [formCarteira, setFormCarteira] = useState('')
+  const [formExternalId, setFormExternalId] = useState('')
+  const [formSyncStatus, setFormSyncStatus] = useState<
+    'nao_vinculado' | 'pendente_validacao' | 'validado'
+  >('nao_vinculado')
+  const [formDdis, setFormDdis] = useState<string>('') // vírgula, ex.: +55,+1
+  const [formDdds, setFormDdds] = useState<string>('') // vírgula, ex.: 51,54
+  const [dddsSalvos, setDddsSalvos] = useState<VendedorDdd[]>([])
+  const [confirmaValidado, setConfirmaValidado] = useState(false)
   const [formAtivo, setFormAtivo] = useState(true)
   const [formPermissions, setFormPermissions] =
     useState<Record<string, boolean>>(DEFAULT_PERMISSIONS)
@@ -355,6 +364,12 @@ export default function Configuracoes() {
 
   const handleOpenCreate = () => {
     setEditingUser(null)
+    setFormExternalId('')
+    setFormSyncStatus('nao_vinculado')
+    setConfirmaValidado(false)
+    setFormDdis('')
+    setFormDdds('')
+    setDddsSalvos([])
     setFormName('')
     setFormEmail('')
     setFormPassword('')
@@ -364,6 +379,55 @@ export default function Configuracoes() {
     setFormAtivo(true)
     setFormPermissions(DEFAULT_PERMISSIONS)
     setModalOpen(true)
+    dddService
+      .listByUser(item.id)
+      .then((regs) => {
+        setDddsSalvos(regs)
+        const ddis = Array.from(new Set(regs.filter((r) => r.ativo !== false).map((r) => r.ddi)))
+        const ddds = Array.from(new Set(regs.filter((r) => r.ativo !== false).map((r) => r.ddd)))
+        setFormDdis(ddis.join(','))
+        setFormDdds(ddds.join(','))
+      })
+      .catch(() => setDddsSalvos([]))
+  }
+
+  const sincronizarDdds = async (usuarioId: string) => {
+    const ddis = formDdis
+      .split(',')
+      .map((v) => v.trim())
+      .filter(Boolean)
+    const ddds = formDdds
+      .split(',')
+      .map((v) => v.trim())
+      .filter(Boolean)
+    try {
+      const atuais = await dddService.listByUser(usuarioId)
+      const desejadas: { ddi: string; ddd: string }[] = []
+      for (const ddi of ddis.length ? ddis : ['+55']) {
+        for (const ddd of ddds) desejadas.push({ ddi, ddd })
+      }
+      for (const reg of atuais) {
+        const mantem = desejadas.some((d) => d.ddi === reg.ddi && d.ddd === reg.ddd)
+        if (!mantem) await dddService.remove(reg.id)
+      }
+      for (const d of desejadas) {
+        const existe = atuais.find((r) => r.ddi === d.ddi && r.ddd === d.ddd)
+        if (!existe) {
+          await dddService.create({
+            usuario_id: usuarioId,
+            ddi: d.ddi,
+            ddd: d.ddd,
+            ativo: true,
+            confirmado_por: user?.id,
+          })
+        }
+      }
+      setDddsSalvos(await dddService.listByUser(usuarioId))
+    } catch {
+      // Coleção vendedor_ddd indisponível (migrations 0028-0030 ainda não aplicadas no gerenciado):
+      // o restante do formulário salva normalmente; DDI/DDDs ficam pendentes.
+      toast.message('DDI/DDDs pendentes: estrutura de carteiras ainda não ativada neste ambiente.')
+    }
   }
   const handleOpenEdit = (item: User) => {
     setEditingUser(item)
@@ -373,6 +437,11 @@ export default function Configuracoes() {
     setFormPasswordConfirm('')
     setFormRole(item.role || 'vendedor')
     setFormCarteira(item.carteira || '')
+    setFormExternalId(item.external_id_altforce || '')
+    setFormSyncStatus(item.altforce_sync_status || 'nao_vinculado')
+    setConfirmaValidado(false)
+    setFormDdis('')
+    setFormDdds('')
     setFormAtivo(item.ativo !== false)
     setFormPermissions(safePermissions(item))
     setModalOpen(true)
@@ -415,13 +484,18 @@ export default function Configuracoes() {
             formPermissions[key],
           ]),
         )
+        const syncStatusEfetivo =
+          formSyncStatus === 'validado' && !confirmaValidado ? 'pendente_validacao' : formSyncStatus
         await userService.update(editingUser.id, {
           name: formName.trim(),
           role: formRole,
           carteira: formCarteira.trim(),
           ativo: formAtivo,
+          external_id_altforce: formExternalId.trim() || '',
+          altforce_sync_status: syncStatusEfetivo,
           ...permissionPayload,
         })
+        await sincronizarDdds(editingUser.id)
         const audited = await auditBestEffort({
           autor: user?.id || 'sessão atual',
           alvo: editingUser.id,
@@ -451,8 +525,14 @@ export default function Configuracoes() {
           role: formRole,
           carteira: formCarteira.trim(),
           ativo: true,
+          external_id_altforce: formExternalId.trim() || '',
+          altforce_sync_status:
+            formSyncStatus === 'validado' && !confirmaValidado
+              ? 'pendente_validacao'
+              : formSyncStatus,
           ...permissionPayload,
         })
+        await sincronizarDdds(created.id)
         const audited = await auditBestEffort({
           autor: user?.id || 'sessão atual',
           alvo: created.id,
@@ -947,6 +1027,87 @@ export default function Configuracoes() {
                   placeholder="Ex.: Sul de MG"
                 />
               </div>
+            </div>
+            <div className="rounded-lg border border-[#E2E8F0] p-3">
+              <p className="mb-2 font-semibold text-gray-800">Dados comerciais</p>
+              <p className="mb-3 text-[11px] text-gray-500">
+                Integração Altforce e carteiras de DDI/DDD. Podem ficar vazios e ser preenchidos
+                depois, sem alterar senha ou perfil do usuário.
+              </p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <Label htmlFor="uExternalId">External ID Altforce</Label>
+                  <Input
+                    id="uExternalId"
+                    data-testid="external-id-input"
+                    value={formExternalId}
+                    onChange={(e) => setFormExternalId(e.target.value)}
+                    placeholder="Ex.: 77 (copiado da Altforce)"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Situação de integração Altforce</Label>
+                  <Select
+                    value={formSyncStatus}
+                    onValueChange={(value) =>
+                      setFormSyncStatus(
+                        value as 'nao_vinculado' | 'pendente_validacao' | 'validado',
+                      )
+                    }
+                  >
+                    <SelectTrigger data-testid="sync-status-select">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="nao_vinculado">Não vinculado</SelectItem>
+                      <SelectItem value="pendente_validacao">Pendente de validação</SelectItem>
+                      <SelectItem value="validado" disabled={!confirmaValidado}>
+                        Validado (requer confirmação)
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="uDdis">DDIs de atuação (vírgula)</Label>
+                  <Input
+                    id="uDdis"
+                    data-testid="ddis-input"
+                    value={formDdis}
+                    onChange={(e) => setFormDdis(e.target.value)}
+                    placeholder="Ex.: +55"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <DddMultiSelect
+                    id="uDdds"
+                    testId="ddds-input"
+                    valor={formDdds}
+                    onChange={setFormDdds}
+                  />
+                </div>
+              </div>
+              {editingUser && dddsSalvos.length > 0 && (
+                <p className="mt-2 text-[11px] text-gray-500" data-testid="ddds-salvos">
+                  Vínculos ativos: {dddsSalvos.filter((r) => r.ativo !== false).length}
+                </p>
+              )}
+              <label
+                className="mt-3 flex items-center gap-2 text-[12px] text-gray-600"
+                data-testid="confirma-validado"
+              >
+                <input
+                  type="checkbox"
+                  checked={confirmaValidado}
+                  onChange={(e) => setConfirmaValidado(e.target.checked)}
+                />
+                Confirmo que a integração Altforce deste vendedor foi efetivamente validada.
+              </label>
+              {formSyncStatus === 'validado' && !confirmaValidado && (
+                <p className="mt-1 text-[11px] text-amber-600">
+                  A situação “Validado” exige a confirmação acima; ao salvar sem confirmar, a
+                  situação volta para “Pendente de validação”.
+                </p>
+              )}
             </div>
             {editingUser && (
               <div className="flex items-center justify-between rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-3">
