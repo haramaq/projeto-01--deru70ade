@@ -538,32 +538,40 @@ export default function MapaComercial() {
         }
       />
 
-      <div className="mb-4 grid gap-3 sm:grid-cols-3">
-        <div className="flex items-start gap-3 rounded-xl border border-[#dbeafe] bg-[#eff6ff] p-3.5 text-[#1e3a8a]">
-          <Info className="mt-0.5 h-4 w-4 shrink-0" />
-          <p className="text-xs leading-relaxed">
-            <strong>Privacidade:</strong> o KML é lido somente em memória neste navegador;
-            descrições não são exibidas nem transmitidas.{' '}
-            {LOCAL_QA_MODE
-              ? 'No QA local, fonte, tiles, Skip e PocketBase estão bloqueados.'
-              : 'O mapa-base solicita tiles ao OpenStreetMap.'}
-          </p>
+      <details className="mb-4 rounded-xl border border-[#e2e8f0] bg-white px-3.5 py-2.5 shadow-sm">
+        <summary className="flex cursor-pointer items-center gap-2 text-xs font-bold text-[#475569] hover:text-[#1e293b]">
+          <Info className="h-4 w-4 text-[#d92323]" /> Informações do mapa
+          <span className="ml-1 text-[10px] font-normal text-[#94a3b8]">
+            privacidade · rótulos visuais · sobreposições
+          </span>
+        </summary>
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          <div className="flex items-start gap-3 rounded-xl border border-[#dbeafe] bg-[#eff6ff] p-3.5 text-[#1e3a8a]">
+            <Info className="mt-0.5 h-4 w-4 shrink-0" />
+            <p className="text-xs leading-relaxed">
+              <strong>Privacidade:</strong> o KML é lido somente em memória neste navegador;
+              descrições não são exibidas nem transmitidas.{' '}
+              {LOCAL_QA_MODE
+                ? 'No QA local, fonte, tiles, Skip e PocketBase estão bloqueados.'
+                : 'O mapa-base solicita tiles ao OpenStreetMap.'}
+            </p>
+          </div>
+          <div className="flex items-start gap-3 rounded-xl border border-[#e2e8f0] bg-white p-3.5 text-[#475569]">
+            <MapPinned className="mt-0.5 h-4 w-4 shrink-0 text-[#d92323]" />
+            <p className="text-xs leading-relaxed">
+              <strong className="text-[#1e293b]">Rótulos visuais:</strong> nomes no KML não são
+              associados a usuários do CRM e a geometria não determina município ou distribuição.
+            </p>
+          </div>
+          <div className="flex items-start gap-3 rounded-xl border border-[#fef3c7] bg-[#fffbeb] p-3.5 text-[#92400e]">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <p className="text-xs leading-relaxed">
+              <strong>Sobreposições:</strong> sinalizações aproximadas para conferência humana; não
+              alteram território nem atribuem leads.
+            </p>
+          </div>
         </div>
-        <div className="flex items-start gap-3 rounded-xl border border-[#e2e8f0] bg-white p-3.5 text-[#475569]">
-          <MapPinned className="mt-0.5 h-4 w-4 shrink-0 text-[#d92323]" />
-          <p className="text-xs leading-relaxed">
-            <strong className="text-[#1e293b]">Rótulos visuais:</strong> nomes no KML não são
-            associados a usuários do CRM e a geometria não determina município ou distribuição.
-          </p>
-        </div>
-        <div className="flex items-start gap-3 rounded-xl border border-[#fef3c7] bg-[#fffbeb] p-3.5 text-[#92400e]">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <p className="text-xs leading-relaxed">
-            <strong>Sobreposições:</strong> sinalizações aproximadas para conferência humana; não
-            alteram território nem atribuem leads.
-          </p>
-        </div>
-      </div>
+      </details>
 
       {message && (
         <div
@@ -761,93 +769,123 @@ export default function MapaComercial() {
             </div>
           </div>
           {directoryOpen && (
-            <div className="mt-3 overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-[#e2e8f0] text-[10px] uppercase tracking-wide text-[#64748b]">
-                    <th className="py-2 pr-3 font-bold">Território (KML)</th>
-                    <th className="py-2 pr-3 font-bold">Vendedor no CRM (sugestão)</th>
-                    <th className="py-2 pr-3 font-bold">Cor local</th>
-                    <th className="py-2 font-bold">Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sellerDirectory.map((row: SellerDirectoryRow) => {
-                    const corAtual = customColors[row.visualGroupId]
-                    return (
-                      <tr key={row.visualGroupId} className="border-b border-[#f1f5f9]">
-                        <td className="py-2 pr-3">
-                          <span className="font-semibold text-[#1e293b]">{row.kmlLabel}</span>
-                          <span className="ml-1 text-[10px] text-[#94a3b8]">
-                            · {row.territoryCount}{' '}
-                            {row.territoryCount === 1 ? 'território' : 'territórios'}
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+              {sellerDirectory.map((row: SellerDirectoryRow) => {
+                const corAtual = customColors[row.visualGroupId]
+                return (
+                  <div
+                    key={row.visualGroupId}
+                    className="rounded-lg border border-[#e2e8f0] bg-[#f8fafc] p-3"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="flex items-center gap-1.5 text-sm font-bold text-[#1e293b]">
+                          <span
+                            aria-hidden="true"
+                            className="h-3 w-3 shrink-0 rounded-sm ring-1 ring-black/10"
+                            style={{
+                              backgroundColor: colorForSeller(row.visualGroupId, customColors),
+                            }}
+                          />
+                          <span className="truncate" title={row.kmlLabel}>
+                            {row.kmlLabel}
                           </span>
-                          {row.homonimo && (
-                            <span
-                              className="ml-1.5 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-700"
-                              title="Há mais de um território ou usuário com este nome — correspondência exige revisão humana"
-                            >
-                              homônimo
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-2 pr-3">
-                          {row.crmSuggestion ? (
-                            <span className="text-[#334155]">
-                              {row.crmSuggestion.name}
-                              {row.crmSuggestion.ativo ? '' : ' · inativo'}
-                            </span>
-                          ) : (
-                            <span className="text-[#94a3b8]">sem correspondência exata</span>
-                          )}
-                        </td>
-                        <td className="py-2 pr-3">
-                          <label
-                            className="map-commercial-color"
-                            title={`Cor local de ${row.kmlLabel}`}
+                        </p>
+                        <p className="mt-0.5 text-[10px] text-[#64748b]">
+                          {row.territoryCount}{' '}
+                          {row.territoryCount === 1 ? 'território' : 'territórios'}
+                          {' · '}
+                          <span className="font-medium">
+                            {row.crmSuggestion
+                              ? `vínculo sugerido: ${row.crmSuggestion.name}${row.crmSuggestion.ativo ? '' : ' (inativo)'}`
+                              : row.homonimo
+                                ? 'vínculo ambíguo — revisão humana'
+                                : 'sem correspondência no CRM'}
+                          </span>
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 flex-col items-end gap-1.5">
+                        <label
+                          className="map-commercial-color"
+                          title={`Cor local de ${row.kmlLabel}`}
+                        >
+                          <Palette className="h-3.5 w-3.5 text-[#64748b]" />
+                          <input
+                            type="color"
+                            value={colorForSeller(row.visualGroupId, customColors)}
+                            onChange={(event) =>
+                              handleColorChange(row.visualGroupId, event.currentTarget.value)
+                            }
+                            aria-label={`Cor local do território ${row.kmlLabel}`}
+                          />
+                        </label>
+                        {corAtual ? (
+                          <button
+                            type="button"
+                            onClick={() => handleColorReset(row.visualGroupId)}
+                            className="text-[10px] font-semibold text-[#475569] hover:text-[#d92323]"
                           >
-                            <Palette className="h-3.5 w-3.5 text-[#64748b]" />
-                            <input
-                              type="color"
-                              value={colorForSeller(row.visualGroupId, customColors)}
-                              onChange={(event) =>
-                                handleColorChange(row.visualGroupId, event.currentTarget.value)
-                              }
-                              aria-label={`Cor local do território ${row.kmlLabel}`}
-                            />
-                          </label>
-                        </td>
-                        <td className="py-2">
-                          {corAtual ? (
-                            <button
-                              type="button"
-                              onClick={() => handleColorReset(row.visualGroupId)}
-                              className="text-[11px] font-semibold text-[#475569] hover:text-[#d92323]"
-                            >
-                              <RotateCcw className="mr-1 inline h-3 w-3" /> Restaurar padrão
-                            </button>
-                          ) : (
-                            <span className="text-[10px] text-[#94a3b8]">cor automática</span>
-                          )}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                  {sellerDirectory.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="py-3 text-center text-[#64748b]">
-                        Nenhum território carregado.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-              <p className="mt-2 text-[10px] leading-relaxed text-[#94a3b8]">
-                <Info className="mr-1 inline h-3 w-3" /> As cores são{' '}
-                <strong>preferências locais deste navegador</strong> (armazenamento local) — não são
-                configurações compartilhadas nem vão ao banco. A correspondência de nomes é sugestão
-                para revisão humana; nunca um vínculo automático.
-              </p>
+                            <RotateCcw className="mr-0.5 inline h-3 w-3" /> Restaurar
+                          </button>
+                        ) : (
+                          <span className="text-[9px] text-[#94a3b8]">automática</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      {row.homonimo && (
+                        <span
+                          className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-700"
+                          title="Há mais de um território ou usuário com este nome — correspondência exige revisão humana"
+                        >
+                          homônimo
+                        </span>
+                      )}
+                      {row.crmSuggestion && (
+                        <span
+                          className="rounded bg-sky-50 px-1.5 py-0.5 text-[10px] font-bold text-sky-700"
+                          title="Sugestão por nome exato — não é vínculo confirmado"
+                        >
+                          sugestão (não confirmado)
+                        </span>
+                      )}
+                      {!row.crmSuggestion && !row.homonimo && (
+                        <span className="rounded bg-[#f1f5f9] px-1.5 py-0.5 text-[10px] font-bold text-[#64748b]">
+                          sem correspondência
+                        </span>
+                      )}
+                    </div>
+                    <details className="mt-2">
+                      <summary className="cursor-pointer text-[10px] font-semibold text-[#64748b] hover:text-[#1e293b]">
+                        Dados técnicos
+                      </summary>
+                      <dl className="mt-1.5 space-y-0.5 text-[10px] leading-relaxed text-[#64748b]">
+                        <div>
+                          <dt className="inline font-semibold text-[#475569]">visualGroupId: </dt>
+                          <dd className="inline font-mono">{row.visualGroupId}</dd>
+                        </div>
+                        <div>
+                          <dt className="inline font-semibold text-[#475569]">rótulo KML: </dt>
+                          <dd className="inline">{row.kmlLabel}</dd>
+                        </div>
+                        <div>
+                          <dt className="inline font-semibold text-[#475569]">usuário CRM: </dt>
+                          <dd className="inline">
+                            {row.crmSuggestion
+                              ? `${row.crmSuggestion.name} · ${row.crmSuggestion.id}${row.crmSuggestion.ativo ? '' : ' · inativo'}`
+                              : '— (nenhuma correspondência exata)'}
+                          </dd>
+                        </div>
+                      </dl>
+                    </details>
+                  </div>
+                )
+              })}
+              {sellerDirectory.length === 0 && (
+                <p className="py-3 text-center text-xs text-[#64748b] sm:col-span-2 xl:col-span-3">
+                  Nenhum território carregado.
+                </p>
+              )}
             </div>
           )}
         </section>
@@ -1217,21 +1255,20 @@ export default function MapaComercial() {
         </section>
       )}
 
-      <section
-        aria-label="Gestão territorial — implementação futura"
-        className="rounded-lg border border-dashed border-[#cbd5e1] bg-[#f8fafc] p-4"
-      >
-        <h2 className="text-sm font-bold uppercase tracking-wide text-[#64748b]">
-          Gestão Territorial
-        </h2>
-        <p className="mt-1.5 text-xs leading-relaxed text-[#64748b]">
-          Edição de territórios, transferência de municípios entre vendedores e distribuição
-          automática de leads —
-          <strong className="text-[#334155]"> reservada para implementação futura</strong>, restrita
-          a administradores e dependente do catálogo IBGE (L1-C) e das regras de distribuição
-          (L4-C). Esta página é somente leitura.
-        </p>
-      </section>
+      {activeTab === 'cobertura' && (
+        <details className="rounded-lg border border-dashed border-[#cbd5e1] bg-[#f8fafc] px-3.5 py-2.5">
+          <summary className="cursor-pointer text-[11px] font-semibold text-[#94a3b8] hover:text-[#64748b]">
+            Gestão Territorial — ainda não disponível
+          </summary>
+          <p className="mt-2 text-xs leading-relaxed text-[#64748b]">
+            Edição de territórios, transferência de municípios entre vendedores e distribuição
+            automática de leads —
+            <strong className="text-[#334155]"> reservada para implementação futura</strong>,
+            restrita a administradores e dependente do catálogo IBGE (L1-C) e das regras de
+            distribuição (L4-C). Esta página é somente leitura.
+          </p>
+        </details>
+      )}
     </PageContainer>
   )
 }
