@@ -45,6 +45,17 @@ import {
   loadMunicipalities,
   datasetLoadError,
 } from '@/features/mapa-comercial/data/municipios-runtime'
+import {
+  buildSellerDirectory,
+  loadColorPrefs,
+  saveColorPref,
+  clearColorPref,
+  clearColorPrefs,
+} from '@/features/mapa-comercial/domain/sellerDirectory'
+import type { SellerDirectoryRow } from '@/features/mapa-comercial/domain/sellerDirectory'
+import { userService } from '@/services/crmService'
+import { useAuth } from '@/contexts/AuthContext'
+import { useNavigate } from 'react-router-dom'
 import '@/features/mapa-comercial/mapa.css'
 
 const LOCAL_QA_MODE = import.meta.env.MODE === 'localqa'
@@ -193,11 +204,14 @@ function errorMessage(result: Exclude<KmlParseResult, { ok: true }>): string {
 
 export default function MapaComercial() {
   const fileInput = useRef<HTMLInputElement>(null)
+  const { user } = useAuth()
+  const navigate = useNavigate()
+  const isAdmin = user?.role === 'admin'
   const [result, setResult] = useState<Extract<KmlParseResult, { ok: true }> | null>(null)
   const [query, setQuery] = useState('')
   const [hiddenSellerIds, setHiddenSellerIds] = useState<Set<string>>(() => new Set())
   const [overlapsOnly, setOverlapsOnly] = useState(false)
-  const [customColors, setCustomColors] = useState<Record<string, string>>({})
+  const [customColors, setCustomColors] = useState<Record<string, string>>(() => loadColorPrefs())
   const [selectedTerritoryId, setSelectedTerritoryId] = useState<string | null>(null)
   const [message, setMessage] = useState<{ kind: 'success' | 'error'; text: string } | null>(null)
   const [readingFile, setReadingFile] = useState(false)
@@ -220,6 +234,10 @@ export default function MapaComercial() {
     zoom: number
     nonce: number
   } | null>(null)
+  const [crmSellers, setCrmSellers] = useState<
+    Array<{ id: string; name: string; ativo: boolean; role: string }>
+  >([])
+  const [directoryOpen, setDirectoryOpen] = useState(false)
 
   // Pré-carregamento automático: KML oficial versionado (embutido, gzip) + dataset de municípios
   // (fetch público com cache de sessão). O upload manual continua disponível para outra versão.
@@ -333,6 +351,7 @@ export default function MapaComercial() {
       setResult(parsed)
       setHiddenSellerIds(new Set())
       setCustomColors({})
+      clearColorPrefs()
       setQuery('')
       setOverlapsOnly(false)
       setSelectedTerritoryId(null)
@@ -356,6 +375,7 @@ export default function MapaComercial() {
     setQuery('')
     setHiddenSellerIds(new Set())
     setCustomColors({})
+    clearColorPrefs()
     setSelectedTerritoryId(null)
     setOverlapsOnly(false)
     setMuniResult(null)
@@ -432,6 +452,45 @@ export default function MapaComercial() {
       else next.add(sellerId)
       return next
     })
+  }
+
+  // Diretório de vendedores: usuários do CRM (role vendedor) × rótulos do KML — sem vínculo automático.
+  const sellerDirectory = useMemo(
+    () => buildSellerDirectory(crmSellers, territories),
+    [crmSellers, territories],
+  )
+  useEffect(() => {
+    if (!isAdmin) return
+    let cancelado = false
+    userService
+      .getAll()
+      .then((users) => {
+        if (cancelado) return
+        setCrmSellers(
+          users
+            .filter((u) => u.role === 'vendedor')
+            .map((u) => ({ id: u.id, name: u.name ?? '', ativo: u.ativo !== false, role: u.role })),
+        )
+      })
+      .catch(() => {
+        if (!cancelado) setCrmSellers([])
+      })
+    return () => {
+      cancelado = true
+    }
+  }, [isAdmin])
+
+  function handleColorChange(visualGroupId: string, color: string): void {
+    setCustomColors((current) => ({ ...current, [visualGroupId]: color }))
+    saveColorPref(visualGroupId, color)
+  }
+  function handleColorReset(visualGroupId: string): void {
+    setCustomColors((current) => {
+      const next = { ...current }
+      delete next[visualGroupId]
+      return next
+    })
+    clearColorPref(visualGroupId)
   }
 
   return (
@@ -640,6 +699,130 @@ export default function MapaComercial() {
         </section>
       )}
 
+      {result && isAdmin && (
+        <section
+          aria-label="Vendedores — cadastro e preferências locais"
+          className="mb-4 rounded-lg border border-[#e2e8f0] bg-white p-4 shadow-sm"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-bold text-[#1e293b]">Vendedores</h2>
+              <p className="mt-0.5 text-[11px] text-[#64748b]">
+                Usuários do CRM (cadastro real) e rótulos territoriais do KML — exibidos lado a
+                lado, <strong className="text-[#334155]">sem vínculo automático</strong>. Homônimos
+                permanecem independentes.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setDirectoryOpen((v) => !v)}
+                className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-[#e2e8f0] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#475569] transition hover:bg-[#f1f5f9]"
+                aria-expanded={directoryOpen}
+              >
+                {directoryOpen ? 'Ocultar diretório' : `Ver diretório (${sellerDirectory.length})`}
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/configuracoes')}
+                className="inline-flex min-h-8 items-center gap-1.5 rounded-lg bg-[#d92323] px-2.5 py-1.5 text-[11px] font-semibold text-white transition hover:bg-[#b91c1c]"
+              >
+                Cadastrar / editar vendedores
+              </button>
+            </div>
+          </div>
+          {directoryOpen && (
+            <div className="mt-3 overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-[#e2e8f0] text-[10px] uppercase tracking-wide text-[#64748b]">
+                    <th className="py-2 pr-3 font-bold">Território (KML)</th>
+                    <th className="py-2 pr-3 font-bold">Vendedor no CRM (sugestão)</th>
+                    <th className="py-2 pr-3 font-bold">Cor local</th>
+                    <th className="py-2 font-bold">Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sellerDirectory.map((row: SellerDirectoryRow) => {
+                    const corAtual = customColors[row.visualGroupId]
+                    return (
+                      <tr key={row.visualGroupId} className="border-b border-[#f1f5f9]">
+                        <td className="py-2 pr-3">
+                          <span className="font-semibold text-[#1e293b]">{row.kmlLabel}</span>
+                          <span className="ml-1 text-[10px] text-[#94a3b8]">
+                            · {row.territoryCount}{' '}
+                            {row.territoryCount === 1 ? 'território' : 'territórios'}
+                          </span>
+                          {row.homonimo && (
+                            <span
+                              className="ml-1.5 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-700"
+                              title="Há mais de um território ou usuário com este nome — correspondência exige revisão humana"
+                            >
+                              homônimo
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2 pr-3">
+                          {row.crmSuggestion ? (
+                            <span className="text-[#334155]">
+                              {row.crmSuggestion.name}
+                              {row.crmSuggestion.ativo ? '' : ' · inativo'}
+                            </span>
+                          ) : (
+                            <span className="text-[#94a3b8]">sem correspondência exata</span>
+                          )}
+                        </td>
+                        <td className="py-2 pr-3">
+                          <label
+                            className="map-commercial-color"
+                            title={`Cor local de ${row.kmlLabel}`}
+                          >
+                            <Palette className="h-3.5 w-3.5 text-[#64748b]" />
+                            <input
+                              type="color"
+                              value={colorForSeller(row.visualGroupId, customColors)}
+                              onChange={(event) =>
+                                handleColorChange(row.visualGroupId, event.currentTarget.value)
+                              }
+                              aria-label={`Cor local do território ${row.kmlLabel}`}
+                            />
+                          </label>
+                        </td>
+                        <td className="py-2">
+                          {corAtual ? (
+                            <button
+                              type="button"
+                              onClick={() => handleColorReset(row.visualGroupId)}
+                              className="text-[11px] font-semibold text-[#475569] hover:text-[#d92323]"
+                            >
+                              <RotateCcw className="mr-1 inline h-3 w-3" /> Restaurar padrão
+                            </button>
+                          ) : (
+                            <span className="text-[10px] text-[#94a3b8]">cor automática</span>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                  {sellerDirectory.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="py-3 text-center text-[#64748b]">
+                        Nenhum território carregado.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+              <p className="mt-2 text-[10px] leading-relaxed text-[#94a3b8]">
+                <Info className="mr-1 inline h-3 w-3" /> As cores são{' '}
+                <strong>preferências locais deste navegador</strong> (armazenamento local) — não são
+                configurações compartilhadas nem vão ao banco. A correspondência de nomes é sugestão
+                para revisão humana; nunca um vínculo automático.
+              </p>
+            </div>
+          )}
+        </section>
+      )}
       <section className="map-commercial-layout" aria-label="Mapa e filtros territoriais">
         <aside className="map-commercial-sidebar rounded-xl border border-[#e2e8f0] bg-white shadow-sm">
           {result && (
@@ -830,7 +1013,7 @@ export default function MapaComercial() {
                       value={color}
                       onChange={(event) => {
                         const selectedColor = event.currentTarget.value
-                        setCustomColors((current) => ({ ...current, [seller.id]: selectedColor }))
+                        handleColorChange(seller.id, selectedColor)
                       }}
                       aria-label={`Personalizar cor de ${seller.name}`}
                     />
@@ -850,7 +1033,10 @@ export default function MapaComercial() {
                 <button
                   type="button"
                   className="text-[11px] font-semibold text-[#475569] hover:text-[#d92323]"
-                  onClick={() => setCustomColors({})}
+                  onClick={() => {
+                    setCustomColors({})
+                    clearColorPrefs()
+                  }}
                 >
                   <RotateCcw className="mr-1 inline h-3.5 w-3.5" /> Cores automáticas
                 </button>
