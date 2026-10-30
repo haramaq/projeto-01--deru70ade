@@ -233,6 +233,9 @@ export interface LeadHistorico {
   data_hora: string
   observacao?: string
   created?: string
+  expand?: {
+    responsavel?: Pick<User, 'id' | 'name' | 'email'>
+  }
 }
 
 export interface LeadTarefa {

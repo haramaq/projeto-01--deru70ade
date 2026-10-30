@@ -125,6 +125,27 @@ function dateTime(value?: string) {
     : date.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
 }
 
+function historicoAutor(item: LeadHistorico, userNameById: Map<string, string>): string {
+  const expanded = item.expand?.responsavel
+  if (expanded?.name || expanded?.email) return expanded.name || expanded.email || ''
+  if (item.responsavel) return userNameById.get(item.responsavel) || item.responsavel
+  return 'Sistema'
+}
+
+function historicoTitulo(item: LeadHistorico): string {
+  if (item.tipo_evento === 'transferencia') {
+    const destino = item.usuario_destino || item.responsavel || ''
+    const destinoNome = destino ? `para ${destino}` : ''
+    return `Transferência de responsável ${destinoNome}`.trim()
+  }
+  if (item.etapa_anterior) {
+    return `${stageLabels[item.etapa_anterior] || item.etapa_anterior} → ${
+      stageLabels[item.etapa_nova] || item.etapa_nova
+    }`
+  }
+  return stageLabels[item.etapa_nova] || item.etapa_nova
+}
+
 function isOverdue(lead: Venda) {
   return Boolean(
     ETAPAS_COM_PRAZO.has(lead.etapa) &&
@@ -166,6 +187,14 @@ export default function Vendas() {
   const [transferTargetId, setTransferTargetId] = useState('')
   const [transferTargetsLoading, setTransferTargetsLoading] = useState(false)
   const [transferTargetsError, setTransferTargetsError] = useState('')
+  const userNameById = useMemo(() => {
+    const map = new Map<string, string>()
+    responsaveis.forEach((u) => map.set(u.id, u.name || u.email))
+    transferTargets.forEach((u) => {
+      if (!map.has(u.id)) map.set(u.id, u.name || u.email)
+    })
+    return map
+  }, [responsaveis, transferTargets])
   const [editOpen, setEditOpen] = useState(false)
   const [editLead, setEditLead] = useState<Venda | null>(null)
   const [editClientId, setEditClientId] = useState('')
@@ -1323,23 +1352,32 @@ export default function Vendas() {
                 </div>
                 <div className="rounded-xl border border-[#E2E8F0] p-4">
                   <h3 className="mb-3 flex items-center gap-2 font-bold">
-                    <History className="h-4 w-4 text-[#D92323]" /> Histórico de etapas
+                    <History className="h-4 w-4 text-[#D92323]" /> Histórico de atividades
                   </h3>
                   {history.length ? (
-                    history.map((item) => (
-                      <div key={item.id} className="border-t py-2">
-                        <p className="font-semibold">
-                          {item.etapa_anterior
-                            ? `${stageLabels[item.etapa_anterior] || item.etapa_anterior} → `
-                            : ''}
-                          {stageLabels[item.etapa_nova] || item.etapa_nova}
-                        </p>
-                        <p className="text-[#64748B]">
-                          {dateTime(item.data_hora)} ·{' '}
-                          {item.motivo_descricao || item.responsavel || 'Sistema'}
-                        </p>
-                      </div>
-                    ))
+                    history.map((item) => {
+                      const isTransfer = item.tipo_evento === 'transferencia'
+                      const autor = historicoAutor(item, userNameById)
+                      return (
+                        <div key={item.id} className="border-t py-2">
+                          <p className="flex flex-wrap items-center gap-2 font-semibold">
+                            {isTransfer && (
+                              <span className="rounded bg-[#FDECEC] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#D92323]">
+                                Transferência
+                              </span>
+                            )}
+                            <span>{historicoTitulo(item)}</span>
+                          </p>
+                          <p className="text-[#64748B]">
+                            {dateTime(item.data_hora)} · por {autor}
+                            {isTransfer && item.observacao ? ` · ${item.observacao}` : ''}
+                            {!isTransfer && item.motivo_descricao
+                              ? ` · ${item.motivo_descricao}`
+                              : ''}
+                          </p>
+                        </div>
+                      )
+                    })
                   ) : (
                     <p className="text-[#94A3B8]">Histórico ainda não registrado.</p>
                   )}
