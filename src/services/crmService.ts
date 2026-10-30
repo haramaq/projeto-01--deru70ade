@@ -508,6 +508,19 @@ export const userService = {
       })) as unknown as TransferTarget[]
     }
   },
+
+  /** Resolve nomes por IDs via rota server-side — SOMENTE participantes de transferência do
+   * lead informado (o acesso ao lead é validado server-side pela matriz da 0031). Inativos
+   * históricos são resolvidos; IDs sem vínculo com o lead não retornam nome. */
+  async getNomesUsuarios(leadId: string, ids: string[]): Promise<Record<string, string>> {
+    if (!leadId || !ids.length) return {}
+    const lista = Array.from(new Set(ids.filter(Boolean))).slice(0, 50)
+    const resposta = (await pb.send(
+      `/backend/v1/vendedores/alvos-transferencia?ids=${encodeURIComponent(lista.join(','))}&lead=${encodeURIComponent(leadId)}`,
+      {},
+    )) as { nomes?: Record<string, string> }
+    return resposta.nomes || {}
+  },
   async create(data: {
     email: string
     password: string

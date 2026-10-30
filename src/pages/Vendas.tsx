@@ -132,10 +132,12 @@ function historicoAutor(item: LeadHistorico, userNameById: Map<string, string>):
   return 'Sistema'
 }
 
-function historicoTitulo(item: LeadHistorico): string {
+function historicoTitulo(item: LeadHistorico, nomes: Map<string, string>): string {
   if (item.tipo_evento === 'transferencia') {
     const destino = item.usuario_destino || item.responsavel || ''
-    const destinoNome = destino ? `para ${destino}` : ''
+    const destinoNome = destino
+      ? `para ${nomes.get(destino) || 'Usuário não identificado'}`
+      : 'sem destinatário definido'
     return `Transferência de responsável ${destinoNome}`.trim()
   }
   if (item.etapa_anterior) {
@@ -187,14 +189,18 @@ export default function Vendas() {
   const [transferTargetId, setTransferTargetId] = useState('')
   const [transferTargetsLoading, setTransferTargetsLoading] = useState(false)
   const [transferTargetsError, setTransferTargetsError] = useState('')
+  const [extraNomes, setExtraNomes] = useState<Record<string, string>>({})
   const userNameById = useMemo(() => {
     const map = new Map<string, string>()
     responsaveis.forEach((u) => map.set(u.id, u.name || u.email))
     transferTargets.forEach((u) => {
       if (!map.has(u.id)) map.set(u.id, u.name || u.email)
     })
+    Object.entries(extraNomes).forEach(([id, nome]) => {
+      if (nome && !map.has(id)) map.set(id, nome)
+    })
     return map
-  }, [responsaveis, transferTargets])
+  }, [responsaveis, transferTargets, extraNomes])
   const [editOpen, setEditOpen] = useState(false)
   const [editLead, setEditLead] = useState<Venda | null>(null)
   const [editClientId, setEditClientId] = useState('')
@@ -406,6 +412,24 @@ export default function Vendas() {
       ])
       setHistory(historyList)
       setTasks(taskList)
+      // Nomes de transferência: destinos ausentes do mapa são resolvidos pela rota
+      // server-side (inclusive inativos/históricos). Falha = fallback "Usuário não identificado".
+      const idsAusentes = Array.from(
+        new Set(
+          historyList
+            .filter((item) => item.tipo_evento === 'transferencia')
+            .map((item) => item.usuario_destino || item.responsavel || '')
+            .filter((id) => id && !userNameById.has(id)),
+        ),
+      )
+      if (idsAusentes.length) {
+        try {
+          const nomes = await userService.getNomesUsuarios(lead.id, idsAusentes)
+          setExtraNomes((atual) => ({ ...atual, ...nomes }))
+        } catch {
+          // mantém o fallback silencioso por evento
+        }
+      }
     } catch {
       setHistory([])
       setTasks([])
@@ -1366,7 +1390,7 @@ export default function Vendas() {
                                 Transferência
                               </span>
                             )}
-                            <span>{historicoTitulo(item)}</span>
+                            <span>{historicoTitulo(item, userNameById)}</span>
                           </p>
                           <p className="text-[#64748B]">
                             {dateTime(item.data_hora)} · por {autor}
