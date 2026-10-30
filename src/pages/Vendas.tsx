@@ -1455,7 +1455,7 @@ export default function Vendas() {
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o usuário de destino" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[95]">
                   {transferTargets.map((target) => (
                     <SelectItem key={target.id} value={target.id}>
                       {target.name || target.email} — {target.carteira || 'Sem carteira'}
