@@ -56,7 +56,10 @@ onRecordUpdateRequest((e) => {
     const role = alvo.get('role') || ''
     const atorRole = (e.auth && e.auth.get('role')) || ''
     const atorAdmin = atorRole === 'admin' || atorRole === 'gestor'
-    if (!atorAdmin && role !== 'vendedor' && role !== 'revendedor') {
+    // Decisão owner 30/10 09:43: não-admin pode transferir lead PRÓPRIO também para a
+    // TRIAGEM ativa (encaminhamento). Perfis de destino autorizados p/ não-admin:
+    const PERFIS_DESTINO = ['vendedor', 'revendedor', 'triagem']
+    if (!atorAdmin && PERFIS_DESTINO.indexOf(role) === -1) {
       return e.json(400, {
         code: 'alvo_nao_autorizado',
         message: 'Perfil de destino não autorizado para receber leads.',

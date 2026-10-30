@@ -483,11 +483,30 @@ export const userService = {
     })) as unknown as User[]
   },
   async getTransferTargets(): Promise<TransferTarget[]> {
-    return (await pb.collection('users').getFullList({
-      sort: 'name',
-      fields: 'id,name,email,role,carteira,ativo',
-      filter: 'ativo = true',
-    })) as unknown as TransferTarget[]
+    // Rota server-side (listar_alvos_transferencia): devolve id/name/role de vendedores,
+    // revendedores e triagem ATIVOS — funciona para TODOS os perfis (a listRule de users
+    // esconde a coleção de vendedores; a transferência em si continua validada pelo hook
+    // transferencia_historico_atomico + updateRule da 0031).
+    try {
+      const resposta = (await pb.send('/backend/v1/vendedores/alvos-transferencia', {})) as {
+        alvos?: Array<{ id: string; name: string; role: string }>
+      }
+      return (resposta.alvos || []).map((a) => ({
+        id: a.id,
+        name: a.name,
+        email: '',
+        role: a.role as TransferTarget['role'],
+        carteira: '',
+        ativo: true,
+      }))
+    } catch {
+      // Fallback (admin/gestor veem a coleção completa):
+      return (await pb.collection('users').getFullList({
+        sort: 'name',
+        fields: 'id,name,email,role,carteira,ativo',
+        filter: 'ativo = true',
+      })) as unknown as TransferTarget[]
+    }
   },
   async create(data: {
     email: string
