@@ -607,3 +607,170 @@ export const dddService = {
     await pb.collection('vendedor_ddd').delete(id)
   },
 }
+
+// ===== Territórios comerciais internos HARAMAQ (0033; sem IBGE) =====
+export type CidadeAtendida = {
+  id: string
+  cidade: string
+  cidade_normalizada: string
+  uf: string
+  ativo?: boolean
+  observacao?: string
+  expand?: Record<string, unknown>
+}
+
+export type TerritorioRegiao = {
+  id: string
+  nome: string
+  vendedor_id: string
+  ativo?: boolean
+  vigente_de?: string
+  vigente_ate?: string
+  expand?: { vendedor_id?: User }
+}
+
+export type TerritorioCidade = {
+  id: string
+  regiao_id: string
+  cidade_id: string
+  expand?: { cidade_id?: CidadeAtendida }
+}
+
+export type ItemFilaRevisao = {
+  id: string
+  lead_id: string
+  motivo: string
+  detalhe?: string
+  candidatos?: unknown
+  status: 'pendente' | 'resolvida' | 'descartada'
+  decidido_por?: string
+  decisao?: string
+  decidido_em?: string
+  expand?: Record<string, unknown>
+}
+
+export const normalizarCidade = (t: string): string =>
+  String(t || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim()
+
+export const territorioService = {
+  async cidades(search?: string, uf?: string): Promise<CidadeAtendida[]> {
+    const filters: string[] = []
+    if (search && search.trim()) filters.push(`cidade ~ "${search.trim().replace(/"/g, '')}"`)
+    if (uf && uf.trim()) filters.push(`uf = "${uf.trim().toUpperCase()}"`)
+    return (await pb.collection('cidades_atendidas').getFullList({
+      sort: 'cidade',
+      filter: filters.length ? filters.join(' && ') : undefined,
+    })) as unknown as CidadeAtendida[]
+  },
+  async criarCidade(data: {
+    cidade: string
+    uf: string
+    observacao?: string
+  }): Promise<CidadeAtendida> {
+    const cidade_normalizada = normalizarCidade(data.cidade)
+    const ufNormalizada = data.uf.trim().toUpperCase()
+    const existentes = (await pb.collection('cidades_atendidas').getFullList({
+      filter: `cidade_normalizada = "${cidade_normalizada}" && uf = "${ufNormalizada}"`,
+    })) as unknown as CidadeAtendida[]
+    if (existentes.length > 0) throw new Error('Cidade já cadastrada para esta UF.')
+    return (await pb.collection('cidades_atendidas').create({
+      cidade: data.cidade.trim(),
+      cidade_normalizada,
+      uf: ufNormalizada,
+      ativo: true,
+      observacao: data.observacao || '',
+    })) as unknown as CidadeAtendida
+  },
+  async alternarCidade(id: string, ativo: boolean): Promise<CidadeAtendida> {
+    return (await pb
+      .collection('cidades_atendidas')
+      .update(id, { ativo })) as unknown as CidadeAtendida
+  },
+
+  async regioes(): Promise<TerritorioRegiao[]> {
+    return (await pb.collection('territorio_regioes').getFullList({
+      sort: 'nome',
+      expand: 'vendedor_id',
+    })) as unknown as TerritorioRegiao[]
+  },
+  async criarRegiao(data: { nome: string; vendedor_id: string }): Promise<TerritorioRegiao> {
+    return (await pb.collection('territorio_regioes').create({
+      nome: data.nome.trim(),
+      vendedor_id: data.vendedor_id,
+      ativo: true,
+    })) as unknown as TerritorioRegiao
+  },
+  async editarRegiao(
+    id: string,
+    data: { nome?: string; vendedor_id?: string; ativo?: boolean },
+  ): Promise<TerritorioRegiao> {
+    return (await pb
+      .collection('territorio_regioes')
+      .update(id, data)) as unknown as TerritorioRegiao
+  },
+
+  async vinculosCidades(): Promise<TerritorioCidade[]> {
+    return (await pb.collection('territorio_cidades').getFullList({
+      expand: 'cidade_id',
+    })) as unknown as TerritorioCidade[]
+  },
+  async vincularCidade(regiaoId: string, cidadeId: string): Promise<TerritorioCidade> {
+    return (await pb.collection('territorio_cidades').create({
+      regiao_id: regiaoId,
+      cidade_id: cidadeId,
+    })) as unknown as TerritorioCidade
+  },
+  async desvincularCidade(id: string): Promise<void> {
+    await pb.collection('territorio_cidades').delete(id)
+  },
+
+  async filaRevisao(): Promise<ItemFilaRevisao[]> {
+    return (await pb.collection('fila_revisao').getFullList({
+      sort: '-created',
+      filter: `status = "pendente"`,
+    })) as unknown as ItemFilaRevisao[]
+  },
+  async modoMotor(): Promise<'so_decide' | 'automatico'> {
+    try {
+      const registros = (await pb.collection('config_motor').getFullList({
+        sort: '-updated',
+      })) as unknown as Array<{ modo?: string }>
+      const modo = registros[0]?.modo
+      return modo === 'automatico' ? 'automatico' : 'so_decide'
+    } catch {
+      return 'so_decide' // sem config → default seguro
+    }
+  },
+  async alternarModoMotor(modo: 'so_decide' | 'automatico'): Promise<void> {
+    const registros = (await pb.collection('config_motor').getFullList()) as unknown as Array<{
+      id: string
+    }>
+    const payload = {
+      modo,
+      atualizado_por: pb.authStore.record?.id || '',
+      atualizado_em: new Date().toISOString(),
+    }
+    if (registros[0]?.id) {
+      await pb.collection('config_motor').update(registros[0].id, payload)
+    } else {
+      await pb.collection('config_motor').create(payload)
+    }
+  },
+  async resolverFila(
+    id: string,
+    decisao: string,
+    status: 'resolvida' | 'descartada',
+  ): Promise<ItemFilaRevisao> {
+    return (await pb.collection('fila_revisao').update(id, {
+      status,
+      decisao,
+      decidido_por: pb.authStore.record?.id || '',
+      decidido_em: new Date().toISOString(),
+    })) as unknown as ItemFilaRevisao
+  },
+}

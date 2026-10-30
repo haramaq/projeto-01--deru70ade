@@ -120,6 +120,16 @@ export default function Layout() {
       ...(role === 'admin'
         ? [
             {
+              title: 'Territórios',
+              path: '/territorios-comerciais',
+              icon: MapPin,
+              permission: 'configuracoes' as PermissionKey,
+            },
+          ]
+        : []),
+      ...(role === 'admin'
+        ? [
+            {
               title: 'Feiras',
               path: '/feiras',
               icon: Store,

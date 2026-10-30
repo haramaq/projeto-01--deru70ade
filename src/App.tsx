@@ -21,6 +21,7 @@ import Feiras from '@/pages/Feiras'
 import AccessDenied from '@/pages/AccessDenied'
 import NotFound from '@/pages/NotFound'
 const MapaComercial = React.lazy(() => import('@/pages/MapaComercial'))
+import TerritoriosComerciais from '@/pages/TerritoriosComerciais'
 import { MAP_ALLOWED_ROLES } from '@/features/mapa-comercial/domain/access'
 
 const App = () => (
@@ -69,6 +70,14 @@ const App = () => (
               }
             />
             <Route path="meus-leads" element={<Navigate to="/vendas" replace />} />
+            <Route
+              path="territorios-comerciais"
+              element={
+                <ProtectedRoute allowedRoles={['admin']} requiredPermission="configuracoes">
+                  <TerritoriosComerciais />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="fila-triagem"
               element={

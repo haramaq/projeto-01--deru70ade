@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-30T20:26:39.246Z",
+  "generatedAt": "2026-10-30T22:16:19.551Z",
   "collections": [
     {
       "name": "users",
@@ -818,6 +818,16 @@
           "type": "text",
           "required": false,
           "system": false
+        },
+        {
+          "name": "origem_captura",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": [
+            "manual",
+            "captacao_automatica"
+          ]
         }
       ],
       "indexes": [
@@ -2002,6 +2012,244 @@
         "CREATE INDEX `idx_oportunidades_vendedor` ON `oportunidades` (vendedor_id)",
         "CREATE INDEX `idx_oportunidades_ddi_ddd` ON `oportunidades` (ddi, ddd)"
       ]
+    },
+    {
+      "name": "cidades_atendidas",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.role = 'admin'",
+        "update": "@request.auth.role = 'admin'",
+        "delete": "@request.auth.role = 'admin'"
+      },
+      "fields": [
+        {
+          "name": "cidade",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "cidade_normalizada",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "uf",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "ativo",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "observacao",
+          "type": "text",
+          "required": false,
+          "system": false
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX `idx_cidades_atendidas_lookup` ON `cidades_atendidas` (cidade_normalizada, uf)"
+      ]
+    },
+    {
+      "name": "territorio_regioes",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.role = 'admin'",
+        "update": "@request.auth.role = 'admin'",
+        "delete": "@request.auth.role = 'admin'"
+      },
+      "fields": [
+        {
+          "name": "nome",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "vendedor_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "ativo",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "vigente_de",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "vigente_ate",
+          "type": "date",
+          "required": false,
+          "system": false
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX `idx_territorio_regioes_vendedor` ON `territorio_regioes` (vendedor_id, ativo)"
+      ]
+    },
+    {
+      "name": "territorio_cidades",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.role = 'admin'",
+        "update": "@request.auth.role = 'admin'",
+        "delete": "@request.auth.role = 'admin'"
+      },
+      "fields": [
+        {
+          "name": "regiao_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "territorio_regioes"
+        },
+        {
+          "name": "cidade_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "cidades_atendidas"
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX `idx_territorio_cidades_cidade` ON `territorio_cidades` (cidade_id)"
+      ]
+    },
+    {
+      "name": "fila_revisao",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'triagem')",
+        "view": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || @request.auth.role = 'triagem')",
+        "create": null,
+        "update": "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor')",
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "lead_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "vendas"
+        },
+        {
+          "name": "motivo",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "detalhe",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "candidatos",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "pendente",
+            "resolvida",
+            "descartada"
+          ]
+        },
+        {
+          "name": "decidido_por",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "decisao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "decidido_em",
+          "type": "date",
+          "required": false,
+          "system": false
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX `idx_fila_revisao_status` ON `fila_revisao` (status, motivo)",
+        "CREATE INDEX `idx_fila_revisao_lead` ON `fila_revisao` (lead_id)"
+      ]
+    },
+    {
+      "name": "config_motor",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.role = 'admin'",
+        "update": "@request.auth.role = 'admin'",
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "modo",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "so_decide",
+            "automatico"
+          ]
+        },
+        {
+          "name": "atualizado_por",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "atualizado_em",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "observacao",
+          "type": "text",
+          "required": false,
+          "system": false
+        }
+      ],
+      "indexes": []
     }
   ]
 }
