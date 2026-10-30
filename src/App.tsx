@@ -16,7 +16,6 @@ import RevendaDetalhe from '@/pages/RevendaDetalhe'
 import Suporte from '@/pages/Suporte'
 import Relatorios from '@/pages/Relatorios'
 import Configuracoes from '@/pages/Configuracoes'
-import MeusLeads from '@/pages/MeusLeads'
 import FilaTriagem from '@/pages/FilaTriagem'
 import Feiras from '@/pages/Feiras'
 import AccessDenied from '@/pages/AccessDenied'
@@ -69,14 +68,7 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="meus-leads"
-              element={
-                <ProtectedRoute allowedRoles={['admin', 'gestor']}>
-                  <MeusLeads />
-                </ProtectedRoute>
-              }
-            />
+            <Route path="meus-leads" element={<Navigate to="/vendas" replace />} />
             <Route
               path="fila-triagem"
               element={

@@ -89,17 +89,7 @@ export default function Layout() {
     [
       ...(mapNavigationItem ? [mapNavigationItem] : []),
       { title: 'Dashboard', path: '/', icon: LayoutDashboard, permission: 'dashboard' },
-      // Meus Leads oculto de vendedor/revendedor até a correção RBAC de vendas (E2b) — condição do owner.
-      ...(role !== 'vendedor' && role !== 'revendedor'
-        ? [
-            {
-              title: 'Meus Leads',
-              path: '/meus-leads',
-              icon: TrendingUp,
-              permission: 'leads' as PermissionKey,
-            },
-          ]
-        : []),
+
       // Fila de Triagem: leads sem responsável (rota server-side) — só triagem/admin/gestor.
       ...(role === 'triagem' || role === 'admin' || role === 'gestor'
         ? [
