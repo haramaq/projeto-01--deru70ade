@@ -164,6 +164,8 @@ export default function Vendas() {
   const [transferLead, setTransferLead] = useState<Venda | null>(null)
   const [transferTargets, setTransferTargets] = useState<User[]>([])
   const [transferTargetId, setTransferTargetId] = useState('')
+  const [transferTargetsLoading, setTransferTargetsLoading] = useState(false)
+  const [transferTargetsError, setTransferTargetsError] = useState('')
   const [editOpen, setEditOpen] = useState(false)
   const [editLead, setEditLead] = useState<Venda | null>(null)
   const [editClientId, setEditClientId] = useState('')
@@ -385,6 +387,27 @@ export default function Vendas() {
     setTransferLead(lead)
     setTransferTargetId(lead.vendedor || '')
     setTransferOpen(true)
+    // Carrega os destinatários da rota server-side (funciona p/ vendedor; a coleção users
+    // é escondida pela listRule 0009). Erro é EXPLÍCITO — sem dropdown vazio silencioso.
+    setTransferTargetsError('')
+    setTransferTargetsLoading(true)
+    userService
+      .getTransferTargets()
+      .then((alvos) => {
+        setTransferTargets(alvos)
+        if (alvos.length === 0) {
+          setTransferTargetsError(
+            'Nenhum usuário ativo encontrado para receber a transferência (vendedor, revendedor ou triagem).',
+          )
+        }
+      })
+      .catch(() => {
+        setTransferTargets([])
+        setTransferTargetsError(
+          'Não foi possível carregar os usuários de destino. Verifique sua conexão e tente novamente.',
+        )
+      })
+      .finally(() => setTransferTargetsLoading(false))
   }
 
   const saveTransfer = async (event: React.FormEvent) => {
@@ -1420,6 +1443,14 @@ export default function Vendas() {
                 A transferência altera o responsável e a carteira do lead e registra o evento no
                 histórico.
               </p>
+              {transferTargetsLoading && (
+                <p className="text-xs text-[#64748B]">Carregando usuários de destino…</p>
+              )}
+              {transferTargetsError && (
+                <p className="text-xs font-medium text-red-600" role="alert">
+                  {transferTargetsError}
+                </p>
+              )}
               <Select value={transferTargetId} onValueChange={setTransferTargetId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o usuário de destino" />
