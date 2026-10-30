@@ -17,6 +17,7 @@ import Suporte from '@/pages/Suporte'
 import Relatorios from '@/pages/Relatorios'
 import Configuracoes from '@/pages/Configuracoes'
 import MeusLeads from '@/pages/MeusLeads'
+import FilaTriagem from '@/pages/FilaTriagem'
 import Feiras from '@/pages/Feiras'
 import AccessDenied from '@/pages/AccessDenied'
 import NotFound from '@/pages/NotFound'
@@ -73,6 +74,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin', 'gestor']}>
                   <MeusLeads />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="fila-triagem"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestor', 'triagem']}>
+                  <FilaTriagem />
                 </ProtectedRoute>
               }
             />

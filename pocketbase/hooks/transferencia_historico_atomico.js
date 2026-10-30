@@ -14,10 +14,6 @@
 // testadas) e produz evento órfão DETECTÁVEL (transferencia sem mudança de vendedor) —
 // trade-off deliberado: prefere-se evento órfão raro a transferência sem auditoria.
 //
-// RISCO REGISTRADO (owner, 29/10): a auditoria NÃO é totalmente atômica. Mecanismo de
-// reconciliação sugerido: consulta periódica de eventos 'transferencia' cujo vendedor atual
-// do lead difere de usuario_destino (evento órfão) — a ser implementada como rotina admin.
-//
 // Reenvio idêntico não duplica: novo === vendedor do banco → sem reatribuição, sem evento.
 onRecordUpdateRequest((e) => {
   try {
@@ -66,6 +62,57 @@ onRecordUpdateRequest((e) => {
       })
     }
 
+    // TRANSFERÊNCIA CONJUNTA DO CLIENTE (decisão owner 30/10 14:41):
+    // o cliente vinculado acompanha o novo responsável QUANDO não houver conflito —
+    // conflito = outro lead ATIVO do mesmo cliente com vendedor diferente do novo E do atual.
+    // Em conflito: preservar os responsáveis existentes e sinalizar revisão no histórico.
+    let conflitoCliente = false
+    let clienteAtualizado = false
+    let clienteOriginal = null
+    const clienteId = e.record.get('cliente') || ''
+    if (clienteId) {
+      try {
+        const outros = e.app.findRecordsByFilter(
+          'vendas',
+          'cliente = {:cliente} && id != {:lead}',
+          '',
+          50,
+          0,
+          { cliente: clienteId, lead: e.record.id },
+        )
+        let temAtivoDivergente = false
+        for (let i = 0; i < outros.length; i++) {
+          const vendedorOutro = outros[i].get('vendedor') || ''
+          const statusOutro = outros[i].get('status_lead') || ''
+          const ativo = statusOutro === '' || statusOutro === 'em_andamento'
+          if (ativo && vendedorOutro && vendedorOutro !== novo && vendedorOutro !== atual) {
+            temAtivoDivergente = true
+            break
+          }
+        }
+        if (!temAtivoDivergente) {
+          const cliente = e.app.findRecordById('clientes', clienteId)
+          clienteOriginal = {
+            id: clienteId,
+            responsavel: cliente.get('responsavel') || '',
+            responsavel_usuario: cliente.get('responsavel_usuario') || '',
+            carteira: cliente.get('carteira') || '',
+          }
+          cliente.set('responsavel', novo)
+          cliente.set('responsavel_usuario', novo)
+          cliente.set('carteira', alvo.get('carteira') || '')
+          e.app.save(cliente)
+          clienteAtualizado = true
+        } else {
+          conflitoCliente = true
+        }
+      } catch (errCliente) {
+        // Falha na atualização do cliente NÃO bloqueia a transferência do lead
+        // (auditoria do lead é o registro primário) — sinaliza revisão no histórico.
+        conflitoCliente = true
+      }
+    }
+
     // AUDITORIA PRIMEIRO (se falhar, a transferência não ocorre):
     const atorId = e.auth ? e.auth.id : ''
     const etapa = e.record.get('etapa') || ''
@@ -80,9 +127,41 @@ onRecordUpdateRequest((e) => {
       hist.set('tipo_evento', 'transferencia')
       hist.set('usuario_origem', atorId)
       hist.set('usuario_destino', novo)
-      hist.set('observacao', 'Transferência de vendedor registrada automaticamente pelo servidor.')
+      hist.set(
+        'observacao',
+        conflitoCliente
+          ? 'Transferência registrada; revisão necessária: responsável do cliente preservado (conflito ou falha na atualização).'
+          : 'Transferência de vendedor registrada automaticamente pelo servidor.',
+      )
       e.app.save(hist)
     } catch (errHist) {
+      // COMPENSAÇÃO idempotente: a auditoria falhou DEPOIS de o cliente ter sido atualizado —
+      // reverter o cliente ao estado original (a transferência NÃO ocorrerá). Se a reversão
+      // também falhar, o erro é reportado com código específico p/ reconciliação manual.
+      if (clienteAtualizado && clienteOriginal) {
+        try {
+          const clienteRev = e.app.findRecordById('clientes', clienteOriginal.id)
+          // PROTEÇÃO POR ESTADO ESPERADO (CAS lógico): compensar SÓ SE o cliente ainda está
+          // exatamente no estado que ESTE handler deixou. Se um usuário (admin/gestor) alterou
+          // o cliente concorrentemente, a alteração dele VENCE — o rollback NÃO sobrescreve;
+          // a divergência fica detectável pela reconciliação (cliente ≠ vendedor do lead).
+          const aindaNosso =
+            (clienteRev.get('responsavel') || '') === novo &&
+            (clienteRev.get('responsavel_usuario') || '') === novo
+          if (aindaNosso) {
+            clienteRev.set('responsavel', clienteOriginal.responsavel)
+            clienteRev.set('responsavel_usuario', clienteOriginal.responsavel_usuario)
+            clienteRev.set('carteira', clienteOriginal.carteira)
+            e.app.save(clienteRev)
+          }
+        } catch (errComp) {
+          return e.json(500, {
+            code: 'compensacao_falhou',
+            message:
+              'Transferência não realizada; falha ao registrar auditoria E ao reverter o cliente. Reconciliação manual necessária.',
+          })
+        }
+      }
       return e.json(500, {
         code: 'auditoria_falhou',
         message: 'Transferência não realizada: falha ao registrar auditoria.',

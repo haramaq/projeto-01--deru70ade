@@ -100,6 +100,17 @@ export default function Layout() {
             },
           ]
         : []),
+      // Fila de Triagem: leads sem responsável (rota server-side) — só triagem/admin/gestor.
+      ...(role === 'triagem' || role === 'admin' || role === 'gestor'
+        ? [
+            {
+              title: 'Fila de Triagem',
+              path: '/fila-triagem',
+              icon: TrendingUp,
+              permission: 'leads' as PermissionKey,
+            },
+          ]
+        : []),
       { title: 'Leads / Kanban', path: '/vendas', icon: TrendingUp, permission: 'leads' },
       { title: 'Clientes', path: '/clientes', icon: Users, permission: 'clientes' },
       {
