@@ -122,7 +122,7 @@ export default function Layout() {
             {
               title: 'Territórios',
               path: '/territorios-comerciais',
-              icon: MapPin,
+              icon: MapPinned,
               permission: 'configuracoes' as PermissionKey,
             },
           ]
