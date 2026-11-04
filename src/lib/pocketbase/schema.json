@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-04T14:59:35.369Z",
+  "generatedAt": "2026-11-04T16:54:52.489Z",
   "collections": [
     {
       "name": "users",
@@ -2490,6 +2490,104 @@
         "CREATE UNIQUE INDEX idx_regra_versao ON regras_versao (regra_chave, versao)",
         "CREATE INDEX idx_regra_vigencia ON regras_versao (regra_chave, vigente_de)",
         "CREATE UNIQUE INDEX idx_regra_aberta ON regras_versao (regra_chave) WHERE vigente_ate = ''"
+      ]
+    },
+    {
+      "name": "qualificacao_respostas",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && ((@request.auth.role = 'admin' || @request.auth.role = 'gestor') || (@request.auth.role = 'triagem' || @request.auth.role = 'suporte') || (lead_id.vendedor = @request.auth.id || (@request.auth.carteira != '' && lead_id.carteira = @request.auth.carteira)))",
+        "view": "@request.auth.id != '' && ((@request.auth.role = 'admin' || @request.auth.role = 'gestor') || (@request.auth.role = 'triagem' || @request.auth.role = 'suporte') || (lead_id.vendedor = @request.auth.id || (@request.auth.carteira != '' && lead_id.carteira = @request.auth.carteira)))",
+        "create": null,
+        "update": null,
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "lead_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "vendas"
+        },
+        {
+          "name": "pergunta_id",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "resposta",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "roteiro_versao_id",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "sessao_id",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "origem",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "triagem",
+            "agente_ia",
+            "simulador"
+          ]
+        },
+        {
+          "name": "status_validacao",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "valida",
+            "incompleta",
+            "corrigida"
+          ]
+        },
+        {
+          "name": "respondida_por",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate"
+          ]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_qr_lead_pergunta ON qualificacao_respostas (lead_id, pergunta_id, sessao_id)",
+        "CREATE INDEX idx_qr_lead ON qualificacao_respostas (lead_id)",
+        "CREATE INDEX idx_qr_sessao ON qualificacao_respostas (sessao_id)",
+        "CREATE INDEX idx_qr_roteiro ON qualificacao_respostas (roteiro_versao_id)"
       ]
     }
   ]
