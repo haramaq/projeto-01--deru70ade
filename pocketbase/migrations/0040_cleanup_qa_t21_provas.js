@@ -12,7 +12,8 @@
 // 1. isNotFound distingue 'sql: no rows' de outros erros (sem catch genérico).
 // 2. Igualdade EXATA por identificador (nunca exclusão por prefixo).
 // 3. Inclui verificação das 2 possíveis chaves em 'falha' (E1.7/E2.3).
-// 4. Down: no-op documentado — os dados de teste NÃO são recriados.
+// 4. CORREÇÃO OP-6B.4: linha 105 — evId.indexOf('') === 0 → evId === '' (bug JS).
+// 5. Down: no-op documentado — os dados de teste NÃO são recriados.
 //
 // Semântica transacional PocketBase 0.36: o apply_changes executa todas as
 // migrations pendentes em UMA transação — se qualquer migration falhar, nada é
@@ -130,7 +131,7 @@ migrate(
               '] não está na lista esperada',
           )
         }
-        if (evId.indexOf('') === 0) {
+        if (evId === '') {
           // event_id vazio = registro inesperado
           throw new Error('DIVERGENCIA_QA_EVENT_ID_VAZIO: ' + ev.id)
         }
