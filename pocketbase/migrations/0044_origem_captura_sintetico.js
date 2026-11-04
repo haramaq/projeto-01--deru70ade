@@ -12,14 +12,22 @@
 migrate(
   (app) => {
     const c = app.findCollectionByNameOrId('vendas')
-    const field = c.fields.getFieldByName('origem_captura')
-    field.values = ['manual', 'captacao_automatica', 'sintetico']
+    for (let i = 0; i < c.fields.length; i++) {
+      if (c.fields[i].name === 'origem_captura') {
+        c.fields[i].values = ['manual', 'captacao_automatica', 'sintetico']
+        break
+      }
+    }
     app.save(c)
   },
   (app) => {
     const c = app.findCollectionByNameOrId('vendas')
-    const field = c.fields.getFieldByName('origem_captura')
-    field.values = ['manual', 'captacao_automatica']
+    for (let i = 0; i < c.fields.length; i++) {
+      if (c.fields[i].name === 'origem_captura') {
+        c.fields[i].values = ['manual', 'captacao_automatica']
+        break
+      }
+    }
     app.save(c)
   },
 )
