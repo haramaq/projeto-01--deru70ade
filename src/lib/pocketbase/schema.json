@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-04T16:54:52.489Z",
+  "generatedAt": "2026-11-04T17:31:26.238Z",
   "collections": [
     {
       "name": "users",
@@ -828,6 +828,25 @@
             "manual",
             "captacao_automatica"
           ]
+        },
+        {
+          "name": "classificacao",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": [
+            "qualificado",
+            "interesse_futuro",
+            "fora_perfil",
+            "duplicado",
+            "pendente"
+          ]
+        },
+        {
+          "name": "roteiro_versao",
+          "type": "text",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": [
