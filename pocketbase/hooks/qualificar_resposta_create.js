@@ -6,10 +6,14 @@
 // 1. lead_id existe em vendas (relation — PB valida automaticamente)
 // 2. sessao_id preenchido (required — PB valida)
 // 3. roteiro_versao_id existe em regras_versao com regra_chave = 'roteiro:qualificacao'
+//    ou 'roteiro:qualificacao:qa'
 // 4. pergunta_id existe no conteúdo JSON da versão do roteiro
 // 5. origem='simulador' → APENAS origem_captura='sintetico' permitido
 // 6. origem desconhecida → rejeitada
 // 7. falha na consulta ao lead → rejeitada (fail-closed)
+// 8. Validação cruzada: roteiro × tipo do lead (T2.2-T4-C5)
+//    - lead sintético (origem_captura='sintetico') → APENAS roteiro:qualificacao:qa
+//    - lead comercial (origem_captura='manual'/'captacao_automatica'/vazio) → APENAS roteiro:qualificacao
 //
 // Superuser bypass (padrão da plataforma).
 
@@ -70,6 +74,7 @@ onRecordCreateRequest((e) => {
     }
 
     // 2) Validar roteiro_versao_id: deve existir em regras_versao com regra_chave = 'roteiro:qualificacao'
+    //    ou 'roteiro:qualificacao:qa'
     if (roteiroVersaoId) {
       let versao = null
       try {
@@ -84,10 +89,31 @@ onRecordCreateRequest((e) => {
         throw err
       }
       const regraChave = String(versao.get('regra_chave') || '')
-      if (regraChave !== 'roteiro:qualificacao') {
+      if (regraChave !== 'roteiro:qualificacao' && regraChave !== 'roteiro:qualificacao:qa') {
         return e.json(400, {
           code: 'versao_roteiro_incorreta',
           message: 'A versão informada não pertence ao roteiro de qualificação.',
+        })
+      }
+      // Validação cruzada: o tipo do lead determina qual roteiro é aceito (T2.2-T4-C5)
+      // - lead sintético (origem_captura='sintetico') → APENAS roteiro:qualificacao:qa
+      // - lead comercial (origem_captura='manual'/'captacao_automatica'/vazio) → APENAS roteiro:qualificacao
+      let leadOrigemCaptura = ''
+      try {
+        const lead = $app.findRecordById('vendas', leadId)
+        leadOrigemCaptura = String(lead.get('origem_captura') || '')
+      } catch (leadErr) {
+        return e.json(500, {
+          code: 'lead_consulta_falhou',
+          message: 'Falha ao consultar o lead: ' + String(leadErr).slice(0, 100),
+        })
+      }
+      const roteiroEsperado =
+        leadOrigemCaptura === 'sintetico' ? 'roteiro:qualificacao:qa' : 'roteiro:qualificacao'
+      if (regraChave !== roteiroEsperado) {
+        return e.json(400, {
+          code: 'roteiro_incompativel_lead',
+          message: 'O roteiro não corresponde ao tipo do lead. Esperado: ' + roteiroEsperado,
         })
       }
     }

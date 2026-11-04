@@ -2,10 +2,15 @@
 // T2.2-T4-B — Hook classificar_lead: classificação comercial determinística.
 // Rota: POST /backend/v1/qualificacao/classificar
 //
+// T2.2-T4-C4 (04/11): separação por tipo de lead — origem_captura='sintetico'
+// usa roteiro:qualificacao:qa; demais leads comerciais usam roteiro:qualificacao.
+// A escolha é determinada pelo BACKEND (registro persistido do lead),
+// nunca por um parâmetro enviado pelo cliente.
+//
 // Fluxo:
 // 1. Autenticação e autorização (RBAC — triagem/vendedor/admin/gestor/suporte)
 // 2. Validação de lead e sessão
-// 3. Resolução do roteiro versionado (regras_vigente)
+// 3. Resolução do roteiro versionado (separado por tipo de lead)
 // 4. Validação de respostas obrigatórias
 // 5. Aplicação determinística das regras_classificacao
 // 6. Tratamento de respostas incompletas → pendente
@@ -70,12 +75,20 @@ routerAdd('POST', '/backend/v1/qualificacao/classificar', (e) => {
       }
     }
 
-    // ---------- 2) Resolver roteiro vigente ----------
+    // ---------- 2) Resolver roteiro vigente (separação por tipo de lead) ----------
+    // - origem_captura='sintetico' → roteiro:qualificacao:qa (roteiro QA isolado)
+    // - demais leads comerciais → roteiro:qualificacao (roteiro comercial)
+    // A escolha é determinada pelo BACKEND (registro persistido do lead),
+    // nunca por um parâmetro enviado pelo cliente.
+    const leadOrigemCaptura = String(lead.get('origem_captura') || '')
+    const regraChave =
+      leadOrigemCaptura === 'sintetico' ? 'roteiro:qualificacao:qa' : 'roteiro:qualificacao'
+
     let roteiroVersao = null
     try {
       const versoes = $app.findRecordsByFilter(
         'regras_versao',
-        "regra_chave = 'roteiro:qualificacao' && vigente_ate = ''",
+        "regra_chave = '" + regraChave + "' && vigente_ate = ''",
         '-versao',
         1,
         0,
@@ -86,7 +99,7 @@ routerAdd('POST', '/backend/v1/qualificacao/classificar', (e) => {
     }
 
     if (!roteiroVersao) {
-      return resp(404, { codigo: 'SEM_ROTEIRO_VIGENTE' })
+      return resp(404, { codigo: 'SEM_ROTEIRO_VIGENTE', regra_chave: regraChave })
     }
 
     const roteiroVersaoId = roteiroVersao.id

@@ -3,11 +3,24 @@
 // T2.1 / Etapa 3 — publicar nova versao de regra (fecha a anterior atomicamente).
 // POST /backend/v1/regras/publicar (re-path: Skip RETÉM /api/)
 //
+// T2.2-T4-C5 (04/11): autenticação e autorização adicionadas.
+// 401 para anônimos, 403 para perfis não-admin/gestor.
+//
 // ORDEM CORRETA: fecha a anterior ANTES de criar a nova.
 // O indice parcial UNIQUE (regra_chave) WHERE vigente_ate='' so admite
 // uma versao aberta por regra — criar primeiro e violar o proprio invariante.
 
 routerAdd('POST', '/backend/v1/regras/publicar', (e) => {
+  // ---------- Autenticação e autorização (T2.2-T4-C5, 04/11) ----------
+  const auth = e.auth
+  if (!auth) {
+    return e.json(401, { codigo: 'AUTENTICACAO_OBRIGATORIA' })
+  }
+  const role = String(auth.get('role') || '')
+  if (role !== 'admin' && role !== 'gestor') {
+    return e.json(403, { codigo: 'PERFIL_NAO_AUTORIZADO', perfil: role })
+  }
+
   const body = e.requestInfo().body || {}
   const chave = String(body.regra_chave || '').trim()
   const conteudo = body.conteudo === undefined ? {} : body.conteudo
