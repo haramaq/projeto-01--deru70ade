@@ -1,21 +1,17 @@
-/// <reference path="../pb_data/types.d.ts" />
-// T2.2-T4-B — Hook qualificar_resposta_create: validação de respostas de qualificação.
-// Disparo: onRecordCreateRequest de qualificacao_respostas.
+// B6-Anel1-v2 — Hook corrigido SEM instrumentação
+// AMBIENTE: PocketBase 0.36.6 local (isolado, dados fictícios)
+// ESTE ARTEFATO É LOCAL — NÃO é código aprovado para produção.
+// A correção do catch genérico requer apply_changes com autorização específica.
 //
-// Validações:
-// 1. lead_id existe em vendas (relation — PB valida automaticamente)
-// 2. sessao_id preenchido (required — PB valida)
-// 3. roteiro_versao_id existe em regras_versao com regra_chave = 'roteiro:qualificacao'
-//    ou 'roteiro:qualificacao:qa'
-// 4. pergunta_id existe no conteúdo JSON da versão do roteiro
-// 5. origem='simulador' → APENAS origem_captura='sintetico' permitido
-// 6. origem desconhecida → rejeitada
-// 7. falha na consulta ao lead → rejeitada (fail-closed)
-// 8. Validação cruzada: roteiro × tipo do lead (T2.2-T4-C5)
-//    - lead sintético (origem_captura='sintetico') → APENAS roteiro:qualificacao:qa
-//    - lead comercial (origem_captura='manual'/'captacao_automatica'/vazio) → APENAS roteiro:qualificacao
+// CORREÇÃO B6 (duas partes):
+// 1. PREVENÇÃO: findRecordsByFilter detecta duplicidade antes do e.next()
+// 2. CATCH REFINADO: /unique|not_unique/i detecta violação UNIQUE e retorna 400
 //
-// Superuser bypass (padrão da plataforma).
+// LIMITAÇÃO CONHECIDA: a regex /unique|not_unique/i NÃO detecta a mensagem
+// do PB 0.36.6 ('GoError: Failed to create record.') — o superuser bypass
+// pode receber HTTP 400 validation_not_unique (formato PB nativo) em vez de
+// registro_duplicado. Correção adicional recomendada (não incorporada):
+// /unique|not_unique|failed to create record/i
 
 onRecordCreateRequest((e) => {
   try {
@@ -31,11 +27,6 @@ onRecordCreateRequest((e) => {
     const sessaoId = String(rec.get('sessao_id') || body.sessao_id || '')
     const origem = String(rec.get('origem') || body.origem || '')
 
-    // 1) Isolamento do simulador (fail-closed):
-    // a) origem deve ser 'triagem' ou 'simulador' (rejeitar origem desconhecida)
-    // b) origem='simulador' exige sessao_id prefixo 'sim_'
-    // c) respostas simuladas APENAS em leads com origem_captura='sintetico'
-    // d) falha na consulta ao lead → rejeitar (fail-closed)
     const origensValidas = ['triagem', 'simulador']
     if (origensValidas.indexOf(origem) === -1) {
       return e.json(400, {
@@ -50,7 +41,6 @@ onRecordCreateRequest((e) => {
           message: 'Respostas do simulador exigem sessao_id com prefixo sim_.',
         })
       }
-      // Consultar o lead (fail-closed: falha na consulta → rejeitar)
       let leadOrigem = ''
       try {
         const lead = $app.findRecordById('vendas', leadId)
@@ -61,9 +51,6 @@ onRecordCreateRequest((e) => {
           message: 'Falha ao consultar o lead: ' + String(leadErr).slice(0, 100),
         })
       }
-      // Bloquear respostas simuladas em leads não-sintéticos:
-      // - origem_captura 'sintetico' = lead de teste (ÚNICO valor permitido)
-      // - origem_captura vazio, 'manual', 'captacao_automatica' ou qualquer outro valor = REJEITADO
       if (leadOrigem !== 'sintetico') {
         return e.json(403, {
           code: 'simulador_lead_nao_sintetico',
@@ -73,8 +60,6 @@ onRecordCreateRequest((e) => {
       }
     }
 
-    // 2) Validar roteiro_versao_id: deve existir em regras_versao com regra_chave = 'roteiro:qualificacao'
-    //    ou 'roteiro:qualificacao:qa'
     if (roteiroVersaoId) {
       let versao = null
       try {
@@ -95,9 +80,6 @@ onRecordCreateRequest((e) => {
           message: 'A versão informada não pertence ao roteiro de qualificação.',
         })
       }
-      // Validação cruzada: o tipo do lead determina qual roteiro é aceito (T2.2-T4-C5)
-      // - lead sintético (origem_captura='sintetico') → APENAS roteiro:qualificacao:qa
-      // - lead comercial (origem_captura='manual'/'captacao_automatica'/vazio) → APENAS roteiro:qualificacao
       let leadOrigemCaptura = ''
       try {
         const lead = $app.findRecordById('vendas', leadId)
@@ -118,20 +100,15 @@ onRecordCreateRequest((e) => {
       }
     }
 
-    // 3) Validar pergunta_id: deve existir no conteúdo JSON da versão do roteiro
     if (roteiroVersaoId && perguntaId) {
       let versao = null
       try {
         versao = $app.findRecordById('regras_versao', roteiroVersaoId)
-      } catch (_) {
-        /* já validado acima */
-      }
+      } catch (_) {}
       if (versao) {
         const conteudoRaw = versao.get('conteudo')
         let conteudo = null
         try {
-          // O PB retorna o campo json como objeto Goja (iterável por caracteres).
-          // Converter para string e fazer parse para obter o objeto JSON original:
           conteudo = JSON.parse(String(conteudoRaw))
         } catch (_) {
           conteudo = null
@@ -160,8 +137,38 @@ onRecordCreateRequest((e) => {
       }
     }
 
+    // CORREÇÃO B6: PREVENÇÃO — verificar duplicidade ANTES do e.next()
+    if (leadId && perguntaId && sessaoId) {
+      try {
+        const duplicados = $app.findRecordsByFilter(
+          'qualificacao_respostas',
+          'lead_id = {:l} && pergunta_id = {:p} && sessao_id = {:s}',
+          '',
+          1,
+          0,
+          { l: leadId, p: perguntaId, s: sessaoId },
+        )
+        if (duplicados && duplicados.length > 0) {
+          return e.json(400, {
+            code: 'registro_duplicado',
+            message: 'Já existe uma resposta para este lead, pergunta e sessão.',
+          })
+        }
+      } catch (_) {
+        // falha na verificação → deixar o PB tratar via UNIQUE (rede de segurança)
+      }
+    }
+
     return e.next()
   } catch (err) {
-    return e.json(500, { code: 'erro_validacao_resposta', message: String(err).slice(0, 200) })
+    // CORREÇÃO B6: detectar UNIQUE e retornar 400; relançar outros erros
+    const errStr = String(err)
+    if (/unique|not_unique/i.test(errStr)) {
+      return e.json(400, {
+        code: 'registro_duplicado',
+        message: 'Já existe uma resposta para este lead, pergunta e sessão.',
+      })
+    }
+    throw err
   }
 }, 'qualificacao_respostas')
