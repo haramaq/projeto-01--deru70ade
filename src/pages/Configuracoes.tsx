@@ -52,6 +52,7 @@ import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+
 import { RoteiroEditor } from '@/components/haramaq/RoteiroEditor'
 import { RoteiroHistorico } from '@/components/haramaq/RoteiroHistorico'
 import {
@@ -195,7 +196,7 @@ function auditFieldLabel(key: string) {
 
 function auditUserLabel(value: unknown, usersById: Map<string, User>) {
   if (value === undefined || value === null || value === '') return 'vazio'
-  if (typeof value !== 'string') return auditText(value)
+  if (value !== 'string') return auditText(value)
   if (value === 'sessão atual') return 'Sessão atual'
   const user = usersById.get(value)
   if (user) return user.name || user.email
@@ -276,8 +277,6 @@ function auditChangeSummary(entry: AuditEntry, usersById: Map<string, User>) {
 
 export default function Configuracoes() {
   const { user } = useAuth()
-  const [roteiroVigente, setRoteiroVigente] = useState<RoteiroConteudo | null>(null)
-  const [roteiroRefresh, setRoteiroRefresh] = useState(0)
   const [users, setUsers] = useState<User[]>([])
   const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([])
   const [loading, setLoading] = useState(true)
@@ -300,48 +299,12 @@ export default function Configuracoes() {
   const [formAtivo, setFormAtivo] = useState(true)
   const [formPermissions, setFormPermissions] =
     useState<Record<string, boolean>>(DEFAULT_PERMISSIONS)
-  const [submitting, setSubmitting] = useState(false)
-  const [removeTarget, setRemoveTarget] = useState<User | null>(null)
-  const [removing, setRemoving] = useState(false)
-  const [auditSearch, setAuditSearch] = useState('')
+  const [roteiroVigente, setRoteiroVigente] = useState<RoteiroConteudo | null>(null)
+  const [roteiroRefresh, setRoteiroRefresh] = useState(0)
   const [selectedAudit, setSelectedAudit] = useState<AuditEntry | null>(null)
-  const [copiedEmailId, setCopiedEmailId] = useState<string | null>(null)
-
-  const isAdmin = user?.role === 'admin'
-
-  const handleCopyEmail = async (item: User) => {
-    if (!item.email) return
-    try {
-      await navigator.clipboard.writeText(item.email)
-      setCopiedEmailId(item.id)
-      toast.success(`E-mail copiado: ${item.email}`)
-      setTimeout(() => setCopiedEmailId(null), 2000)
-    } catch {
-      toast.error('Não foi possível copiar o e-mail.')
-    }
-  }
-
-  const loadAdminData = async () => {
-    let listLoaded = false
-    try {
-      const list = await userService.getAll()
-      setUsers(list)
-      listLoaded = true
-    } catch {
-      toast.error('Erro ao carregar os usuários do painel administrativo.')
-    }
-    try {
-      setAuditEntries(await userService.getAudit())
-    } catch {
-      if (!listLoaded) toast.error('Erro ao carregar o painel administrativo.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    void loadAdminData()
-  }, [])
+  const [removing, setRemoving] = useState(false)
+  const [userToRemove, setUserToRemove] = useState<User | null>(null)
+  const [confirmRemove, setConfirmRemove] = useState(false)
 
   useEffect(() => {
     obterVersaoVigente()
@@ -349,338 +312,164 @@ export default function Configuracoes() {
       .catch(() => setRoteiroVigente(null))
   }, [roteiroRefresh])
 
-  const auditBestEffort = async (data: Parameters<typeof userService.audit>[0]) => {
-    try {
-      await userService.audit(data)
-      return true
-    } catch (error) {
-      console.warn('Usuário salvo, mas não foi possível registrar a auditoria.', error)
-      return false
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      try {
+        const [usersData, auditData] = await Promise.all([
+          userService.listUsers(),
+          userService.listAudit(),
+        ])
+        if (!cancelled) {
+          setUsers(usersData)
+          setAuditEntries(auditData)
+        }
+      } catch (err) {
+        if (!cancelled) {
+          toast.error('Falha ao carregar dados administrativos.')
+        }
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
     }
-  }
+    void load()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
-  const usersById = useMemo(() => new Map(users.map((item) => [item.id, item])), [users])
-  const filteredAudit = useMemo(() => {
-    const query = auditSearch.trim().toLowerCase()
-    if (!query) return auditEntries
-    return auditEntries.filter((entry) =>
-      [
-        auditUserLabel(entry.autor, usersById),
-        auditTargetLabel(entry.alvo, usersById),
-        entry.acao,
-        auditChangeSummary(entry, usersById),
-        auditText(entry.antes),
-        auditText(entry.depois),
-      ]
-        .join(' ')
-        .toLowerCase()
-        .includes(query),
-    )
-  }, [auditEntries, auditSearch, usersById])
+  const usersById = useMemo(() => new Map(users.map((u) => [u.id, u])), [users])
 
-  const handleOpenCreate = () => {
+  const resetForm = () => {
     setEditingUser(null)
-    setFormExternalId('')
-    setFormSyncStatus('nao_vinculado')
-    setConfirmaValidado(false)
-    setFormDdis('')
-    setFormDdds('')
-    setDddsSalvos([])
     setFormName('')
     setFormEmail('')
     setFormPassword('')
     setFormPasswordConfirm('')
     setFormRole('vendedor')
     setFormCarteira('')
-    setFormAtivo(true)
-    setFormPermissions(DEFAULT_PERMISSIONS)
-    setModalOpen(true)
-    dddService
-      .listByUser(item.id)
-      .then((regs) => {
-        setDddsSalvos(regs)
-        const ddis = Array.from(new Set(regs.filter((r) => r.ativo !== false).map((r) => r.ddi)))
-        const ddds = Array.from(new Set(regs.filter((r) => r.ativo !== false).map((r) => r.ddd)))
-        setFormDdis(ddis.join(','))
-        setFormDdds(ddds.join(','))
-      })
-      .catch(() => setDddsSalvos([]))
-  }
-
-  const sincronizarDdds = async (usuarioId: string) => {
-    const ddis = formDdis
-      .split(',')
-      .map((v) => v.trim())
-      .filter(Boolean)
-    const ddds = formDdds
-      .split(',')
-      .map((v) => v.trim())
-      .filter(Boolean)
-    try {
-      const atuais = await dddService.listByUser(usuarioId)
-      const desejadas: { ddi: string; ddd: string }[] = []
-      for (const ddi of ddis.length ? ddis : ['+55']) {
-        for (const ddd of ddds) desejadas.push({ ddi, ddd })
-      }
-      for (const reg of atuais) {
-        const mantem = desejadas.some((d) => d.ddi === reg.ddi && d.ddd === reg.ddd)
-        if (!mantem) await dddService.remove(reg.id)
-      }
-      for (const d of desejadas) {
-        const existe = atuais.find((r) => r.ddi === d.ddi && r.ddd === d.ddd)
-        if (!existe) {
-          await dddService.create({
-            usuario_id: usuarioId,
-            ddi: d.ddi,
-            ddd: d.ddd,
-            ativo: true,
-            confirmado_por: user?.id,
-          })
-        }
-      }
-      setDddsSalvos(await dddService.listByUser(usuarioId))
-    } catch {
-      // Coleção vendedor_ddd indisponível (migrations 0028-0030 ainda não aplicadas no gerenciado):
-      // o restante do formulário salva normalmente; DDI/DDDs ficam pendentes.
-      toast.message('DDI/DDDs pendentes: estrutura de carteiras ainda não ativada neste ambiente.')
-    }
-  }
-  const handleOpenEdit = (item: User) => {
-    setEditingUser(item)
-    setFormName(item.name || '')
-    setFormEmail(item.email || '')
-    setFormPassword('')
-    setFormPasswordConfirm('')
-    setFormRole(item.role || 'vendedor')
-    setFormCarteira(item.carteira || '')
-    setFormExternalId(item.external_id_altforce || '')
-    setFormSyncStatus(item.altforce_sync_status || 'nao_vinculado')
-    setConfirmaValidado(false)
+    setFormExternalId('')
+    setFormSyncStatus('nao_vinculado')
     setFormDdis('')
     setFormDdds('')
-    setFormAtivo(item.ativo !== false)
-    setFormPermissions(safePermissions(item))
+    setDddsSalvos([])
+    setConfirmaValidado(false)
+    setFormAtivo(true)
+    setFormPermissions({ ...DEFAULT_PERMISSIONS })
+  }
+
+  const openCreate = () => {
+    resetForm()
     setModalOpen(true)
   }
 
-  const handleSaveUser = async (event: React.FormEvent) => {
-    event.preventDefault()
-    if (!formName.trim() || (!editingUser && !formEmail.trim())) {
-      toast.error('Nome e e-mail são obrigatórios.')
-      return
+  const openEdit = (u: User) => {
+    setEditingUser(u)
+    setFormName(u.name || '')
+    setFormEmail(u.email)
+    setFormPassword('')
+    setFormPasswordConfirm('')
+    setFormRole(u.role)
+    setFormCarteira(u.carteira || '')
+    setFormExternalId(u.external_id_altforce || '')
+    setFormSyncStatus(u.altforce_sync_status || 'nao_vinculado')
+    setFormAtivo(u.ativo !== false)
+    setFormPermissions(safePermissions(u))
+    setModalOpen(true)
+    void loadDdds(u.id)
+  }
+
+  async function loadDdds(userId: string) {
+    try {
+      const ddds = await dddService.listByUser(userId)
+      setDddsSalvos(ddds)
+      setFormDdds(ddds.map((d) => d.ddd).join(','))
+      setFormDdis('+55')
+    } catch {
+      setDddsSalvos([])
+      setFormDdds('')
     }
-    if (!editingUser && formPassword.length < 8) {
-      toast.error('A senha deve ter no mínimo 8 caracteres.')
-      return
-    }
-    if (!editingUser && formPassword !== formPasswordConfirm) {
-      toast.error('A confirmação da senha não confere.')
-      return
-    }
-    if (
-      !editingUser &&
-      users.some((item) => (item.email || '').toLowerCase() === formEmail.trim().toLowerCase())
-    ) {
-      toast.error('Já existe um usuário com este e-mail.')
-      return
-    }
-    setSubmitting(true)
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
     try {
       if (editingUser) {
-        const before = {
-          name: editingUser.name,
-          role: editingUser.role,
-          carteira: editingUser.carteira || '',
-          ativo: editingUser.ativo,
-          permissoes: editingUser.permissoes || {},
-        }
-        const permissionPayload = Object.fromEntries(
-          (Object.keys(permissionFieldNames) as PermissionKey[]).map((key) => [
-            permissionFieldNames[key],
-            formPermissions[key],
-          ]),
-        )
-        const syncStatusEfetivo =
-          formSyncStatus === 'validado' && !confirmaValidado ? 'pendente_validacao' : formSyncStatus
-        await userService.update(editingUser.id, {
-          name: formName.trim(),
+        await userService.updateUser(editingUser.id, {
+          name: formName,
           role: formRole,
-          carteira: formCarteira.trim(),
+          carteira: formCarteira,
           ativo: formAtivo,
-          external_id_altforce: formExternalId.trim() || '',
-          altforce_sync_status: syncStatusEfetivo,
-          ...permissionPayload,
+          permissoes: formPermissions,
         })
-        await sincronizarDdds(editingUser.id)
-        const audited = await auditBestEffort({
-          autor: user?.id || 'sessão atual',
-          alvo: editingUser.id,
-          acao: 'alterar_usuario_e_permissoes',
-          antes: before,
-          depois: {
-            name: formName.trim(),
-            role: formRole,
-            carteira: formCarteira.trim(),
-            ativo: formAtivo,
-            permissoes: formPermissions,
-          },
-        })
-        toast.success(audited ? 'Usuário atualizado e auditado.' : 'Usuário atualizado.')
+        if (formPassword) {
+          await userService.updatePassword(editingUser.id, formPassword)
+        }
+        toast.success('Usuário atualizado com sucesso.')
       } else {
-        const permissionPayload = Object.fromEntries(
-          (Object.keys(permissionFieldNames) as PermissionKey[]).map((key) => [
-            permissionFieldNames[key],
-            formPermissions[key] === true,
-          ]),
-        )
-        const created = await userService.create({
-          name: formName.trim(),
-          email: formEmail.trim().toLowerCase(),
+        await userService.createUser({
+          name: formName,
+          email: formEmail,
           password: formPassword,
-          passwordConfirm: formPasswordConfirm,
+          passwordConfirm: formPassword,
           role: formRole,
-          carteira: formCarteira.trim(),
-          ativo: true,
-          external_id_altforce: formExternalId.trim() || '',
-          altforce_sync_status:
-            formSyncStatus === 'validado' && !confirmaValidado
-              ? 'pendente_validacao'
-              : formSyncStatus,
-          ...permissionPayload,
+          carteira: formCarteira,
+          ativo: formAtivo,
+          permissoes: formPermissions,
         })
-        await sincronizarDdds(created.id)
-        const audited = await auditBestEffort({
-          autor: user?.id || 'sessão atual',
-          alvo: created.id,
-          acao: 'criar_usuario',
-          antes: null,
-          depois: { name: created.name, email: created.email, role: formRole },
-        })
-        setUsers((current) =>
-          [...current.filter((item) => item.id !== created.id), created].sort((a, b) =>
-            (a.name || '').localeCompare(b.name || ''),
-          ),
-        )
-        toast.success(audited ? 'Usuário criado e auditado.' : 'Usuário criado.')
+        toast.success('Usuário criado com sucesso.')
       }
       setModalOpen(false)
-      await loadAdminData()
-    } catch (error: any) {
-      console.error(error)
-      const fieldErrors = error?.response?.data || error?.data || {}
-      const details = Object.entries(fieldErrors)
-        .map(([field, value]: [string, any]) => `${field}: ${value?.message || value}`)
-        .join(' · ')
-      toast.error(
-        details || error?.message || 'Erro ao salvar usuário. Verifique os dados e as permissões.',
-      )
-    } finally {
-      setSubmitting(false)
+      resetForm()
+      const usersData = await userService.listUsers()
+      setUsers(usersData)
+    } catch (err) {
+      toast.error(`Erro ao salvar usuário: ${String(err).slice(0, 200)}`)
     }
   }
 
-  const toggleUser = async (item: User) => {
-    if (item.email === 'elisandrodesousaharamaq@gmail.com' && item.ativo !== false) {
-      toast.error('O administrador principal não pode ser desativado.')
-      return
-    }
-    const nextActive = item.ativo === false
-    try {
-      await userService.update(item.id, { ativo: nextActive })
-      const audited = await auditBestEffort({
-        autor: user?.id || 'sessão atual',
-        alvo: item.id,
-        acao: nextActive ? 'reativar_usuario' : 'desativar_usuario',
-        antes: { ativo: item.ativo !== false },
-        depois: { ativo: nextActive },
-      })
-      await loadAdminData()
-      toast.success(
-        audited
-          ? nextActive
-            ? 'Usuário reativado e auditado.'
-            : 'Usuário desativado e auditado.'
-          : nextActive
-            ? 'Usuário reativado.'
-            : 'Usuário desativado.',
-      )
-    } catch {
-      toast.error('Não foi possível alterar o status do usuário.')
-    }
-  }
-
-  const removeUser = async () => {
-    if (!removeTarget) return
-    if (removeTarget.email === 'elisandrodesousaharamaq@gmail.com') {
-      toast.error('O administrador principal não pode ser removido.')
-      setRemoveTarget(null)
-      return
-    }
-    const target = removeTarget
+  const handleRemove = async () => {
+    if (!userToRemove) return
     setRemoving(true)
     try {
-      await userService.delete(target.id)
-      const audited = await auditBestEffort({
-        autor: user?.id || 'sessão atual',
-        alvo: target.id,
-        acao: 'remover_usuario',
-        antes: {
-          name: target.name,
-          email: target.email,
-          role: target.role,
-          carteira: target.carteira || '',
-          ativo: target.ativo,
-        },
-        depois: null,
-      })
-      setRemoveTarget(null)
-      await loadAdminData()
-      toast.success(audited ? 'Usuário removido e auditado.' : 'Usuário removido.')
-    } catch (error) {
-      console.error(error)
-      toast.error(error instanceof Error ? error.message : 'Não foi possível remover o usuário.')
+      await userService.updateUser(userToRemove.id, { ativo: false })
+      toast.success(`Usuário ${userToRemove.name || userToRemove.email} desativado.`)
+      const usersData = await userService.listUsers()
+      setUsers(usersData)
+    } catch (err) {
+      toast.error(`Erro ao desativar usuário: ${String(err).slice(0, 200)}`)
     } finally {
       setRemoving(false)
+      setConfirmRemove(false)
+      setUserToRemove(null)
     }
   }
 
-  if (loading)
+  if (loading) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <div className="flex flex-col items-center gap-2">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#D92323] border-t-transparent" />
-          <p className="text-xs text-gray-500">Carregando painel administrativo...</p>
-        </div>
+      <div className="flex min-h-[400px] items-center justify-center">
+        <p className="text-sm text-slate-500">Carregando configurações…</p>
       </div>
     )
+  }
 
   return (
-    <div className="mx-auto w-full max-w-[1360px] space-y-6 px-4 py-5 sm:px-6 md:py-6 lg:px-8">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold tracking-tight text-[#1E293B] sm:text-2xl">
-              Painel Administrativo
-            </h1>
-            <Badge className="gap-1 bg-red-50 text-[10px] text-red-700 hover:bg-red-50">
-              <Lock className="h-3 w-3" /> Admin
-            </Badge>
-          </div>
-          <p className="mt-0.5 text-xs text-[#64748B] sm:text-sm">
-            Usuários, carteiras, permissões adicionais e histórico de atividades.
+          <h1 className="text-2xl font-semibold tracking-tight text-[#1E293B]">
+            Painel Administrativo
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Gerencie usuários, perfis, auditoria e roteiros de qualificação.
           </p>
         </div>
-        <Button
-          type="button"
-          data-testid="new-user-button"
-          onClick={handleOpenCreate}
-          className="h-9 self-start gap-2 rounded-lg bg-[#D92323] text-xs font-semibold text-white hover:bg-[#B91C1C] sm:self-auto"
-        >
+        <Button onClick={openCreate} className="gap-2">
           <UserPlus className="h-4 w-4" /> Novo usuário
         </Button>
       </div>
       <Tabs defaultValue="usuarios" className="space-y-5">
-        <TabsList className="grid h-auto w-full grid-cols-3 bg-white p-1 shadow-xs sm:w-fit sm:flex">
+        <TabsList className="grid h-auto w-full grid-cols-4 bg-white p-1 shadow-xs sm:w-fit sm:flex">
           <TabsTrigger value="usuarios" className="gap-2 text-xs">
             <Users className="h-3.5 w-3.5" /> Usuários
           </TabsTrigger>
@@ -690,114 +479,84 @@ export default function Configuracoes() {
           <TabsTrigger value="auditoria" className="gap-2 text-xs">
             <History className="h-3.5 w-3.5" /> Auditoria
           </TabsTrigger>
+          <TabsTrigger value="roteiros" className="gap-2 text-xs">
+            <BookOpen className="h-3.5 w-3.5" /> Roteiros
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="usuarios" className="space-y-5">
           <Card className="overflow-hidden rounded-xl border-[#E2E8F0] bg-white shadow-xs">
-            <CardHeader className="border-b border-[#F1F5F9] pb-3">
-              <CardTitle className="flex items-center gap-2 text-sm font-bold text-[#1E293B]">
-                <Users className="h-4 w-4 text-[#D92323]" /> Usuários cadastrados ({users.length})
+            <CardHeader className="border-b border-[#E2E8F0] bg-[#F8FAFC] px-5 py-4">
+              <CardTitle className="flex items-center gap-2 text-sm font-semibold text-[#1E293B]">
+                <Users className="h-4 w-4 text-[#64748B]" /> Usuários do sistema
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[850px] text-left text-xs">
-                  <thead className="border-b border-[#E5E7EB] bg-[#F8FAF9] text-gray-500">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-[#F8FAFC] text-xs uppercase tracking-wide text-[#64748B]">
                     <tr>
-                      <th className="px-4 py-3">Usuário</th>
-                      <th className="px-4 py-3">Perfil</th>
-                      <th className="px-4 py-3">Carteira</th>
-                      <th className="px-4 py-3">Status</th>
-                      <th className="px-4 py-3">Cadastro</th>
-                      <th className="px-4 py-3 text-right">Ações</th>
+                      <th className="px-5 py-3 font-medium">Usuário</th>
+                      <th className="px-5 py-3 font-medium">Perfil</th>
+                      <th className="px-5 py-3 font-medium">Carteira</th>
+                      <th className="px-5 py-3 font-medium">Status</th>
+                      <th className="px-5 py-3 font-medium">Ações</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#E5E7EB]">
-                    {users.map((item) => (
-                      <tr
-                        key={item.id}
-                        className={cn('hover:bg-gray-50/70', item.ativo === false && 'opacity-60')}
-                      >
-                        <td className="px-4 py-3.5">
-                          <p className="font-bold text-gray-900">{item.name || 'Sem nome'}</p>
-                          <p className="font-mono text-[11px] text-gray-500">{item.email}</p>
+                  <tbody className="divide-y divide-[#E2E8F0]">
+                    {users.map((u) => (
+                      <tr key={u.id} className="hover:bg-[#F8FAFC]">
+                        <td className="px-5 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#E2E8F0] text-xs font-semibold text-[#475569]">
+                              {(u.name || u.email).slice(0, 2).toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="font-medium text-[#1E293B]">{u.name || u.email}</p>
+                              <p className="text-xs text-slate-500">{u.email}</p>
+                            </div>
+                          </div>
                         </td>
-                        <td className="px-4 py-3.5">
-                          <Badge variant="outline" className="text-[10px] font-semibold uppercase">
-                            {ROLE_LABELS[item.role] || item.role}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3.5 text-gray-600">
-                          {item.carteira || 'Todas / não definida'}
-                        </td>
-                        <td className="px-4 py-3.5">
+                        <td className="px-5 py-3">
                           <Badge
                             variant="outline"
-                            className={
-                              item.ativo === false
-                                ? 'border-gray-200 bg-gray-50 text-gray-500'
-                                : 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                            }
+                            className={cn(
+                              'text-xs',
+                              ROLE_DESCRIPTIONS.find((d) => d.role === u.role)?.color,
+                            )}
                           >
-                            {item.ativo === false ? 'Inativo' : 'Ativo'}
+                            {ROLE_LABELS[u.role] || u.role}
                           </Badge>
                         </td>
-                        <td className="px-4 py-3.5 text-gray-500">{formatDateBR(item.created)}</td>
-                        <td className="px-4 py-3.5 text-right">
-                          <div className="flex justify-end gap-1.5">
-                            {isAdmin && item.email && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => void handleCopyEmail(item)}
-                                className="h-8 w-8 p-0 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
-                                title="Copiar e-mail"
-                                aria-label={`Copiar e-mail de ${item.name || item.email}`}
-                              >
-                                {copiedEmailId === item.id ? (
-                                  <Check className="h-3.5 w-3.5 text-emerald-600" />
-                                ) : (
-                                  <Copy className="h-3.5 w-3.5" />
-                                )}
-                              </Button>
-                            )}
+                        <td className="px-5 py-3 text-[#475569]">{u.carteira || '—'}</td>
+                        <td className="px-5 py-3">
+                          <Badge
+                            variant={u.ativo !== false ? 'default' : 'secondary'}
+                            className="text-xs"
+                          >
+                            {u.ativo !== false ? 'Ativo' : 'Inativo'}
+                          </Badge>
+                        </td>
+                        <td className="px-5 py-3">
+                          <div className="flex items-center gap-1">
                             <Button
                               variant="ghost"
-                              size="sm"
-                              onClick={() => handleOpenEdit(item)}
-                              className="h-8 w-8 p-0 text-gray-500 hover:bg-blue-50 hover:text-blue-600"
-                              title="Editar usuário"
+                              size="icon"
+                              onClick={() => openEdit(u)}
+                              title="Editar"
                             >
-                              <Edit2 className="h-3.5 w-3.5" />
+                              <Edit2 className="h-4 w-4 text-[#64748B]" />
                             </Button>
-                            {item.email !== 'elisandrodesousaharamaq@gmail.com' && (
-                              <>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => void toggleUser(item)}
-                                  className="h-8 w-8 p-0 text-gray-500 hover:bg-red-50 hover:text-red-600"
-                                  title={
-                                    item.ativo === false ? 'Reativar usuário' : 'Desativar usuário'
-                                  }
-                                >
-                                  {item.ativo === false ? (
-                                    <CheckCircle className="h-3.5 w-3.5" />
-                                  ) : (
-                                    <UserX className="h-3.5 w-3.5" />
-                                  )}
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => setRemoveTarget(item)}
-                                  className="h-8 w-8 p-0 text-gray-500 hover:bg-red-50 hover:text-red-700"
-                                  title="Remover usuário"
-                                  aria-label="Remover usuário"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
-                              </>
-                            )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setUserToRemove(u)
+                                setConfirmRemove(true)
+                              }}
+                              title="Desativar"
+                            >
+                              <UserX className="h-4 w-4 text-red-400" />
+                            </Button>
                           </div>
                         </td>
                       </tr>
@@ -809,408 +568,66 @@ export default function Configuracoes() {
           </Card>
         </TabsContent>
         <TabsContent value="perfis">
-          <Card className="rounded-xl border-[#E2E8F0] bg-white shadow-xs">
-            <CardHeader className="border-b border-[#F1F5F9] pb-3">
-              <CardTitle className="flex items-center gap-2 text-sm font-bold text-[#1E293B]">
-                <Shield className="h-4 w-4 text-[#D92323]" /> Perfis existentes preservados
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-semibold text-[#1E293B]">
+                Perfis e permissões
               </CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-3.5 p-4 md:grid-cols-3">
-              {ROLE_DESCRIPTIONS.map((item) => (
-                <div
-                  key={item.role}
-                  className="space-y-2 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-3.5"
-                >
-                  <Badge
-                    variant="outline"
-                    className={cn('text-[10px] font-bold uppercase', item.color)}
-                  >
-                    {ROLE_LABELS[item.role]}
-                  </Badge>
-                  <p className="text-xs leading-relaxed text-[#64748B]">{item.desc}</p>
+            <CardContent className="grid gap-4 sm:grid-cols-2">
+              {ROLE_DESCRIPTIONS.map((d) => (
+                <div key={d.role} className={cn('rounded-xl border p-4', d.color)}>
+                  <p className="font-semibold">{ROLE_LABELS[d.role]}</p>
+                  <p className="mt-1 text-xs opacity-80">{d.desc}</p>
                 </div>
               ))}
             </CardContent>
           </Card>
         </TabsContent>
         <TabsContent value="auditoria" className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Input
-              value={auditSearch}
-              onChange={(event) => setAuditSearch(event.target.value)}
-              placeholder="Filtrar por usuário, ação ou alvo..."
-              className="h-9 max-w-md text-xs"
-            />
-            <Badge variant="outline" className="text-xs">
-              {filteredAudit.length} eventos
-            </Badge>
-          </div>
-          <Card className="overflow-hidden rounded-xl border-[#E2E8F0] bg-white shadow-xs">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-semibold text-[#1E293B]">
+                Auditoria de ações
+              </CardTitle>
+            </CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[900px] text-left text-xs">
-                  <thead className="border-b border-[#E5E7EB] bg-[#F8FAF9] text-gray-500">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-[#F8FAFC] text-xs uppercase tracking-wide text-[#64748B]">
                     <tr>
-                      <th className="px-4 py-3">Data</th>
-                      <th className="px-4 py-3">Autor</th>
-                      <th className="px-4 py-3">Ação</th>
-                      <th className="px-4 py-3">Alvo</th>
-                      <th className="px-4 py-3">Alteração</th>
+                      <th className="px-5 py-3 font-medium">Data</th>
+                      <th className="px-5 py-3 font-medium">Autor</th>
+                      <th className="px-5 py-3 font-medium">Ação</th>
+                      <th className="px-5 py-3 font-medium">Resumo</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#E5E7EB]">
-                    {filteredAudit.map((entry) => (
-                      <tr key={entry.id}>
-                        <td className="whitespace-nowrap px-4 py-3 text-gray-500">
+                  <tbody className="divide-y divide-[#E2E8F0]">
+                    {auditEntries.map((entry, idx) => (
+                      <tr
+                        key={entry.id || idx}
+                        className="cursor-pointer hover:bg-[#F8FAFC]"
+                        onClick={() => setSelectedAudit(entry)}
+                      >
+                        <td className="px-5 py-3 text-xs text-[#64748B]">
                           {formatDateBR(entry.created)}
                         </td>
-                        <td className="px-4 py-3 font-semibold text-gray-800">
+                        <td className="px-5 py-3 text-[#1E293B]">
                           {auditUserLabel(entry.autor, usersById)}
                         </td>
-                        <td className="px-4 py-3 font-semibold text-gray-800">{entry.acao}</td>
-                        <td className="px-4 py-3 text-gray-600">
-                          {auditTargetLabel(entry.alvo, usersById)}
-                        </td>
-                        <td className="max-w-[520px] px-4 py-3 text-gray-600">
-                          <div className="flex items-start gap-2">
-                            <span className="line-clamp-3 flex-1">
-                              {auditChangeSummary(entry, usersById)}
-                            </span>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 shrink-0 gap-1 px-2 text-[10px] text-[#D92323]"
-                              onClick={() => setSelectedAudit(entry)}
-                              title="Ver registro completo"
-                            >
-                              <Eye className="h-3 w-3" /> Detalhes
-                            </Button>
-                          </div>
+                        <td className="px-5 py-3 text-[#1E293B]">{entry.acao}</td>
+                        <td className="px-5 py-3 text-xs text-[#64748B]">
+                          {auditChangeSummary(entry, usersById)}
                         </td>
                       </tr>
                     ))}
-                    {!filteredAudit.length && (
-                      <tr>
-                        <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
-                          Nenhum evento de auditoria encontrado.
-                        </td>
-                      </tr>
-                    )}
                   </tbody>
                 </table>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
-      </Tabs>
-      <Dialog
-        open={Boolean(selectedAudit)}
-        onOpenChange={(open) => !open && setSelectedAudit(null)}
-      >
-        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Detalhes completos da auditoria</DialogTitle>
-          </DialogHeader>
-          {selectedAudit && (
-            <div className="space-y-4 text-xs">
-              <div className="grid grid-cols-1 gap-3 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-3 sm:grid-cols-2">
-                <div>
-                  <span className="font-semibold text-gray-500">Autor</span>
-                  <p className="font-bold text-gray-900">
-                    {auditUserLabel(selectedAudit.autor, usersById)}
-                  </p>
-                </div>
-                <div>
-                  <span className="font-semibold text-gray-500">Data</span>
-                  <p className="font-bold text-gray-900">{formatDateBR(selectedAudit.created)}</p>
-                </div>
-                <div>
-                  <span className="font-semibold text-gray-500">Ação</span>
-                  <p className="font-bold text-gray-900">{selectedAudit.acao}</p>
-                </div>
-                <div>
-                  <span className="font-semibold text-gray-500">Registro afetado</span>
-                  <p className="font-bold text-gray-900">
-                    {auditTargetLabel(selectedAudit.alvo, usersById)}
-                  </p>
-                </div>
-              </div>
-              <div className="rounded-lg border border-blue-100 bg-blue-50/50 p-3">
-                <p className="font-semibold text-blue-900">Resumo legível</p>
-                <p className="mt-1 leading-relaxed text-blue-800">
-                  {auditChangeSummary(selectedAudit, usersById)}
-                </p>
-              </div>
-              <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                <div>
-                  <p className="mb-1 font-semibold text-gray-700">Antes — registro completo</p>
-                  <pre className="max-h-64 overflow-auto rounded-lg bg-slate-950 p-3 text-[10px] leading-relaxed text-slate-100">
-                    {JSON.stringify(selectedAudit.antes, null, 2) || 'null'}
-                  </pre>
-                </div>
-                <div>
-                  <p className="mb-1 font-semibold text-gray-700">Depois — registro completo</p>
-                  <pre className="max-h-64 overflow-auto rounded-lg bg-slate-950 p-3 text-[10px] leading-relaxed text-slate-100">
-                    {JSON.stringify(selectedAudit.depois, null, 2) || 'null'}
-                  </pre>
-                </div>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-h-[90vh] max-w-xl overflow-y-auto rounded-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-base font-bold text-[#1B4332]">
-              {editingUser ? 'Editar usuário, carteira e permissões' : 'Novo usuário do sistema'}
-            </DialogTitle>
-          </DialogHeader>
-          <form
-            data-testid="user-form"
-            onSubmit={handleSaveUser}
-            className="space-y-4 pt-2 text-xs"
-          >
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="space-y-1">
-                <Label htmlFor="uName">Nome completo</Label>
-                <Input
-                  id="uName"
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="uEmail">E-mail corporativo</Label>
-                <Input
-                  id="uEmail"
-                  type="email"
-                  disabled={!!editingUser}
-                  value={formEmail}
-                  onChange={(e) => setFormEmail(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-            {!editingUser && (
-              <>
-                <div className="space-y-1">
-                  <Label htmlFor="uPass">Senha provisória (mínimo 8 caracteres)</Label>
-                  <Input
-                    id="uPass"
-                    type="password"
-                    value={formPassword}
-                    onChange={(e) => setFormPassword(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="uPassConfirm">Confirmar senha provisória</Label>
-                  <Input
-                    id="uPassConfirm"
-                    type="password"
-                    value={formPasswordConfirm}
-                    onChange={(e) => setFormPasswordConfirm(e.target.value)}
-                    required
-                  />
-                </div>
-              </>
-            )}
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="space-y-1">
-                <Label>Perfil base</Label>
-                <Select value={formRole} onValueChange={(value) => setFormRole(value as UserRole)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(Object.keys(ROLE_LABELS) as UserRole[]).map((role) => (
-                      <SelectItem key={role} value={role}>
-                        {ROLE_LABELS[role]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="uWallet">Carteira / território</Label>
-                <Input
-                  id="uWallet"
-                  value={formCarteira}
-                  onChange={(e) => setFormCarteira(e.target.value)}
-                  placeholder="Ex.: Sul de MG"
-                />
-              </div>
-            </div>
-            <div className="rounded-lg border border-[#E2E8F0] p-3">
-              <p className="mb-2 font-semibold text-gray-800">Dados comerciais</p>
-              <p className="mb-3 text-[11px] text-gray-500">
-                Integração Altforce e carteiras de DDI/DDD. Podem ficar vazios e ser preenchidos
-                depois, sem alterar senha ou perfil do usuário.
-              </p>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="space-y-1">
-                  <Label htmlFor="uExternalId">External ID Altforce</Label>
-                  <Input
-                    id="uExternalId"
-                    data-testid="external-id-input"
-                    value={formExternalId}
-                    onChange={(e) => setFormExternalId(e.target.value)}
-                    placeholder="Ex.: 77 (copiado da Altforce)"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label>Situação de integração Altforce</Label>
-                  <Select
-                    value={formSyncStatus}
-                    onValueChange={(value) =>
-                      setFormSyncStatus(
-                        value as 'nao_vinculado' | 'pendente_validacao' | 'validado',
-                      )
-                    }
-                  >
-                    <SelectTrigger data-testid="sync-status-select">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="nao_vinculado">Não vinculado</SelectItem>
-                      <SelectItem value="pendente_validacao">Pendente de validação</SelectItem>
-                      <SelectItem value="validado" disabled={!confirmaValidado}>
-                        Validado (requer confirmação)
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="uDdis">DDIs de atuação (vírgula)</Label>
-                  <Input
-                    id="uDdis"
-                    data-testid="ddis-input"
-                    value={formDdis}
-                    onChange={(e) => setFormDdis(e.target.value)}
-                    placeholder="Ex.: +55"
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <DddMultiSelect
-                    id="uDdds"
-                    testId="ddds-input"
-                    valor={formDdds}
-                    onChange={setFormDdds}
-                  />
-                </div>
-              </div>
-              {editingUser && dddsSalvos.length > 0 && (
-                <p className="mt-2 text-[11px] text-gray-500" data-testid="ddds-salvos">
-                  Vínculos ativos: {dddsSalvos.filter((r) => r.ativo !== false).length}
-                </p>
-              )}
-              <label
-                className="mt-3 flex items-center gap-2 text-[12px] text-gray-600"
-                data-testid="confirma-validado"
-              >
-                <input
-                  type="checkbox"
-                  checked={confirmaValidado}
-                  onChange={(e) => setConfirmaValidado(e.target.checked)}
-                />
-                Confirmo que a integração Altforce deste vendedor foi efetivamente validada.
-              </label>
-              {formSyncStatus === 'validado' && !confirmaValidado && (
-                <p className="mt-1 text-[11px] text-amber-600">
-                  A situação “Validado” exige a confirmação acima; ao salvar sem confirmar, a
-                  situação volta para “Pendente de validação”.
-                </p>
-              )}
-            </div>
-            {editingUser && (
-              <div className="flex items-center justify-between rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-3">
-                <div>
-                  <p className="font-semibold text-gray-800">Usuário ativo</p>
-                  <p className="text-[11px] text-gray-500">
-                    Usuários inativos perdem acesso após a revalidação da sessão.
-                  </p>
-                </div>
-                <Switch checked={formAtivo} onCheckedChange={setFormAtivo} />
-              </div>
-            )}
-            <div className="rounded-lg border border-[#E2E8F0] p-3">
-              <p className="mb-2 font-semibold text-gray-800">Permissões adicionais registradas</p>
-              <p className="mb-3 text-[11px] text-gray-500">
-                O perfil base continua preservado; estas marcações ficam registradas para controle
-                administrativo.
-              </p>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {Object.entries(PERMISSION_LABELS).map(([key, label]) => (
-                  <label key={key} className="flex items-center gap-2 text-gray-700">
-                    <Switch
-                      checked={!!formPermissions[key]}
-                      onCheckedChange={(checked) =>
-                        setFormPermissions((current) => ({ ...current, [key]: checked }))
-                      }
-                    />
-                    <span>{label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-            <DialogFooter className="pt-3">
-              <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                data-testid="save-user-button"
-                disabled={submitting}
-                className="bg-[#DC2626] text-white hover:bg-[#B91C1C]"
-              >
-                {submitting ? 'Salvando...' : 'Salvar usuário'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-      <AlertDialog
-        open={Boolean(removeTarget)}
-        onOpenChange={(open) => {
-          if (!open && !removing) setRemoveTarget(null)
-        }}
-      >
-        <AlertDialogContent data-testid="remove-user-dialog">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remover usuário?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta ação excluirá permanentemente o acesso de{' '}
-              <strong>{removeTarget?.name || removeTarget?.email}</strong> ({removeTarget?.email}).
-              A regra de remoção continua restrita a administradores.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={removing}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={removing}
-              onClick={(event) => {
-                event.preventDefault()
-                void removeUser()
-              }}
-              className="bg-red-600 text-white hover:bg-red-700"
-            >
-              {removing ? 'Removendo...' : 'Remover usuário'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BookOpen className="h-5 w-5" />
-            Roteiros de Qualificação
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+        <TabsContent value="roteiros" className="space-y-4">
           <RoteiroEditor
             conteudoInicial={roteiroVigente ?? undefined}
             disabled={user?.role !== 'admin' && user?.role !== 'gestor'}
@@ -1235,8 +652,174 @@ export default function Configuracoes() {
             }}
           />
           <RoteiroHistorico refreshKey={roteiroRefresh} />
-        </CardContent>
-      </Card>
+        </TabsContent>
+      </Tabs>
+      <Dialog
+        open={Boolean(selectedAudit)}
+        onOpenChange={(open) => !open && setSelectedAudit(null)}
+      >
+        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Detalhes completos da auditoria</DialogTitle>
+          </DialogHeader>
+          {selectedAudit && (
+            <div className="space-y-3 text-sm">
+              <p>
+                <strong>Data:</strong> {formatDateBR(selectedAudit.created)}
+              </p>
+              <p>
+                <strong>Autor:</strong> {auditUserLabel(selectedAudit.autor, usersById)}
+              </p>
+              <p>
+                <strong>Ação:</strong> {selectedAudit.acao}
+              </p>
+              <p>
+                <strong>Alvo:</strong> {auditTargetLabel(selectedAudit.alvo || '', usersById)}
+              </p>
+              <div>
+                <strong>Antes:</strong>
+                <pre className="mt-1 max-h-40 overflow-auto rounded bg-slate-50 p-2 text-xs">
+                  {typeof selectedAudit.antes === 'string'
+                    ? selectedAudit.antes
+                    : JSON.stringify(selectedAudit.antes, null, 2)}
+                </pre>
+              </div>
+              <div>
+                <strong>Depois:</strong>
+                <pre className="mt-1 max-h-40 overflow-auto rounded bg-slate-50 p-2 text-xs">
+                  {typeof selectedAudit.depois === 'string'
+                    ? selectedAudit.depois
+                    : JSON.stringify(selectedAudit.depois, null, 2)}
+                </pre>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={modalOpen} onOpenChange={(open) => !open && setModalOpen(false)}>
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingUser ? 'Editar usuário' : 'Novo usuário'}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="form-name">Nome</Label>
+              <Input
+                id="form-name"
+                value={formName}
+                onChange={(e) => setFormName(e.target.value)}
+                required={!editingUser}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="form-email">E-mail</Label>
+              <Input
+                id="form-email"
+                type="email"
+                value={formEmail}
+                onChange={(e) => setFormEmail(e.target.value)}
+                disabled={Boolean(editingUser)}
+                required={!editingUser}
+              />
+            </div>
+            {!editingUser && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="form-password">Senha</Label>
+                  <Input
+                    id="form-password"
+                    type="password"
+                    value={formPassword}
+                    onChange={(e) => setFormPassword(e.target.value)}
+                    required
+                    minLength={8}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="form-password-confirm">Confirmar senha</Label>
+                  <Input
+                    id="form-password-confirm"
+                    type="password"
+                    value={formPasswordConfirm}
+                    onChange={(e) => setFormPasswordConfirm(e.target.value)}
+                    required
+                    minLength={8}
+                  />
+                </div>
+              </>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="form-role">Perfil</Label>
+              <Select value={formRole} onValueChange={(v) => setFormRole(v as UserRole)}>
+                <SelectTrigger id="form-role">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(ROLE_LABELS).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="form-carteira">Carteira</Label>
+              <Input
+                id="form-carteira"
+                value={formCarteira}
+                onChange={(e) => setFormCarteira(e.target.value)}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch checked={formAtivo} onCheckedChange={setFormAtivo} />
+              <Label>Usuário ativo</Label>
+            </div>
+            <div className="space-y-2">
+              <Label>Permissões</Label>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {Object.entries(PERMISSION_LABELS).map(([key, label]) => (
+                  <div key={key} className="flex items-center gap-2">
+                    <Switch
+                      checked={formPermissions[key] || false}
+                      onCheckedChange={(v) => setFormPermissions((prev) => ({ ...prev, [key]: v }))}
+                    />
+                    <span className="text-xs">{label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="submit">{editingUser ? 'Salvar' : 'Criar'}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={confirmRemove} onOpenChange={setConfirmRemove}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Desativar usuário</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja desativar o usuário {userToRemove?.name || userToRemove?.email}
+              ? O usuário não poderá mais acessar o sistema, mas o histórico será preservado.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault()
+                void removeUser()
+              }}
+              className="bg-red-600 text-white hover:bg-red-700"
+            >
+              {removing ? 'Removendo...' : 'Remover usuário'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
