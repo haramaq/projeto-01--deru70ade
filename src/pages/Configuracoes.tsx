@@ -52,6 +52,14 @@ import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { RoteiroEditor } from '@/components/haramaq/RoteiroEditor'
+import { RoteiroHistorico } from '@/components/haramaq/RoteiroHistorico'
+import {
+  publicarRoteiro,
+  obterVersaoVigente,
+  type RoteiroConteudo,
+} from '@/services/roteiroService'
+import { BookOpen } from 'lucide-react'
 
 const ROLE_LABELS: Record<UserRole, string> = {
   admin: 'Administrador',
@@ -268,6 +276,8 @@ function auditChangeSummary(entry: AuditEntry, usersById: Map<string, User>) {
 
 export default function Configuracoes() {
   const { user } = useAuth()
+  const [roteiroVigente, setRoteiroVigente] = useState<RoteiroConteudo | null>(null)
+  const [roteiroRefresh, setRoteiroRefresh] = useState(0)
   const [users, setUsers] = useState<User[]>([])
   const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([])
   const [loading, setLoading] = useState(true)
@@ -332,6 +342,12 @@ export default function Configuracoes() {
   useEffect(() => {
     void loadAdminData()
   }, [])
+
+  useEffect(() => {
+    obterVersaoVigente()
+      .then(setRoteiroVigente)
+      .catch(() => setRoteiroVigente(null))
+  }, [roteiroRefresh])
 
   const auditBestEffort = async (data: Parameters<typeof userService.audit>[0]) => {
     try {
@@ -1186,6 +1202,41 @@ export default function Configuracoes() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BookOpen className="h-5 w-5" />
+            Roteiros de Qualificação
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <RoteiroEditor
+            conteudoInicial={roteiroVigente ?? undefined}
+            disabled={user?.role !== 'admin' && user?.role !== 'gestor'}
+            onPublicar={async (conteudo) => {
+              try {
+                const result = await publicarRoteiro(
+                  conteudo,
+                  user?.name || user?.email || 'desconhecido',
+                )
+                toast.success(`Roteiro v${result.versao} publicado com sucesso`)
+                setRoteiroRefresh((k) => k + 1)
+              } catch (e) {
+                const errStr = String(e)
+                if (/409|CONFLITO_VERSAO_CONCORRENTE/i.test(errStr)) {
+                  toast.error(
+                    'Conflito: outra pessoa publicou uma versão simultaneamente. Atualize o histórico antes de tentar novamente.',
+                  )
+                } else {
+                  toast.error(`Erro ao publicar: ${errStr.slice(0, 200)}`)
+                }
+              }
+            }}
+          />
+          <RoteiroHistorico refreshKey={roteiroRefresh} />
+        </CardContent>
+      </Card>
     </div>
   )
 }
