@@ -196,7 +196,7 @@ function auditFieldLabel(key: string) {
 
 function auditUserLabel(value: unknown, usersById: Map<string, User>) {
   if (value === undefined || value === null || value === '') return 'vazio'
-  if (value !== 'string') return auditText(value)
+  if (typeof value !== 'string') return auditText(value)
   if (value === 'sessão atual') return 'Sessão atual'
   const user = usersById.get(value)
   if (user) return user.name || user.email
@@ -305,6 +305,10 @@ export default function Configuracoes() {
   const [removing, setRemoving] = useState(false)
   const [userToRemove, setUserToRemove] = useState<User | null>(null)
   const [confirmRemove, setConfirmRemove] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [removeTarget, setRemoveTarget] = useState<User | null>(null)
+  const [auditSearch, setAuditSearch] = useState('')
+  const [copiedEmailId, setCopiedEmailId] = useState<string | null>(null)
 
   useEffect(() => {
     obterVersaoVigente()
@@ -312,33 +316,213 @@ export default function Configuracoes() {
       .catch(() => setRoteiroVigente(null))
   }, [roteiroRefresh])
 
+  const loadAdminData = async () => {
+    let listLoaded = false
+    try {
+      const list = await userService.getAll()
+      setUsers(list)
+      listLoaded = true
+    } catch {
+      toast.error('Erro ao carregar os usuários do painel administrativo.')
+    }
+    try {
+      setAuditEntries(await userService.getAudit())
+    } catch {
+      if (!listLoaded) toast.error('Erro ao carregar o painel administrativo.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
-    let cancelled = false
-    async function load() {
-      try {
-        const [usersData, auditData] = await Promise.all([
-          userService.listUsers(),
-          userService.listAudit(),
-        ])
-        if (!cancelled) {
-          setUsers(usersData)
-          setAuditEntries(auditData)
-        }
-      } catch (err) {
-        if (!cancelled) {
-          toast.error('Falha ao carregar dados administrativos.')
-        }
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-    void load()
-    return () => {
-      cancelled = true
-    }
+    void loadAdminData()
   }, [])
 
-  const usersById = useMemo(() => new Map(users.map((u) => [u.id, u])), [users])
+  const auditBestEffort = async (data: Parameters<typeof userService.audit>[0]) => {
+    try {
+      await userService.audit(data)
+      return true
+    } catch (error) {
+      console.warn('Usuário salvo, mas não foi possível registrar a auditoria.', error)
+      return false
+    }
+  }
+
+  const handleCopyEmail = async (item: User) => {
+    if (!item.email) return
+    try {
+      await navigator.clipboard.writeText(item.email)
+      setCopiedEmailId(item.id)
+      toast.success(`E-mail copiado: ${item.email}`)
+      setTimeout(() => setCopiedEmailId(null), 2000)
+    } catch {
+      toast.error('Não foi possível copiar o e-mail.')
+    }
+  }
+
+  const sincronizarDdds = async (usuarioId: string) => {
+    const ddis = formDdis
+      .split(',')
+      .map((v) => v.trim())
+      .filter(Boolean)
+    const ddds = formDdds
+      .split(',')
+      .map((v) => v.trim())
+      .filter(Boolean)
+    const atuais = await dddService.listByUser(usuarioId)
+    const desejadas: { ddi: string; ddd: string }[] = []
+    for (const ddi of ddis.length ? ddis : ['+55']) {
+      for (const ddd of ddds) {
+        desejadas.push({ ddi, ddd })
+      }
+    }
+    const paraCriar = desejadas.filter(
+      (d) => !atuais.some((a) => a.ddi === d.ddi && a.ddd === d.ddd),
+    )
+    const paraRemover = atuais.filter(
+      (a) => a.ativo !== false && !desejadas.some((d) => d.ddi === a.ddi && d.ddd === a.ddd),
+    )
+    try {
+      for (const d of paraCriar) {
+        await dddService.create({ usuario: usuarioId, ddi: d.ddi, ddd: d.ddd })
+      }
+      for (const a of paraRemover) {
+        await dddService.remove(a.id)
+      }
+      return true
+    } catch (error) {
+      console.error('Erro ao sincronizar DDDs.', error)
+      return false
+    }
+  }
+
+  const handleOpenCreate = () => {
+    resetForm()
+    setModalOpen(true)
+  }
+
+  const handleOpenEdit = (u: User) => {
+    setEditingUser(u)
+    setFormName(u.name || '')
+    setFormEmail(u.email)
+    setFormPassword('')
+    setFormPasswordConfirm('')
+    setFormRole(u.role)
+    setFormCarteira(u.carteira || '')
+    setFormExternalId(u.external_id_altforce || '')
+    setFormSyncStatus(u.altforce_sync_status || 'nao_vinculado')
+    setFormAtivo(u.ativo !== false)
+    setFormPermissions(safePermissions(u))
+    setModalOpen(true)
+    void loadDdds(u.id)
+  }
+
+  async function loadDdds(item: User) {
+    dddService
+      .listByUser(item.id)
+      .then((regs) => {
+        setDddsSalvos(regs)
+        const ddis = Array.from(new Set(regs.filter((r) => r.ativo !== false).map((r) => r.ddi)))
+        const ddds = Array.from(new Set(regs.filter((r) => r.ativo !== false).map((r) => r.ddd)))
+        setFormDdis(ddis.join(','))
+        setFormDdds(ddds.join(','))
+      })
+      .catch(() => setDddsSalvos([]))
+  }
+
+  const handleSaveUser = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      if (editingUser) {
+        await userService.update(editingUser.id, {
+          name: formName,
+          role: formRole,
+          carteira: formCarteira,
+          ativo: formAtivo,
+          permissoes: formPermissions,
+          external_id_altforce: formExternalId,
+          altforce_sync_status: formSyncStatus,
+        })
+        if (formPassword) {
+          await userService.updatePassword(editingUser.id, formPassword)
+        }
+        await sincronizarDdds(editingUser.id)
+        await auditBestEffort({
+          autor: user?.id || '',
+          alvo: editingUser.id,
+          acao: 'atualizacao_usuario',
+          antes: editingUser,
+          depois: { ...editingUser, name: formName, role: formRole, carteira: formCarteira },
+        })
+        toast.success('Usuário atualizado com sucesso.')
+      } else {
+        const created = await userService.create({
+          name: formName,
+          email: formEmail,
+          password: formPassword,
+          passwordConfirm: formPassword,
+          role: formRole,
+          carteira: formCarteira,
+          ativo: formAtivo,
+          permissoes: formPermissions,
+        })
+        await sincronizarDdds(created.id)
+        await auditBestEffort({
+          autor: user?.id || '',
+          alvo: created.id,
+          acao: 'criacao_usuario',
+          antes: null,
+          depois: created,
+        })
+        toast.success('Usuário criado com sucesso.')
+      }
+      setModalOpen(false)
+      resetForm()
+      await loadAdminData()
+    } catch (err) {
+      toast.error(`Erro ao salvar usuário: ${String(err).slice(0, 200)}`)
+    }
+  }
+
+  const toggleUser = async (u: User) => {
+    try {
+      await userService.update(u.id, { ativo: !(u.ativo !== false) })
+      await auditBestEffort({
+        autor: user?.id || '',
+        alvo: u.id,
+        acao: 'alteracao_status_usuario',
+        antes: { ativo: u.ativo !== false },
+        depois: { ativo: !(u.ativo !== false) },
+      })
+      await loadAdminData()
+      toast.success(`Usuário ${u.ativo !== false ? 'desativado' : 'reativado'}.`)
+    } catch (err) {
+      toast.error(`Erro ao alterar status: ${String(err).slice(0, 200)}`)
+    }
+  }
+
+  const removeUser = async () => {
+    if (!userToRemove) return
+    setRemoving(true)
+    try {
+      await userService.delete(userToRemove.id)
+      await auditBestEffort({
+        autor: user?.id || '',
+        alvo: userToRemove.id,
+        acao: 'remocao_usuario',
+        antes: userToRemove,
+        depois: null,
+      })
+      toast.success(`Usuário ${userToRemove.name || userToRemove.email} removido.`)
+      await loadAdminData()
+    } catch (err) {
+      toast.error(`Erro ao remover usuário: ${String(err).slice(0, 200)}`)
+    } finally {
+      setRemoving(false)
+      setConfirmRemove(false)
+      setUserToRemove(null)
+    }
+  }
 
   const resetForm = () => {
     setEditingUser(null)
@@ -358,92 +542,25 @@ export default function Configuracoes() {
     setFormPermissions({ ...DEFAULT_PERMISSIONS })
   }
 
-  const openCreate = () => {
-    resetForm()
-    setModalOpen(true)
-  }
-
-  const openEdit = (u: User) => {
-    setEditingUser(u)
-    setFormName(u.name || '')
-    setFormEmail(u.email)
-    setFormPassword('')
-    setFormPasswordConfirm('')
-    setFormRole(u.role)
-    setFormCarteira(u.carteira || '')
-    setFormExternalId(u.external_id_altforce || '')
-    setFormSyncStatus(u.altforce_sync_status || 'nao_vinculado')
-    setFormAtivo(u.ativo !== false)
-    setFormPermissions(safePermissions(u))
-    setModalOpen(true)
-    void loadDdds(u.id)
-  }
-
-  async function loadDdds(userId: string) {
-    try {
-      const ddds = await dddService.listByUser(userId)
-      setDddsSalvos(ddds)
-      setFormDdds(ddds.map((d) => d.ddd).join(','))
-      setFormDdis('+55')
-    } catch {
-      setDddsSalvos([])
-      setFormDdds('')
-    }
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    try {
-      if (editingUser) {
-        await userService.updateUser(editingUser.id, {
-          name: formName,
-          role: formRole,
-          carteira: formCarteira,
-          ativo: formAtivo,
-          permissoes: formPermissions,
-        })
-        if (formPassword) {
-          await userService.updatePassword(editingUser.id, formPassword)
-        }
-        toast.success('Usuário atualizado com sucesso.')
-      } else {
-        await userService.createUser({
-          name: formName,
-          email: formEmail,
-          password: formPassword,
-          passwordConfirm: formPassword,
-          role: formRole,
-          carteira: formCarteira,
-          ativo: formAtivo,
-          permissoes: formPermissions,
-        })
-        toast.success('Usuário criado com sucesso.')
-      }
-      setModalOpen(false)
-      resetForm()
-      const usersData = await userService.listUsers()
-      setUsers(usersData)
-    } catch (err) {
-      toast.error(`Erro ao salvar usuário: ${String(err).slice(0, 200)}`)
-    }
-  }
-
-  const handleRemove = async () => {
-    if (!userToRemove) return
-    setRemoving(true)
-    try {
-      await userService.updateUser(userToRemove.id, { ativo: false })
-      toast.success(`Usuário ${userToRemove.name || userToRemove.email} desativado.`)
-      const usersData = await userService.listUsers()
-      setUsers(usersData)
-    } catch (err) {
-      toast.error(`Erro ao desativar usuário: ${String(err).slice(0, 200)}`)
-    } finally {
-      setRemoving(false)
-      setConfirmRemove(false)
-      setUserToRemove(null)
-    }
-  }
+  const usersById = useMemo(() => new Map(users.map((item) => [item.id, item])), [users])
+  const isAdmin = user?.role === 'admin'
+  const filteredAudit = useMemo(() => {
+    const query = auditSearch.trim().toLowerCase()
+    if (!query) return auditEntries
+    return auditEntries.filter((entry) =>
+      [
+        auditUserLabel(entry.autor, usersById),
+        auditTargetLabel(entry.alvo, usersById),
+        entry.acao,
+        auditChangeSummary(entry, usersById),
+        auditText(entry.antes),
+        auditText(entry.depois),
+      ]
+        .join(' ')
+        .toLowerCase()
+        .includes(query),
+    )
+  }, [auditEntries, auditSearch, usersById])
 
   if (loading) {
     return (
@@ -464,7 +581,7 @@ export default function Configuracoes() {
             Gerencie usuários, perfis, auditoria e roteiros de qualificação.
           </p>
         </div>
-        <Button onClick={openCreate} className="gap-2">
+        <Button onClick={handleOpenCreate} className="gap-2">
           <UserPlus className="h-4 w-4" /> Novo usuário
         </Button>
       </div>
@@ -541,10 +658,18 @@ export default function Configuracoes() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => openEdit(u)}
+                              onClick={() => handleOpenEdit(u)}
                               title="Editar"
                             >
                               <Edit2 className="h-4 w-4 text-[#64748B]" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => toggleUser(u)}
+                              title={u.ativo !== false ? 'Desativar' : 'Reativar'}
+                            >
+                              <UserX className="h-4 w-4 text-red-400" />
                             </Button>
                             <Button
                               variant="ghost"
@@ -553,9 +678,9 @@ export default function Configuracoes() {
                                 setUserToRemove(u)
                                 setConfirmRemove(true)
                               }}
-                              title="Desativar"
+                              title="Remover"
                             >
-                              <UserX className="h-4 w-4 text-red-400" />
+                              <Trash2 className="h-4 w-4 text-red-500" />
                             </Button>
                           </div>
                         </td>
@@ -702,7 +827,7 @@ export default function Configuracoes() {
           <DialogHeader>
             <DialogTitle>{editingUser ? 'Editar usuário' : 'Novo usuário'}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSaveUser} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="form-name">Nome</Label>
               <Input
@@ -714,14 +839,27 @@ export default function Configuracoes() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="form-email">E-mail</Label>
-              <Input
-                id="form-email"
-                type="email"
-                value={formEmail}
-                onChange={(e) => setFormEmail(e.target.value)}
-                disabled={Boolean(editingUser)}
-                required={!editingUser}
-              />
+              <div className="flex items-center gap-2">
+                <Input
+                  id="form-email"
+                  type="email"
+                  value={formEmail}
+                  onChange={(e) => setFormEmail(e.target.value)}
+                  disabled={Boolean(editingUser)}
+                  required={!editingUser}
+                />
+                {editingUser && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => void handleCopyEmail(formEmail)}
+                    title="Copiar e-mail"
+                  >
+                    {formEmail && <Copy className="h-4 w-4" />}
+                  </Button>
+                )}
+              </div>
             </div>
             {!editingUser && (
               <>
@@ -772,6 +910,33 @@ export default function Configuracoes() {
                 onChange={(e) => setFormCarteira(e.target.value)}
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="form-external-id">External ID (Altforce)</Label>
+              <Input
+                id="form-external-id"
+                value={formExternalId}
+                onChange={(e) => setFormExternalId(e.target.value)}
+                placeholder="Ex.: 77"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="form-sync-status">Status de sincronização Altforce</Label>
+              <Select
+                value={formSyncStatus}
+                onValueChange={(v) =>
+                  setFormSyncStatus(v as 'nao_vinculado' | 'pendente_validacao' | 'validado')
+                }
+              >
+                <SelectTrigger id="form-sync-status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="nao_vinculado">Não vinculado</SelectItem>
+                  <SelectItem value="pendente_validacao">Pendente de validação</SelectItem>
+                  <SelectItem value="validado">Validado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="flex items-center gap-2">
               <Switch checked={formAtivo} onCheckedChange={setFormAtivo} />
               <Label>Usuário ativo</Label>
@@ -790,6 +955,44 @@ export default function Configuracoes() {
                 ))}
               </div>
             </div>
+            {formRole === 'vendedor' && (
+              <div className="space-y-2 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4">
+                <Label>DDI/DDD do vendedor</Label>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="form-ddis" className="text-xs text-[#64748B]">
+                      DDI (vírgula, ex.: +55,+1)
+                    </Label>
+                    <Input
+                      id="form-ddis"
+                      value={formDdis}
+                      onChange={(e) => setFormDdis(e.target.value)}
+                      placeholder="+55"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="form-ddds" className="text-xs text-[#64748B]">
+                      DDDs (vírgula, ex.: 51,54)
+                    </Label>
+                    <DddMultiSelect
+                      id="form-ddds"
+                      testId="ddds-input"
+                      valor={formDdds}
+                      onChange={setFormDdds}
+                    />
+                  </div>
+                </div>
+                {dddsSalvos.length > 0 && (
+                  <div className="flex flex-wrap gap-1 pt-1">
+                    {dddsSalvos.map((d) => (
+                      <Badge key={d.id} variant="secondary" className="text-xs">
+                        +{d.ddi} {d.ddd}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             <DialogFooter>
               <Button type="submit">{editingUser ? 'Salvar' : 'Criar'}</Button>
             </DialogFooter>
@@ -800,10 +1003,10 @@ export default function Configuracoes() {
       <AlertDialog open={confirmRemove} onOpenChange={setConfirmRemove}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Desativar usuário</AlertDialogTitle>
+            <AlertDialogTitle>Remover usuário</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja desativar o usuário {userToRemove?.name || userToRemove?.email}
-              ? O usuário não poderá mais acessar o sistema, mas o histórico será preservado.
+              Tem certeza que deseja remover o usuário {userToRemove?.name || userToRemove?.email}?
+              Esta ação é permanente e o histórico de auditoria será preservado.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
