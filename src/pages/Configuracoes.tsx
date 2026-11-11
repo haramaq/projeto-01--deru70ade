@@ -384,7 +384,13 @@ export default function Configuracoes() {
     )
     try {
       for (const d of paraCriar) {
-        await dddService.create({ usuario: usuarioId, ddi: d.ddi, ddd: d.ddd })
+        await dddService.create({
+          usuario_id: usuarioId,
+          ddi: d.ddi,
+          ddd: d.ddd,
+          ativo: true,
+          confirmado_por: user?.id,
+        })
       }
       for (const a of paraRemover) {
         await dddService.remove(a.id)
@@ -434,6 +440,8 @@ export default function Configuracoes() {
     e.preventDefault()
     try {
       if (editingUser) {
+        const syncStatusEfetivo =
+          formSyncStatus === 'validado' && !confirmaValidado ? 'pendente_validacao' : formSyncStatus
         await userService.update(editingUser.id, {
           name: formName,
           role: formRole,
@@ -441,7 +449,7 @@ export default function Configuracoes() {
           ativo: formAtivo,
           permissoes: formPermissions,
           external_id_altforce: formExternalId,
-          altforce_sync_status: formSyncStatus,
+          altforce_sync_status: syncStatusEfetivo,
         })
         if (formPassword) {
           await userService.updatePassword(editingUser.id, formPassword)
@@ -464,6 +472,15 @@ export default function Configuracoes() {
           role: formRole,
           carteira: formCarteira,
           ativo: formAtivo,
+          external_id_altforce: formExternalId,
+          altforce_sync_status: formSyncStatus,
+          perm_dashboard: formPermissions.dashboard || false,
+          perm_leads: formPermissions.leads || false,
+          perm_clientes: formPermissions.clientes || false,
+          perm_revendas: formPermissions.revendas || false,
+          perm_suporte: formPermissions.suporte || false,
+          perm_relatorios: formPermissions.relatorios || false,
+          perm_configuracoes: formPermissions.configuracoes || false,
           permissoes: formPermissions,
         })
         await sincronizarDdds(created.id)
