@@ -209,6 +209,140 @@ onRecordCreateRequest((e) => {
 
     if (unicos.length === 1) {
       const alvo = unicos[0]
+      // Verificação de conflito territorial (decisão owner 11/11/2026):
+      // quando há 1 vendedor único pelo DDD, verificar se a cidade/UF
+      // informada pertence ao território desse vendedor.
+      let cidadeCliente = ''
+      let ufCliente = ''
+      try {
+        const cliente = e.app.findRecordById('clientes', clienteId)
+        cidadeCliente = String(cliente.get('cidade') || '').trim()
+        ufCliente = String(cliente.get('estado') || '')
+          .trim()
+          .toUpperCase()
+      } catch (errCli) {
+        cidadeCliente = ''
+        ufCliente = ''
+      }
+      const normalizar = function (t) {
+        return String(t || '')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase()
+          .replace(/\s+/g, ' ')
+          .trim()
+      }
+      const cidadeNorm = normalizar(cidadeCliente)
+      if (cidadeNorm && ufCliente.length === 2) {
+        // cidade/UF informadas — verificar cadastro territorial
+        let cidades = []
+        try {
+          cidades = e.app.findRecordsByFilter(
+            'cidades_atendidas',
+            "cidade_normalizada = '" +
+              cidadeNorm.replace(/'/g, "\\'") +
+              "' && uf = '" +
+              ufCliente +
+              "' && ativo = true",
+            '',
+            5,
+            0,
+          )
+        } catch (errCid) {
+          cidades = []
+        }
+        if (cidades.length === 1) {
+          // cidade cadastrada — verificar território do vendedor único
+          const cidadeId = cidades[0].id
+          let vinculos = []
+          try {
+            vinculos = e.app.findRecordsByFilter(
+              'territorio_cidades',
+              "cidade_id = '" + cidadeId + "'",
+              '',
+              50,
+              0,
+            )
+          } catch (errTerr) {
+            vinculos = []
+          }
+          const vendedoresTerritorio = []
+          for (let t = 0; t < vinculos.length; t++) {
+            let regiao = null
+            try {
+              regiao = e.app.findRecordById(
+                'territorio_regioes',
+                vinculos[t].get('regiao_id') || '',
+              )
+            } catch (errReg) {
+              regiao = null
+            }
+            if (!regiao) continue
+            const regAtiva = regiao.get('ativo')
+            if (regAtiva === false || String(regAtiva) === 'false' || regAtiva === 0) continue
+            const vid = regiao.get('vendedor_id') || ''
+            if (vid && vendedoresTerritorio.indexOf(vid) === -1) vendedoresTerritorio.push(vid)
+          }
+          if (vendedoresTerritorio.length > 0 && vendedoresTerritorio.indexOf(alvo) === -1) {
+            // CENÁRIO T1b: cidade informada e cadastrada, mas território INCOMPATÍVEL
+            justificar(
+              'conflito-ddd-cidade',
+              'DDD ' +
+                ddd +
+                ' com vendedor único (' +
+                alvo +
+                '), mas cidade ' +
+                cidadeCliente +
+                '/' +
+                ufCliente +
+                ' pertence a território de: ' +
+                vendedoresTerritorio.join(', ') +
+                ' — revisão humana.',
+              '',
+              JSON.stringify(vendedoresTerritorio),
+            )
+            const rC = e.next()
+            registrarHistorico()
+            return rC
+          }
+          // CENÁRIO T1a: cidade cadastrada e território COMPATÍVEL (ou sem território ativo)
+          // → prosseguir com atribuição/recomendação normal
+        } else {
+          // CENÁRIO T1c: cidade/UF informadas mas NÃO CADASTRADAS
+          // → registrar na fila de revisão, SEM atribuir nem recomendar
+          justificar(
+            'cidade-nao-cadastrada-ddd',
+            'DDD ' +
+              ddd +
+              ' com vendedor único (' +
+              alvo +
+              '); cidade ' +
+              cidadeCliente +
+              '/' +
+              ufCliente +
+              ' não consta no cadastro de cidades atendidas — revisão humana.',
+            '',
+            JSON.stringify([alvo]),
+          )
+          const rNC = e.next()
+          registrarHistorico()
+          return rNC
+        }
+      } else {
+        // CENÁRIO T1d: cidade/UF AUSENTES
+        // → prosseguir com atribuição/recomendação normal
+        // → registrar que a localização não foi informada
+        justificar(
+          'sem-localizacao-informada',
+          'DDD ' +
+            ddd +
+            ' com vendedor único (' +
+            alvo +
+            '); cidade/UF não informadas pelo cliente.',
+          alvo,
+        )
+        // prosseguir com atribuição/recomendação normal
+      }
       if (modo === 'automatico') {
         e.record.set('vendedor', alvo)
         justificar(
