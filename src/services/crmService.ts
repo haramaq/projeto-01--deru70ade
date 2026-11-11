@@ -583,7 +583,6 @@ export interface VendedorDdd {
 export const dddService = {
   async listByUser(usuarioId: string): Promise<VendedorDdd[]> {
     return (await pb.collection('vendedor_ddd').getFullList({
-      sort: '-created',
       filter: `usuario_id = "${usuarioId}"`,
     })) as unknown as VendedorDdd[]
   },

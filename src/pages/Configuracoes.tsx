@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Users,
   Shield,
@@ -295,6 +295,9 @@ export default function Configuracoes() {
   const [formDdis, setFormDdis] = useState<string>('') // vírgula, ex.: +55,+1
   const [formDdds, setFormDdds] = useState<string>('') // vírgula, ex.: 51,54
   const [dddsSalvos, setDddsSalvos] = useState<VendedorDdd[]>([])
+  const [dddsError, setDddsError] = useState(false)
+  const currentVendedorIdRef = useRef<string | null>(null)
+  const [dddsLoading, setDddsLoading] = useState(false)
   const [confirmaValidado, setConfirmaValidado] = useState(false)
   const [formAtivo, setFormAtivo] = useState(true)
   const [formPermissions, setFormPermissions] =
@@ -361,6 +364,14 @@ export default function Configuracoes() {
   }
 
   const sincronizarDdds = async (usuarioId: string) => {
+    if (dddsError || dddsLoading) {
+      toast.error(
+        dddsError
+          ? 'Não é possível sincronizar DDI/DDD: falha ao carregar os vínculos existentes.'
+          : 'Aguarde: os vínculos DDI/DDD ainda estão sendo carregados.',
+      )
+      return false
+    }
     const ddis = formDdis
       .split(',')
       .map((v) => v.trim())
@@ -398,6 +409,8 @@ export default function Configuracoes() {
       return true
     } catch (error) {
       console.error('Erro ao sincronizar DDDs.', error)
+      setDddsError(true)
+      setDddsSalvos([])
       return false
     }
   }
@@ -424,22 +437,47 @@ export default function Configuracoes() {
   }
 
   async function loadDdds(item: User) {
+    const vendedorId = item.id
+    currentVendedorIdRef.current = vendedorId
+    setDddsLoading(true)
     dddService
-      .listByUser(item.id)
+      .listByUser(vendedorId)
       .then((regs) => {
+        if (currentVendedorIdRef.current !== vendedorId) return // resposta atrasada de outro vendedor
+        setDddsLoading(false)
+        setDddsError(false)
         setDddsSalvos(regs)
         const ddis = Array.from(new Set(regs.filter((r) => r.ativo !== false).map((r) => r.ddi)))
         const ddds = Array.from(new Set(regs.filter((r) => r.ativo !== false).map((r) => r.ddd)))
         setFormDdis(ddis.join(','))
         setFormDdds(ddds.join(','))
       })
-      .catch(() => setDddsSalvos([]))
+      .catch((err) => {
+        if (currentVendedorIdRef.current !== vendedorId) return // resposta atrasada
+        setDddsLoading(false)
+        console.error('Erro ao carregar DDDs do vendedor.', err)
+        setDddsError(true)
+        setDddsSalvos([])
+        toast.error(
+          'Não foi possível carregar os vínculos DDI/DDD existentes. A sincronização está bloqueada.',
+        )
+      })
   }
 
   const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
       if (editingUser) {
+        if (editingUser.role === 'vendedor' || editingUser.role === 'revendedor') {
+          if (dddsError || dddsLoading) {
+            toast.error(
+              dddsError
+                ? 'Não é possível salvar: falha ao carregar os vínculos DDI/DDD.'
+                : 'Aguarde: os vínculos DDI/DDD ainda estão sendo carregados.',
+            )
+            return
+          }
+        }
         const syncStatusEfetivo =
           formSyncStatus === 'validado' && !confirmaValidado ? 'pendente_validacao' : formSyncStatus
         await userService.update(editingUser.id, {
