@@ -364,6 +364,10 @@ export default function Configuracoes() {
   }
 
   const sincronizarDdds = async (usuarioId: string) => {
+    if (!usuarioId || usuarioId === 'undefined') {
+      toast.error('ID do vendedor inválido para sincronização de DDI/DDD.')
+      return false
+    }
     if (dddsError || dddsLoading) {
       toast.error(
         dddsError
@@ -436,8 +440,12 @@ export default function Configuracoes() {
     void loadDdds(u.id)
   }
 
-  async function loadDdds(item: User) {
-    const vendedorId = item.id
+  async function loadDdds(vendedorId: string) {
+    if (!vendedorId) {
+      console.error('loadDdds: ID do vendedor ausente.')
+      setDddsError(true)
+      return
+    }
     currentVendedorIdRef.current = vendedorId
     setDddsLoading(true)
     dddService
@@ -492,7 +500,7 @@ export default function Configuracoes() {
         if (formPassword) {
           await userService.updatePassword(editingUser.id, formPassword)
         }
-        await sincronizarDdds(editingUser.id)
+        const dddsOk = await sincronizarDdds(editingUser.id)
         await auditBestEffort({
           autor: user?.id || '',
           alvo: editingUser.id,
@@ -500,7 +508,11 @@ export default function Configuracoes() {
           antes: editingUser,
           depois: { ...editingUser, name: formName, role: formRole, carteira: formCarteira },
         })
-        toast.success('Usuário atualizado com sucesso.')
+        if (dddsOk) {
+          toast.success('Usuário atualizado com sucesso.')
+        } else {
+          toast.warning('Usuário atualizado, mas os vínculos DDI/DDD não foram sincronizados.')
+        }
       } else {
         const created = await userService.create({
           name: formName,
@@ -521,7 +533,7 @@ export default function Configuracoes() {
           perm_configuracoes: formPermissions.configuracoes || false,
           permissoes: formPermissions,
         })
-        await sincronizarDdds(created.id)
+        const dddsOk = await sincronizarDdds(created.id)
         await auditBestEffort({
           autor: user?.id || '',
           alvo: created.id,
@@ -529,7 +541,11 @@ export default function Configuracoes() {
           antes: null,
           depois: created,
         })
-        toast.success('Usuário criado com sucesso.')
+        if (dddsOk) {
+          toast.success('Usuário criado com sucesso.')
+        } else {
+          toast.warning('Usuário criado, mas os vínculos DDI/DDD não foram sincronizados.')
+        }
       }
       setModalOpen(false)
       resetForm()
