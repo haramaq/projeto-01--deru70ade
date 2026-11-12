@@ -608,6 +608,9 @@ export default function Configuracoes() {
     setFormDdis('')
     setFormDdds('')
     setDddsSalvos([])
+    setDddsError(false)
+    setDddsLoading(false)
+    currentVendedorIdRef.current = null
     setConfirmaValidado(false)
     setFormAtivo(true)
     setFormPermissions({ ...DEFAULT_PERMISSIONS })
