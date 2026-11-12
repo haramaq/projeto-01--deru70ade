@@ -548,6 +548,12 @@ export const userService = {
   async delete(id: string): Promise<boolean> {
     return await pb.collection('users').delete(id)
   },
+  async excluirVendedor(id: string): Promise<{ ok: boolean; vinculos_removidos: number }> {
+    return (await pb.send('/backend/v1/usuarios/excluir-vendedor', {
+      method: 'POST',
+      body: { id },
+    })) as unknown as { ok: boolean; vinculos_removidos: number }
+  },
   async deactivate(id: string): Promise<User> {
     return (await pb.collection('users').update(id, { ativo: false })) as unknown as User
   },

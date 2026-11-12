@@ -576,7 +576,7 @@ export default function Configuracoes() {
     if (!userToRemove) return
     setRemoving(true)
     try {
-      await userService.delete(userToRemove.id)
+      const result = await userService.excluirVendedor(userToRemove.id)
       await auditBestEffort({
         autor: user?.id || '',
         alvo: userToRemove.id,
