@@ -327,3 +327,32 @@ export interface Ticket {
     atribuido_a?: User
   }
 }
+
+export type TriagemHumanaCategoria =
+  | 'pecas'
+  | 'assistencia'
+  | 'pos_venda'
+  | 'financeiro'
+  | 'fornecedores'
+  | 'emprego'
+  | 'revendas'
+  | 'outros'
+
+export type TriagemHumanaStatus = 'pendente' | 'em_atendimento' | 'resolvido'
+
+export interface TriagemHumana {
+  id: string
+  nome_solicitante: string
+  telefone: string
+  categoria: TriagemHumanaCategoria
+  descricao?: string
+  status: TriagemHumanaStatus
+  responsavel?: string
+  wa_message_id?: string
+  wa_conversation_id?: string
+  created: string
+  updated: string
+  expand?: {
+    responsavel?: User
+  }
+}

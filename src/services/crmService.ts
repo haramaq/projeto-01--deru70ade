@@ -613,6 +613,46 @@ export const dddService = {
   },
 }
 
+export const triagemHumanaService = {
+  async listar(status?: string): Promise<TriagemHumana[]> {
+    const filter = status ? `status = "${status}"` : ''
+    return (await pb.collection('triagem_humana').getFullList({
+      filter,
+      sort: '-created',
+    })) as unknown as TriagemHumana[]
+  },
+  async assumir(id: string, responsavelId: string): Promise<TriagemHumana> {
+    return (await pb.collection('triagem_humana').update(id, {
+      status: 'em_atendimento',
+      responsavel: responsavelId,
+    })) as unknown as TriagemHumana
+  },
+  async resolver(id: string): Promise<TriagemHumana> {
+    return (await pb.collection('triagem_humana').update(id, {
+      status: 'resolvido',
+    })) as unknown as TriagemHumana
+  },
+  async registrarAuditoria(
+    autor: string,
+    alvo: string,
+    acao: string,
+    antes: unknown,
+    depois: unknown,
+  ): Promise<void> {
+    try {
+      await pb.collection('auditoria_acesso').create({
+        autor,
+        alvo,
+        acao,
+        antes: JSON.stringify(antes),
+        depois: JSON.stringify(depois),
+      })
+    } catch {
+      // Auditoria best-effort
+    }
+  },
+}
+
 // ===== Territórios comerciais internos HARAMAQ (0033; sem IBGE) =====
 export type CidadeAtendida = {
   id: string

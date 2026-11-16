@@ -4,7 +4,11 @@ import { useAuth } from '@/contexts/AuthContext'
 import { PageContainer } from '@/components/haramaq/PageContainer'
 import { HaramaqCard } from '@/components/haramaq/HaramaqCard'
 import { Button } from '@/components/ui/button'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
+import { triagemHumanaService } from '@/services/crmService'
+import type { TriagemHumana } from '@/types/crm'
 
 interface FilaItem {
   id: string
@@ -93,6 +97,19 @@ export default function FilaTriagem() {
         </p>
       </div>
 
+      <Tabs defaultValue="comercial">
+        <TabsList>
+          <TabsTrigger value="comercial">Triagem Comercial</TabsTrigger>
+          <TabsTrigger value="nao-comercial">Não Comercial</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="comercial">
+        <p className="text-sm text-[#64748B]">
+          Leads sem responsável aguardando atribuição. Somente leitura de fila — a atribuição é
+          registrada pelo servidor com auditoria.
+        </p>
+      </div>
+
       <HaramaqCard>
         {loading ? (
           <p className="text-sm text-[#64748B]">Carregando fila…</p>
@@ -129,6 +146,149 @@ export default function FilaTriagem() {
           </div>
         )}
       </HaramaqCard>
+        </TabsContent>
+
+        <TabsContent value="nao-comercial">
+          <NaoComercialTab user={user} />
+        </TabsContent>
+      </Tabs>
     </PageContainer>
+  )
+}
+
+function NaoComercialTab({ user }: { user: ReturnType<typeof useAuth>['user'] }) {
+  const [itens, setItens] = useState<TriagemHumana[]>([])
+  const [loading, setLoading] = useState(true)
+  const [erro, setErro] = useState('')
+  const [processando, setProcessando] = useState<string | null>(null)
+
+  const carregar = useCallback(async () => {
+    setErro('')
+    try {
+      const lista = await triagemHumanaService.listar()
+      setItens(lista)
+    } catch {
+      setErro('Não foi possível carregar os atendimentos não comerciais.')
+      setItens([])
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void carregar()
+  }, [carregar])
+
+  const assumir = async (id: string) => {
+    if (!user) return
+    setProcessando(id)
+    try {
+      await triagemHumanaService.assumir(id, user.id)
+      await triagemHumanaService.registrarAuditoria(
+        user.id,
+        id,
+        'triagem_humana:assumir',
+        { status: 'pendente' },
+        { status: 'em_atendimento', responsavel: user.id },
+      )
+      toast.success('Solicitação assumida.')
+      await carregar()
+    } catch {
+      toast.error('Não foi possível assumir a solicitação.')
+      await carregar()
+    } finally {
+      setProcessando(null)
+    }
+  }
+
+  const resolver = async (id: string) => {
+    if (!user) return
+    setProcessando(id)
+    try {
+      await triagemHumanaService.resolver(id)
+      await triagemHumanaService.registrarAuditoria(
+        user.id,
+        id,
+        'triagem_humana:resolver',
+        { status: 'em_atendimento' },
+        { status: 'resolvido' },
+      )
+      toast.success('Solicitação resolvida.')
+      await carregar()
+    } catch {
+      toast.error('Não foi possível resolver a solicitação.')
+      await carregar()
+    } finally {
+      setProcessando(null)
+    }
+  }
+
+  const CATEGORIA_LABELS: Record<string, string> = {
+    pecas: 'Peças',
+    assistencia: 'Assistência técnica',
+    pos_venda: 'Pós-venda',
+    financeiro: 'Financeiro',
+    fornecedores: 'Fornecedores',
+    emprego: 'Emprego',
+    revendas: 'Revendas',
+    outros: 'Outros',
+  }
+
+  return (
+    <HaramaqCard>
+      {loading ? (
+        <p className="text-sm text-[#64748B]">Carregando…</p>
+      ) : erro ? (
+        <p className="text-sm font-medium text-red-600" role="alert">
+          {erro}
+        </p>
+      ) : itens.length === 0 ? (
+        <p className="text-sm text-[#94A3B8]">Nenhuma solicitação não comercial.</p>
+      ) : (
+        <div className="divide-y">
+          {itens.map((item) => (
+            <div key={item.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
+              <div>
+                <p className="text-sm font-semibold text-[#1E293B]">
+                  {item.nome_solicitante} · {item.telefone}
+                </p>
+                <p className="text-xs text-[#64748B]">
+                  <Badge variant="secondary">{CATEGORIA_LABELS[item.categoria] || item.categoria}</Badge>
+                  {' · '}
+                  {item.descricao || 'Sem descrição'}
+                </p>
+                <p className="text-xs text-[#94A3B8]">
+                  {item.status === 'pendente' ? 'Pendente' : item.status === 'em_atendimento' ? 'Em atendimento' : 'Resolvido'}
+                  {item.responsavel ? ' · Atribuído' : ''}
+                </p>
+              </div>
+              <div className="flex gap-1">
+                {item.status === 'pendente' && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={processando === item.id}
+                    onClick={() => void assumir(item.id)}
+                  >
+                    {processando === item.id ? 'Assumindo…' : 'Assumir'}
+                  </Button>
+                )}
+                {item.status === 'em_atendimento' && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={processando === item.id}
+                    onClick={() => void resolver(item.id)}
+                  >
+                    {processando === item.id ? 'Resolvendo…' : 'Resolver'}
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </HaramaqCard>
   )
 }
