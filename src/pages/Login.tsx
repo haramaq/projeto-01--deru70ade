@@ -375,7 +375,10 @@ export default function Login() {
           {recoverySent ? (
             <div className="mt-5">
               <div className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
-                <CheckCircle2 aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                <CheckCircle2
+                  aria-hidden="true"
+                  className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600"
+                />
                 <span>
                   <strong className="font-semibold">E-mail enviado!</strong> Se o endereço{' '}
                   <span className="break-all font-medium">{recoveryEmail}</span> estiver cadastrado,

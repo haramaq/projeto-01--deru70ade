@@ -104,48 +104,45 @@ export default function FilaTriagem() {
         </TabsList>
 
         <TabsContent value="comercial">
-        <p className="text-sm text-[#64748B]">
-          Leads sem responsável aguardando atribuição. Somente leitura de fila — a atribuição é
-          registrada pelo servidor com auditoria.
-        </p>
-      </div>
-
-      <HaramaqCard>
-        {loading ? (
-          <p className="text-sm text-[#64748B]">Carregando fila…</p>
-        ) : erro ? (
-          <p className="text-sm font-medium text-red-600" role="alert">
-            {erro}
-          </p>
-        ) : itens.length === 0 ? (
-          <p className="text-sm text-[#94A3B8]">Nenhum lead na fila.</p>
-        ) : (
-          <div className="divide-y">
-            {itens.map((item) => (
-              <div key={item.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
-                <div>
-                  <p className="text-sm font-semibold text-[#1E293B]">
-                    {item.numero_lead || item.id}
-                    {item.cliente_nome ? ` · ${item.cliente_nome}` : ''}
-                  </p>
-                  <p className="text-xs text-[#64748B]">
-                    {ETAPA_LABELS[item.etapa] || item.etapa}
-                    {item.origem_lead ? ` · ${item.origem_lead}` : ''}
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={atribuindo === item.id}
-                  onClick={() => void atribuirParaSi(item.id)}
-                >
-                  {atribuindo === item.id ? 'Atribuindo…' : 'Assumir lead'}
-                </Button>
+          <HaramaqCard>
+            {loading ? (
+              <p className="text-sm text-[#64748B]">Carregando fila…</p>
+            ) : erro ? (
+              <p className="text-sm font-medium text-red-600" role="alert">
+                {erro}
+              </p>
+            ) : itens.length === 0 ? (
+              <p className="text-sm text-[#94A3B8]">Nenhum lead na fila.</p>
+            ) : (
+              <div className="divide-y">
+                {itens.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex flex-wrap items-center justify-between gap-2 py-3"
+                  >
+                    <div>
+                      <p className="text-sm font-semibold text-[#1E293B]">
+                        {item.numero_lead || item.id}
+                        {item.cliente_nome ? ` · ${item.cliente_nome}` : ''}
+                      </p>
+                      <p className="text-xs text-[#64748B]">
+                        {ETAPA_LABELS[item.etapa] || item.etapa}
+                        {item.origem_lead ? ` · ${item.origem_lead}` : ''}
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={atribuindo === item.id}
+                      onClick={() => void atribuirParaSi(item.id)}
+                    >
+                      {atribuindo === item.id ? 'Atribuindo…' : 'Assumir lead'}
+                    </Button>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
-      </HaramaqCard>
+            )}
+          </HaramaqCard>
         </TabsContent>
 
         <TabsContent value="nao-comercial">
@@ -184,13 +181,6 @@ function NaoComercialTab({ user }: { user: ReturnType<typeof useAuth>['user'] })
     setProcessando(id)
     try {
       await triagemHumanaService.assumir(id, user.id)
-      await triagemHumanaService.registrarAuditoria(
-        user.id,
-        id,
-        'triagem_humana:assumir',
-        { status: 'pendente' },
-        { status: 'em_atendimento', responsavel: user.id },
-      )
       toast.success('Solicitação assumida.')
       await carregar()
     } catch {
@@ -206,13 +196,6 @@ function NaoComercialTab({ user }: { user: ReturnType<typeof useAuth>['user'] })
     setProcessando(id)
     try {
       await triagemHumanaService.resolver(id)
-      await triagemHumanaService.registrarAuditoria(
-        user.id,
-        id,
-        'triagem_humana:resolver',
-        { status: 'em_atendimento' },
-        { status: 'resolvido' },
-      )
       toast.success('Solicitação resolvida.')
       await carregar()
     } catch {
@@ -253,12 +236,18 @@ function NaoComercialTab({ user }: { user: ReturnType<typeof useAuth>['user'] })
                   {item.nome_solicitante} · {item.telefone}
                 </p>
                 <p className="text-xs text-[#64748B]">
-                  <Badge variant="secondary">{CATEGORIA_LABELS[item.categoria] || item.categoria}</Badge>
+                  <Badge variant="secondary">
+                    {CATEGORIA_LABELS[item.categoria] || item.categoria}
+                  </Badge>
                   {' · '}
                   {item.descricao || 'Sem descrição'}
                 </p>
                 <p className="text-xs text-[#94A3B8]">
-                  {item.status === 'pendente' ? 'Pendente' : item.status === 'em_atendimento' ? 'Em atendimento' : 'Resolvido'}
+                  {item.status === 'pendente'
+                    ? 'Pendente'
+                    : item.status === 'em_atendimento'
+                      ? 'Em atendimento'
+                      : 'Resolvido'}
                   {item.responsavel ? ' · Atribuído' : ''}
                 </p>
               </div>

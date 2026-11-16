@@ -11,6 +11,7 @@ import type {
   LeadTarefa,
   StatusMotivo,
   AuditEntry,
+  TriagemHumana,
 } from '@/types/crm'
 
 type TransferTarget = Pick<User, 'id' | 'name' | 'email' | 'role' | 'carteira' | 'ativo'>
@@ -631,25 +632,6 @@ export const triagemHumanaService = {
     return (await pb.collection('triagem_humana').update(id, {
       status: 'resolvido',
     })) as unknown as TriagemHumana
-  },
-  async registrarAuditoria(
-    autor: string,
-    alvo: string,
-    acao: string,
-    antes: unknown,
-    depois: unknown,
-  ): Promise<void> {
-    try {
-      await pb.collection('auditoria_acesso').create({
-        autor,
-        alvo,
-        acao,
-        antes: JSON.stringify(antes),
-        depois: JSON.stringify(depois),
-      })
-    } catch {
-      // Auditoria best-effort
-    }
   },
 }
 
