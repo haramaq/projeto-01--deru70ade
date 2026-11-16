@@ -43,8 +43,10 @@ migrate(
     }
     // The existing role taxonomy remains unchanged. Only administrators can use
     // the administrative panel and its user/audit data endpoints.
-    users.listRule = "@request.auth.id != ''"
-    users.viewRule = "@request.auth.id != ''"
+    users.listRule =
+      "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor')"
+    users.viewRule =
+      "@request.auth.id != '' && (@request.auth.role = 'admin' || @request.auth.role = 'gestor' || id = @request.auth.id)"
     users.createRule = "@request.auth.id != '' && @request.auth.role = 'admin'"
     users.updateRule = "@request.auth.id != '' && @request.auth.role = 'admin'"
     users.deleteRule = "@request.auth.id != '' && @request.auth.role = 'admin'"

@@ -1,131 +1,51 @@
-# Projeto Criado com o Skip
+# HARAMAQ CRM — Projeto 01
 
-Este projeto foi criado de ponta a ponta com o [Skip](https://goskip.dev).
+CRM conversacional da Haramaq Indústria (equipamentos para pecuária — alimentação de bovinos), construído no [Skip](https://goskip.dev) com referência visual/funcional no Altforce para futura integração.
 
-## 🚀 Stack Tecnológica
+## Stack
 
-- **React 19** - Biblioteca JavaScript para construção de interfaces
-- **Vite** - Build tool extremamente rápida
-- **TypeScript** - Superset tipado do JavaScript
-- **Shadcn UI** - Componentes reutilizáveis e acessíveis
-- **Tailwind CSS** - Framework CSS utility-first
-- **React Router** - Roteamento para aplicações React
-- **React Hook Form** - Gerenciamento de formulários performático
-- **Zod** - Validação de schemas TypeScript-first
-- **Recharts** - Biblioteca de gráficos para React
+- React 19 + Vite + TypeScript
+- PocketBase (backend/Skip Cloud)
+- Shadcn UI + Tailwind CSS
+- Recharts (gráficos)
+- pdfjs-dist + tesseract.js (leitura automática de pedidos: PDF e OCR de prints)
 
-## 📋 Pré-requisitos
+## Módulos
 
-- Node.js 18+
-- npm
+- **Dashboard** — painel geral de leads e operações
+- **Leads / Kanban** — 11 etapas (incluindo Peças e Pós-vendas, Financeiro e Fiscal, Fornecedores), motivos obrigatórios nas etapas terminais, histórico e tarefas
+- **Clientes / Revendas** — cadastros unificados com tipo (cliente final/revenda), External ID, documento CPF/CNPJ, endereço e responsável
+- **Suporte** — chamados e pós-venda
+- **Relatórios** — filtros por etapa, usuário, origem, região/carteira, linha de equipamento, status e período; exportação CSV
+- **Feiras** (admin) — custos (custo estimado total da feira + custos realizados por categoria), resultados comerciais com importação de pedidos (upload/colar print com leitura automática), arquivos e ROI
+- **Configurações** (admin) — usuários, perfis, permissões adicionais e auditoria
 
-## 🔧 Instalação
+## Segurança
+
+- RBAC com perfis: admin, gestor, triagem, vendedor, revendedor, suporte
+- Permissões efetivas por usuário (booleans) + carteira/território
+- Regras de acesso restritivas no PocketBase (migrações)
+- Auditoria append-only (`auditoria_acesso`)
+- Etapas restritas do Kanban visíveis apenas a admin/triagem/suporte
+
+## Desenvolvimento
 
 ```bash
 npm install
+npm start        # desenvolvimento
+npm run build    # produção
+npm test         # validação do contrato (scripts/validate_contract.mjs)
 ```
 
-## 💻 Scripts Disponíveis
+## Migrações
 
-### Desenvolvimento
+Em `pocketbase/migrations/` (PocketBase v0.36, hooks em goja — sem built-ins de Node).
 
-```bash
-# Iniciar servidor de desenvolvimento
-npm start
-# ou
-npm run dev
-```
+## Repositório de documentação
 
-Abre a aplicação em modo de desenvolvimento em [http://localhost:5173](http://localhost:5173).
+Especificações e fases do projeto (consultoria Adapta): `kimberlyPrest/Haramaq---Adapta-Native`.
 
-### Build
+## Notas
 
-```bash
-# Build para produção
-npm run build
-
-# Build para desenvolvimento
-npm run build:dev
-```
-
-Gera os arquivos otimizados para produção na pasta `dist/`.
-
-### Preview
-
-```bash
-# Visualizar build de produção localmente
-npm run preview
-```
-
-Permite visualizar a build de produção localmente antes do deploy.
-
-### Linting e Formatação
-
-```bash
-# Executar linter
-npm run lint
-
-# Executar linter e corrigir problemas automaticamente
-npm run lint:fix
-
-# Formatar código com Oxfmt
-npm run format
-```
-
-## 📁 Estrutura do Projeto
-
-```
-.
-├── src/              # Código fonte da aplicação
-├── public/           # Arquivos estáticos
-├── dist/             # Build de produção (gerado)
-├── node_modules/     # Dependências (gerado)
-└── package.json      # Configurações e dependências do projeto
-```
-
-## 🎨 Componentes UI
-
-Este template inclui uma biblioteca completa de componentes Shadcn UI baseados em Radix UI:
-
-- Accordion
-- Alert Dialog
-- Avatar
-- Button
-- Checkbox
-- Dialog
-- Dropdown Menu
-- Form
-- Input
-- Label
-- Select
-- Switch
-- Tabs
-- Toast
-- Tooltip
-- E muito mais...
-
-## 📝 Ferramentas de Qualidade de Código
-
-- **TypeScript**: Tipagem estática
-- **Oxlint**: Linter extremamente rápido
-- **Oxfmt**: Formatação automática de código
-
-## 🔄 Workflow de Desenvolvimento
-
-1. Instale as dependências: `npm install`
-2. Inicie o servidor de desenvolvimento: `npm start`
-3. Faça suas alterações
-4. Verifique o código: `npm run lint`
-5. Formate o código: `npm run format`
-6. Crie a build: `npm run build`
-7. Visualize a build: `npm run preview`
-
-## 📦 Build e Deploy
-
-Para criar uma build otimizada para produção:
-
-```bash
-npm run build
-```
-
-Os arquivos otimizados serão gerados na pasta `dist/` e estarão prontos para deploy.
+- `.env` não é versionado; defina `VITE_POCKETBASE_URL` localmente.
+- Produção: `https://finalizacao-da-implementacao-abb7b.goskip.app`
